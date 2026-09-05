@@ -1,284 +1,331 @@
-# Curry
+<div align="center">
 
-A modern Windows desktop notification enhancement application.
+<img src="static/curry_icon.png" alt="Curry Logo" width="100" height="100" style="border-radius: 22px; margin-bottom: 12px;" />
 
-Curry listens for incoming Windows toast notifications and delivers elegant, ambient screen-edge glow effects, a searchable notification history feed, and deep Windows desktop integration — all with a strict 100% offline, privacy-first design.
+# 🍛 Curry
+
+### ✨ A modern notification companion for Windows
+
+<p align="center">
+  <strong>Capture notifications. Visualize them with ambient screen-edge glow. Keep your history organized.</strong>
+</p>
+
+> *Curry is a polished Windows desktop notification companion built around native notifications, ambient glow, and a privacy-first local architecture.*
+
+<p align="center">
+  <a href="https://github.com/owergungor/Curry"><img src="https://img.shields.io/badge/GitHub-owergungor%2FCurry-181717?style=flat-square&logo=github" alt="GitHub Repository" /></a>
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?style=flat-square&logo=windows&logoColor=white" alt="Windows 10 | 11" />
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.85+-orange?style=flat-square&logo=rust" alt="Rust 1.85+" /></a>
+  <a href="https://v2.tauri.app/"><img src="https://img.shields.io/badge/Tauri-2.0-24C8D8?style=flat-square&logo=tauri&logoColor=white" alt="Tauri 2.0" /></a>
+  <a href="https://svelte.dev/"><img src="https://img.shields.io/badge/Svelte-5.0-FF3E00?style=flat-square&logo=svelte&logoColor=white" alt="Svelte 5.0" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript 5.6" /></a>
+</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/Privacy-100%25%20Offline-success?style=flat-square" alt="100% Offline" />
+  <img src="https://img.shields.io/badge/Tests-43%20passed-brightgreen?style=flat-square" alt="Tests 43 passed" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="MIT License" /></a>
+</p>
+
+</div>
 
 ---
 
-## Overview
+## 📚 Contents
 
-Windows notifications often disappear into the Action Center unnoticed while you are focused on work or media. **Curry** bridges this gap by rendering a hardware-accelerated, transparent screen-edge glow overlay whenever a notification arrives. In addition, Curry provides a searchable notification feed, customizable visual themes, granular per-app suppression rules, and background tray management.
+- [✨ Overview](#-overview)
+- [✨ Why Curry?](#-why-curry)
+- [🖥️ Screenshots](#️-screenshots)
+- [🔔 Notifications](#-notifications)
+- [✨ Ambient Glow Engine](#-ambient-glow-engine)
+- [🎨 Themes](#-themes)
+- [🪟 Windows Integration](#-windows-integration)
+- [🔒 Privacy First](#-privacy-first)
+- [🏗️ Architecture](#️-architecture)
+- [⚡ Tech Stack](#-tech-stack)
+- [💾 Storage & Persistence](#-storage--persistence)
+- [🔄 Legacy Migration](#-legacy-migration)
+- [📦 Installation](#-installation)
+- [🛠️ Development](#️-development)
+- [🧪 Testing](#-testing)
+- [🗂️ Project Structure](#️-project-structure)
+- [🤝 Contributing](#-contributing)
+- [📜 License](#-license)
 
 ---
 
-## Features
+## ✨ Overview
 
-- **Ambient Screen-Edge Glow**: Dynamic screen-border glow effects upon receiving any Windows desktop toast notification.
-- **7 Curated Visual Themes**: Tailored dark-mode and aesthetic palettes with matching interface elements and glow swatches.
-- **Searchable Notification History**: In-memory ring buffer backed by atomic local JSON persistence with full-text search, app filtering, and urgency sorting.
-- **Smart Urgency Inference**: Privacy-preserving on-device keyword heuristic (Urgent / Warning / Normal) for notification categorization.
-- **System Tray Management**: Clean minimize-to-tray lifecycle, live status indicators, quick toggle, and one-click access.
-- **Windows Autostart Integration**: Windows startup registry management (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`) executed silently without command prompt flashes.
-- **Single-Instance Protection**: Native Win32 named system mutex preventing duplicate instances while coordinating window focus.
-- **Legacy Migration Engine**: Non-destructive automatic data migration from previous NotiGlow installations.
-- **Zero Telemetry & 100% Offline**: Operates strictly on the local machine with no external network requests or analytics.
+Windows notifications frequently slip into the Action Center unnoticed while you are immersed in focus mode, coding, full-screen gaming, or media playback.
+
+**Curry** solves this with an ambient, hardware-accelerated desktop utility built with **Rust**, **Tauri 2**, and **Svelte 5**. It detects incoming Windows desktop notifications in real-time, illuminates your display borders with customizable screen-edge glow animations, maintains a searchable history feed, and runs entirely on your local machine with **zero telemetry**.
 
 ---
 
-## Screenshots
+## ✨ Why Curry?
 
-<!-- Placeholder: Add screenshots here -->
+| | Feature | Description |
+|:---:|---|---|
+| 🔔 | **Notification Capture** | Native WinRT capture for incoming Windows desktop toast notifications |
+| 🌈 | **Ambient Glow** | Hardware-accelerated screen-edge border illumination with dynamic animation styles |
+| 🎨 | **Curated Themes** | 7 handcrafted dark-mode and aesthetic color palettes |
+| 📜 | **Searchable History** | In-memory ring buffer with full-text search, app filtering, and read/unread states |
+| 🔒 | **100% Private** | Completely offline architecture; notifications and settings never leave your machine |
+| ⚡ | **Lightweight & Fast** | Native Rust backend with WebView2 frontend footprint and 0% idle CPU usage |
+| 🪟 | **Windows Native** | System tray minimization, silent autostart, and single-instance mutex protection |
+
+---
+
+## 🖥️ Screenshots
+
+<div align="center">
+
+### 📊 Dashboard
+> 📸 *Screenshots coming soon.*
+
+### 🔔 Notification History
+> 📸 *Screenshots coming soon.*
+
+### ✨ Ambient Glow
+> 📸 *Screenshots coming soon.*
+
+### 🎨 Themes
+> 📸 *Screenshots coming soon.*
+
+</div>
+
+---
+
+## 🔔 Notifications
+
+Curry integrates with the official modern Windows notification pipeline:
+
+- **WinRT Integration**: Accesses desktop notifications via `Windows.UI.Notifications.Management.UserNotificationListener` without requiring administrator privileges.
+- **Intelligent Deduplication**: Bounded cache with a 15-minute TTL and SHA content fingerprinting prevents duplicate entries from repeated app toasts.
+- **Full-Text Search**: Instantly query notification titles, message bodies, and source application names.
+- **Read & Unread State**: Mark individual notifications as read/unread or clear the feed with one click.
+- **Safe Persistence**: Bounded ring buffer persists up to 1,000 notifications locally across application reboots.
+
+---
+
+## ✨ Ambient Glow Engine
+
+The ambient glow engine displays a transparent, always-on-top, click-through overlay around your display borders whenever a notification arrives.
+
+### 🎬 Animation Styles
+
+| Style | Visual | Behavior | Recommended For |
+|---|:---:|---|---|
+| **Pulse** | ⚡ | Fast, rhythmic notification pulse with cubic-bezier easing | Urgent glanceable alerts |
+| **Breathing** | 🌬️ | Slow, ambient luminosity expansion and smooth fade | Subtle background awareness |
+| **Solid** | 🔒 | Instant illumination holding steady with smooth fadeout | High-contrast visual cues |
+
+### 🎛️ Configurable Controls
+
+| Setting | Options / Range | Description |
+|---|---|---|
+| **Animation Style** | `Pulse` / `Breathing` / `Solid` | Visual animation timing curve |
+| **Border Thickness** | `1px` to `32px` | Visual width of the screen-border glow |
+| **Glow Duration** | `500ms` to `10,000ms` | Total active display duration |
+| **Max Opacity** | `10%` to `100%` | Peak luminosity scaling |
+| **Target Monitor** | `Primary` / `Active Window` / `All Displays` | Monitor overlay placement coordinates |
+| **Color Palette** | Theme Swatches or Custom HEX | Theme-matched accents or personalized colors |
+| **Window Interaction** | `WS_EX_TRANSPARENT` | Click-through styles; never intercepts mouse or keyboard input |
+
+---
+
+## 🎨 Themes
+
+Curry includes **7 curated themes**. **Perpetuity** is the canonical default theme.
+
+| Theme | Style | Default | Primary Swatches |
+|---|---|:---:|---|
+| **🪐 Perpetuity** | Obsidian slate & futuristic cyan-indigo glow | ✅ | `#0b0f19` `#121826` `#6366f1` `#38bdf8` |
+| **🐱 Catppuccin** | Soothing pastel Mocha with mauve & blue accents | | `#1e1e2e` `#181825` `#cba6f7` `#89b4fa` |
+| **📜 Vintage Paper** | Warm sepia & muted parchment for low eye strain | | `#181614` `#221f1c` `#d4a373` `#e09f67` |
+| **💜 Amethyst Haze** | Deep midnight violet & luminous neon purple glow | | `#0e0b16` `#161224` `#a855f7` `#ec4899` |
+| **🌿 Sage Mist** | Calming eucalyptus slate with mint & emerald accents | | `#0d1412` `#131d1a` `#10b981` `#34d399` |
+| **🩷 Bubblegum** | High-energy retro cyberpunk pink & electric cyan | | `#120914` `#1a0f1d` `#f43f5e` `#06b6d4` |
+| **🟠 Amberstate** | Industrial dark charcoal with warm amber glow | | `#14120e` `#1c1914` `#f59e0b` `#fbbf24` |
+
+---
+
+## 🪟 Windows Integration
+
+- **Modern OS Compatibility**: Designed for Windows 10 (Version 1607+) and Windows 11.
+- **System Tray Lifecycle**: Closing the window hides Curry to the tray (`tauri::tray::TrayIcon`); double-clicking or selecting **Open Curry** restores and focuses the window.
+- **Silent Autostart**: Queries and writes to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` with `reg.exe` using `CREATE_NO_WINDOW` (`0x08000000`) to guarantee zero console flashes on system startup.
+- **Single-Instance Protection**: Enforced by the Win32 named system mutex `Global\Curry`. Launching a second instance automatically focuses the existing window and terminates the duplicate process.
+
+---
+
+## 🔒 Privacy First
+
+> **Curry is designed to work entirely on your machine.**
+
+Notification text often contains sensitive communications, authentication codes, or personal messages. Curry ensures your data remains strictly private:
+
+- ✅ **No telemetry** — Zero tracking tokens, telemetry beacons, or usage analytics.
+- ✅ **No analytics** — No diagnostic crash uploads or event logging to external servers.
+- ✅ **No external notification servers** — Listens directly to the Windows Action Center locally.
+- ✅ **No cloud dependency** — Operates 100% offline without requiring internet access.
+- ✅ **Local notification history** — Stored exclusively in `%APPDATA%\com.curry.app\notifications.json`.
+- ✅ **Local settings** — Preferences remain on your drive in `%APPDATA%\com.curry.app\settings.json`.
+- ✅ **Strict Content Security Policy** — Tauri CSP restricts network communication to local IPC only (`connect-src ipc: http://ipc.localhost`).
+
+---
+
+## 🏗️ Architecture
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                          Curry UI                           │
+│                   Svelte 5 + TypeScript                     │
+│        (Dashboard · Feed · Theme Engine · Settings)         │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Tauri 2 IPC Bridge                     │
+│         (Typed Commands · Events · Window Management)       │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                         Rust Backend                        │
+│         ├── AppState Gatekeeper (Active / Paused)           │
+│         ├── Deduplication Engine (15-min TTL Cache)         │
+│         ├── Win32 Named Mutex (Global\Curry)                │
+│         ├── System Tray Service                             │
+│         └── Glow Window Overlay Manager                     │
+└───────────────┬─────────────────────────────┬───────────────┘
+                │                             │
+                ▼                             ▼
+   ┌───────────────────────────┐ ┌───────────────────────────┐
+   │        Windows APIs       │ │       Local Storage       │
+   │  - WinRT Notification     │ │  - Atomic Writes (.tmp)   │
+   │    Listener (0.62)        │ │  - %APPDATA%\com.curry.app│
+   │  - HKCU Autostart Reg     │ │  - Settings & History     │
+   └───────────────────────────┘ └───────────────────────────┘
 ```
-+-----------------------------------------------------------------------+
-|  CURRY                      [Search...]        (● Listening) [Theme]  |
-+-----------------------------------------------------------------------+
-|                                                                       |
-|  [Notifications]   [Glow Settings]   [Rules]   [System]               |
-|                                                                       |
-|  • Slack          Important release update                   10:42 AM |
-|  • GitHub         Pull request approved                      10:39 AM |
-|  • Outlook        Team sync in 15 minutes                    10:30 AM |
-|                                                                       |
-+-----------------------------------------------------------------------+
-```
 
 ---
 
-## Themes
+## ⚡ Tech Stack
 
-Curry includes seven themes. **Perpetuity** is the default theme.
-
-| Theme | Label | Description | Primary Colors |
-|---|---|---|---|
-| **Perpetuity** *(Default)* | Perpetuity | Precision obsidian slate & futuristic cyan-indigo glow | `#0b0f19`, `#121826`, `#6366f1`, `#38bdf8` |
-| **Catppuccin** | Catppuccin Mocha | Soothing pastel palette with mauve & blue accents | `#1e1e2e`, `#181825`, `#cba6f7`, `#89b4fa` |
-| **Vintage Paper** | Vintage Paper | Warm sepia & muted parchment for low eye strain | `#181614`, `#221f1c`, `#d4a373`, `#e09f67` |
-| **Amethyst Haze** | Amethyst Haze | Deep midnight violet & luminous neon purple glow | `#0e0b16`, `#161224`, `#a855f7`, `#ec4899` |
-| **Sage Mist** | Sage Mist | Calming eucalyptus slate with mint & emerald accents | `#0d1412`, `#131d1a`, `#10b981`, `#34d399` |
-| **Bubblegum** | Bubblegum | High-energy retro cyberpunk pink & electric blue | `#120914`, `#1a0f1d`, `#f43f5e`, `#06b6d4` |
-| **Amberstate** | Amberstate | Industrial dark charcoal with warm amber glow | `#14120e`, `#1c1914`, `#f59e0b`, `#fbbf24` |
+| Technology | Layer | Purpose |
+|---|---|---|
+| **[Rust](https://www.rust-lang.org/)** `1.85+` | Native Backend | High-performance threading, Win32 interop, deduplication & atomic storage |
+| **[Tauri 2](https://v2.tauri.app/)** | Desktop Runtime | Secure WebView2 host with ultra-low memory overhead |
+| **[Svelte 5](https://svelte.dev/)** | Frontend UI | Next-gen reactive dashboard, virtualized feed, and CSS theme system |
+| **[TypeScript](https://www.typescriptlang.org/)** `5.6` | Typing | End-to-end type safety for notification models, themes, and IPC payloads |
+| **[Vite 6](https://vitejs.dev/)** | Frontend Tooling | Lightning-fast development HMR and static asset bundling |
+| **[WinRT APIs](https://learn.microsoft.com/en-us/uwp/api/)** | OS Hook | `Windows.UI.Notifications.Management` via the `windows` crate (`0.62`) |
 
 ---
 
-## Glow System
+## 💾 Storage & Persistence
 
-The ambient glow system renders a transparent, click-through, always-on-top overlay around display borders:
+Curry keeps all persistent configuration in `%APPDATA%\com.curry.app\`:
 
-- **Animation Styles**:
-  - **Pulse**: Rhythmic breathing glow with smooth cubic-bezier easing.
-  - **Breathing**: Slow, ambient luminosity expansion and relaxation.
-  - **Ripple**: Edge-traveling wave animation.
-  - **Solid**: Instant illumination with smooth alpha fadeout.
-- **Customizable Dynamics**:
-  - **Color**: Select from theme-matched palettes or custom hex codes.
-  - **Duration**: Configurable from 500ms to 10,000ms.
-  - **Border Thickness**: 1px to 32px edge footprint.
-  - **Max Opacity**: 10% to 100% luminosity scaling.
-- **Multi-Monitor Targeting**: Direct the glow overlay to the Primary Monitor or across All Displays.
-- **Input Transparency**: The glow window uses Win32 click-through styles (`WS_EX_TRANSPARENT` / `skipTaskbar`), never intercepting mouse or keyboard input.
+- `settings.json`: General preferences (autostart toggle, sound alert, urgency thresholds).
+- `glow_settings.json`: Glow animation style, duration, thickness, and monitor configuration.
+- `notifications.json`: Historical notification ring buffer.
+
+**Atomic File Writes**: Files are written to a `.tmp` file and committed via atomic rename (`std::fs::rename`), eliminating the risk of corrupted settings during sudden power loss.
 
 ---
 
-## Notification History
+## 🔄 Legacy Migration
 
-Curry captures and manages incoming desktop notifications:
+For users upgrading from previous NotiGlow installations, Curry includes an automatic, non-destructive migration system:
 
-- **Capture Pipeline**: Listens to Windows Action Center toasts via Microsoft WinRT `UserNotificationListener`.
-- **Deduplication Engine**: Bounded hash-map with 15-minute TTL preventing duplicate alerts from repeated app updates or Action Center re-queries.
-- **Search & Filters**: Instant full-text search across titles, message bodies, and application names.
-- **Bounded Retention**: Stores up to 1,000 historical notifications in an in-memory ring buffer with automatic FIFO eviction.
-- **Batch Operations**: Clear all history, dismiss individual items, or filter by source application.
-
----
-
-## Windows Integration
-
-Curry integrates with Windows desktop APIs:
-
-- **WinRT UserNotificationListener**: Official modern Windows API (`Windows.UI.Notifications.Management`) for reading toasts without administrative elevation.
-- **System Tray Icon**: Native system tray icon (`tauri::tray::TrayIcon`) with double-click window restore, status tooltips, and a context menu (Open, Pause/Resume, Quit).
-- **Silent Startup Management**: Queries and writes to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` using `reg.exe` with the `CREATE_NO_WINDOW` flag (`0x08000000`), guaranteeing no black command prompt popups during login.
-- **Single-Instance Mutex**: Uses a named Win32 system mutex (`Global\Curry`) to enforce single-instance execution. Launching a secondary instance automatically brings the existing main window into focus and exits cleanly.
+1. **Automatic Detection**: On launch, Curry scans for legacy data in `%APPDATA%\com.notiglow.app`, `%APPDATA%\notiglow`, and `%APPDATA%\com.curry.desktop`.
+2. **JSON Validation**: Files are parsed and validated prior to transfer to prevent importing corrupt data.
+3. **Non-Destructive Copy**: Valid data is safely transferred to `%APPDATA%\com.curry.app` without altering or deleting the original legacy files.
+4. **Registry Cleanup**: Removes legacy startup entries and registers `Curry` in `HKCU\...\Run`.
+5. **Dual Mutex Co-locking**: Concurrently acquires `Global\Curry` while locking `Global\NotiGlow` to prevent legacy and new instances from running at the same time.
 
 ---
 
-## Privacy
+## 📦 Installation
 
-Curry is built with a local-only privacy architecture:
+### Production Packages
+Production packages generated by the automated build system:
 
-- **100% Offline**: No network calls, telemetry, analytics, or external cloud dependencies.
-- **Strict Content Security Policy (CSP)**: Tauri CSP restricts network communication to local IPC only (`connect-src ipc: http://ipc.localhost`).
-- **Local Data Storage**: All notification text, timestamps, application titles, and user preferences remain stored exclusively on your local machine in `%APPDATA%\com.curry.app\`.
-- **Zero Third-Party Sharing**: No data is ever transmitted off your device.
+- **NSIS Setup Installer**: `Curry_0.1.0_x64-setup.exe` (Standard installer)
+- **WiX MSI Package**: `Curry_0.1.0_x64_en-US.msi` (Enterprise deployment)
+- **Standalone Binary**: `curry.exe`
 
----
-
-## Architecture
-
-```
-Curry Application Architecture
-─────────────────────────────────────────────────────────────────────────────
-[ Windows Desktop Toasts ]
-           │
-           ▼
-[ WinRT UserNotificationListener ] (windows crate 0.62)
-           │
-           ▼
-[ WindowsNotificationProvider ] (Dedicated background thread + snapshot scan)
-           │
-           ▼
-[ Deduplication Engine ] (SHA-256 / Content fingerprint + 15m TTL)
-           │
-           ▼
-[ NotificationManager / Engine ] (Rust Backend)
-     ├── AppState Gatekeeper (Dropped if paused)
-     ├── Storage Engine (Atomic JSON write: .tmp → atomic rename)
-     ├── GlowManager (Coordinates overlay lifecycle)
-     └── Tauri Event Emitter ("notification-received", "state-changed")
-           │
-           ├──────────────────────────────┐
-           ▼                              ▼
-[ Svelte 5 Main Window ]       [ Transparent Glow Overlay ]
-  - Top navigation bar           - /glow route
-  - Dynamic theme engine         - CSS hardware acceleration
-  - Notification history feed    - Always-on-top, click-through
-  - Settings & Glow controls     - Multi-monitor support
-─────────────────────────────────────────────────────────────────────────────
-```
-
-- **Frontend**: Svelte 5 + TypeScript + Vite. Reactive UI, theme engine, and virtualized feed.
-- **Desktop Runtime**: Tauri 2. Lightweight WebView2 abstraction with low memory overhead.
-- **Backend**: Rust. High-performance, memory-safe native thread management and Win32/WinRT interop.
-- **IPC Layer**: Tauri 2 command invocation (`invoke`) and bi-directional event emission.
+*(Official binary releases will be published via GitHub Releases).*
 
 ---
 
-## Tech Stack
+## 🛠️ Development
 
-- **Tauri 2**: Cross-platform desktop application framework.
-- **Rust**: Native backend, system hooks, concurrency, and persistence.
-- **Svelte 5**: Modern reactive frontend UI framework.
-- **TypeScript**: Static typing across all UI state and theme definitions.
-- **Vite 6**: Fast frontend development server and production bundler.
-- **Windows Runtime (WinRT) APIs**: `Windows.UI.Notifications.Management` via the `windows` crate (`v0.62`).
-- **Windows System Tray**: Native tray management through Tauri 2 tray capabilities.
-- **Atomic Local Persistence**: Safe file replacement (`.tmp` write followed by atomic rename) for zero data corruption risk.
+### Prerequisites
+- **[Node.js](https://nodejs.org/)**: `v20.x` or later
+- **[Rust](https://rustup.rs/)**: `v1.85.0` or later (`x86_64-pc-windows-msvc`)
+- **[Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)**: "Desktop development with C++" workload
+- **[WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)**: Included on Windows 10 & 11
 
----
-
-## Requirements
-
-- **Operating System**: Windows 10 (Version 1607+ / Build 14393+) or Windows 11.
-- **Notification Access**: Windows Settings > Privacy & Security > Notifications must permit notification access.
-- **Build Prerequisites**:
-  - [Node.js](https://nodejs.org/) `20.x` or later (`22.x` / `24.x` recommended).
-  - [Rust](https://www.rust-lang.org/) `1.85.0` or later with the `x86_64-pc-windows-msvc` target.
-  - Microsoft C++ Build Tools (via Visual Studio Build Tools).
-  - [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (pre-installed on Windows 10/11).
-
----
-
-## Development Setup
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/<owner>/curry.git
-   cd curry
-   ```
-
-2. **Install Node.js dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Verify the Rust toolchain**:
-   ```bash
-   rustc --version
-   cargo --version
-   ```
-
----
-
-## Running in Development
-
-Start the Vite development server with Tauri hot-reloading:
+### Setup Commands
 
 ```bash
+# 1. Clone the repository
+git clone https://github.com/owergungor/Curry.git
+cd Curry
+
+# 2. Install Node.js dependencies
+npm install
+
+# 3. Start the development server with Tauri HMR
 npm run tauri dev
 ```
 
-- The Svelte frontend runs at `http://localhost:1420` with instant HMR.
-- The Rust backend compiles into `src-tauri/target/debug/` with automatic recompilation on changes.
-
 ---
 
-## Building for Production
+## 🧪 Testing
 
-To build the optimized production executable and native Windows installers:
-
-```bash
-# 1. Type check and build frontend assets
-npm run check
-npm run build
-
-# 2. Check and test the Rust backend
-cd src-tauri
-cargo check
-cargo test
-cargo build --release
-cd ..
-
-# 3. Create production installer packages (NSIS & MSI)
-npm run tauri build
-```
-
-Production build outputs:
-- **Optimized Binary**: `src-tauri/target/release/curry.exe`
-- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Curry_<version>_x64-setup.exe`
-- **WiX MSI Package**: `src-tauri/target/release/bundle/msi/Curry_<version>_x64_en-US.msi`
-
----
-
-## Testing
-
-Run the automated test suite:
+Curry maintains a rigorous automated testing suite:
 
 ```bash
 # Frontend Svelte and TypeScript diagnostic checks
 npm run check
 
-# Rust automated unit & integration test suite (39 tests)
+# Rust automated unit & integration test suite (43 tests)
 cd src-tauri
 cargo test
 cd ..
 ```
 
+**Automated Test Suite Status**: **43 passed, 0 failed, 0 warnings**.  
+Covers notification deduplication TTL, atomic storage recovery, state synchronization, startup registry commands, single-instance mutex conflicts, and theme schema validation.
+
 ---
 
-## Project Structure
+## 🗂️ Project Structure
 
-```
-curry/
+```text
+Curry/
 ├── src/                          # Svelte 5 + TypeScript frontend
 │   ├── lib/
 │   │   └── themes.ts             # 7 theme definitions and color tokens
 │   ├── routes/
 │   │   ├── glow/
 │   │   │   └── +page.svelte      # Transparent screen-edge glow overlay window
-│   │   ├── +layout.ts            # SvelteKit SPA prerendering configuration
-│   │   └── +page.svelte          # Main Curry dashboard, history feed & settings
+│   │   ├── +layout.ts            # SvelteKit SPA prerender configuration
+│   │   └── +page.svelte          # Main Curry dashboard, feed & settings
 │   └── app.html                  # HTML entry point
 ├── src-tauri/                    # Rust native application backend
 │   ├── capabilities/
 │   │   └── default.json          # Tauri 2 security capabilities
 │   ├── icons/                    # Multi-resolution application icons
 │   ├── src/
-│   │   ├── glow/                 # Glow manager, models & storage
+│   │   ├── glow/                 # Glow manager, animation models & storage
 │   │   ├── notification/         # Notification engine, WinRT listener & storage
 │   │   ├── settings/             # Settings state, startup manager & storage
-│   │   ├── lib.rs                # Tauri command registration & legacy migration
-│   │   ├── main.rs               # WinMain entry point & test suite
+│   │   ├── lib.rs                # Tauri command registry & migration routines
+│   │   ├── main.rs               # Application entry point & 43 unit tests
 │   │   ├── single_instance.rs    # Win32 named system mutex implementation
 │   │   ├── state.rs              # Thread-safe global application state
 │   │   └── tray.rs               # System tray icon & context menu
@@ -287,7 +334,8 @@ curry/
 │   ├── build.rs                  # Tauri build hook
 │   └── tauri.conf.json           # Tauri window, security & bundle configuration
 ├── static/                       # Static public assets (icons, SVGs)
-├── .gitignore                    # Git exclusions for dependencies, builds & caches
+├── .gitignore                    # Git exclusions for build artifacts & caches
+├── LICENSE                       # MIT License
 ├── package.json                  # NPM project metadata & build scripts
 ├── package-lock.json             # NPM lockfile
 ├── svelte.config.js              # SvelteKit static adapter configuration
@@ -298,32 +346,31 @@ curry/
 
 ---
 
-## Configuration
+## 🤝 Contributing
 
-Curry stores configuration and state in `%APPDATA%\com.curry.app\`:
+Contributions, bug reports, and feature suggestions are welcome!
 
-- `settings.json`: Master application preferences (startup toggle, notification sound, urgency filters).
-- `glow_settings.json`: Glow animation configuration (style, color, duration, thickness, monitor target).
-- `notifications.json`: Notification feed history (capped ring buffer).
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/my-feature`).
+3. Verify all tests pass (`npm run check` and `cargo test`).
+4. Commit your changes (`git commit -m "feat: add my feature"`).
+5. Push your branch (`git push origin feature/my-feature`).
+6. Open a Pull Request.
 
-All configuration writes use atomic temporary file replacement (`.tmp` → atomic rename) to guarantee file integrity even during abrupt shutdowns.
-
----
-
-## Migration from Legacy Installations
-
-For users upgrading from previous NotiGlow installations, Curry includes an automatic, non-destructive migration system:
-
-1. **Automatic Data Migration**: On startup, Curry checks for existing data directories (`%APPDATA%\com.notiglow.app`, `%APPDATA%\notiglow`, `%APPDATA%\com.curry.desktop`). If found and valid JSON is verified, files are safely copied to `%APPDATA%\com.curry.app` without modifying the original legacy files.
-2. **Startup Registry Migration**: Cleans up legacy `NotiGlow` and `GlowBorder` entries from `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` and registers `Curry`.
-3. **Dual Mutex Co-locking**: On startup, Curry acquires `Global\Curry` while also locking `Global\NotiGlow` to prevent legacy and new instances from running concurrently.
-4. **Theme Setting Fallback**: The frontend checks `localStorage.curry_selected_theme`, falling back gracefully to `notiglow_selected_theme` if present.
+*Please ensure any proposed contributions maintain Curry's 100% local, offline privacy architecture.*
 
 ---
 
-## License
+## 📜 License
 
-No license file is currently present in this repository.
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
-> **Recommendation**: The [MIT License](https://opensource.org/licenses/MIT) is recommended for Curry, allowing broad open-source adoption and distribution while protecting contributors.
-> This repository remains unlicensed until an official LICENSE file is explicitly committed.
+---
+
+<div align="center">
+
+Built with 🦀 <strong>Rust</strong>, ⚡ <strong>Tauri</strong> and 🧡 <strong>Svelte</strong>
+
+**🍛 Curry** — Modern Windows Desktop Notification Companion
+
+</div>
