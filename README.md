@@ -343,16 +343,37 @@ Curry maintains a rigorous automated testing suite:
 # Frontend Svelte and TypeScript diagnostic checks
 npm run check
 
-# Rust automated unit & integration test suite (43 tests)
+# Rust automated unit & integration test suite (63 tests)
 cd src-tauri
 cargo test
 cd ..
 ```
 
-**Automated Test Suite Status**: **43 passed, 0 failed, 0 warnings**.  
-Covers notification deduplication TTL, atomic storage recovery, state synchronization, startup registry commands, single-instance mutex conflicts, and theme schema validation.
+**Automated Test Suite Status**: **63 passed, 0 failed, 0 warnings**.<br />
+Covers notification deduplication TTL, atomic storage recovery, state synchronization, startup registry commands, single-instance mutex conflicts, theme schema validation, application profile resolution, legacy animation migration, OLED intensity limiting, and Win32 fullscreen suppression.
 
 ---
+
+## 🔧 Troubleshooting
+
+### 1. Notifications Not Triggering Glow
+- **Check Windows Notification Permissions**: Open **Windows Settings → System → Notifications** and ensure notifications are enabled globally and for your target applications.
+- **Focus Assist / Do Not Disturb**: If Windows Focus Assist / Do Not Disturb is enabled, incoming toast notifications are silenced by the OS and will not trigger real-time ambient illumination.
+- **Verify Curry Enabled State**: Ensure the top toggle in the Curry Dashboard is in the **Active** state.
+
+### 2. Glow Suppressed While Gaming / Fullscreen
+- **Check Fullscreen Behavior**: Open **Glow Settings** and review the **Fullscreen Behavior** selector.
+  - If set to `Suppress in Fullscreen` or `Suppress Gaming Only`, edge glow will be suppressed whenever a foreground application covers your entire screen resolution.
+  - Set to `Always Show` if you want edge illumination to appear over fullscreen games and video players.
+- **Application Profile Overrides**: Check the **Applications** tab to ensure the active profile does not have `Suppress in Fullscreen` explicitly enabled.
+
+### 3. Application Profile Not Matching
+- Process names can be specified with or without `.exe` (e.g., `Discord` or `Discord.exe`). Matching is case-insensitive.
+- Check the notification feed in Curry's **History** tab to see the exact application source name detected by Windows.
+
+### 4. Display Positioning on Multi-Monitor Setups
+- By default, Curry renders on the **Primary Monitor**.
+- To change this, select `All Monitors` or configure a per-application monitor preference under the **Applications** tab.
 
 ## 🗂️ Project Structure
 

@@ -148,30 +148,40 @@
      2. Sweep Animation: Illumination sweeping continuously around screen edges
      ========================================================================= */
   .glow-viewport.sweep.active .glow-edge-inner {
-    animation: sweep-glow 1.8s linear infinite;
+    opacity: calc(var(--glow-intensity) * 0.35);
+  }
+  .glow-viewport.sweep.active .glow-edge-accent {
+    opacity: var(--glow-intensity);
+    border: calc(var(--glow-thickness) * 0.8) solid transparent;
+    border-radius: var(--glow-radius);
+    animation: sweep-perimeter 2.0s linear infinite;
+    filter: drop-shadow(0 0 calc(var(--glow-thickness) * 2.5) var(--glow-color));
   }
 
-  @keyframes sweep-glow {
-    0% {
-      filter: brightness(0.9) hue-rotate(0deg);
-      box-shadow:
-        inset 0 0 calc(var(--glow-thickness) * 1.5) var(--glow-color),
-        inset 0 0 calc(var(--glow-thickness) * 3) var(--glow-color),
-        0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
+  @keyframes sweep-perimeter {
+    0%, 100% {
+      border-top-color: var(--glow-color);
+      border-right-color: transparent;
+      border-bottom-color: transparent;
+      border-left-color: transparent;
+    }
+    25% {
+      border-top-color: transparent;
+      border-right-color: var(--glow-color);
+      border-bottom-color: transparent;
+      border-left-color: transparent;
     }
     50% {
-      filter: brightness(1.3) hue-rotate(15deg);
-      box-shadow:
-        inset 0 0 calc(var(--glow-thickness) * 2.5) var(--glow-color),
-        inset 0 0 calc(var(--glow-thickness) * 4) var(--glow-color),
-        0 0 calc(var(--glow-thickness) * 3.5) var(--glow-color);
+      border-top-color: transparent;
+      border-right-color: transparent;
+      border-bottom-color: var(--glow-color);
+      border-left-color: transparent;
     }
-    100% {
-      filter: brightness(0.9) hue-rotate(0deg);
-      box-shadow:
-        inset 0 0 calc(var(--glow-thickness) * 1.5) var(--glow-color),
-        inset 0 0 calc(var(--glow-thickness) * 3) var(--glow-color),
-        0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
+    75% {
+      border-top-color: transparent;
+      border-right-color: transparent;
+      border-bottom-color: transparent;
+      border-left-color: var(--glow-color);
     }
   }
 
