@@ -251,7 +251,7 @@ impl GlowManager {
                         {
                             Some(existing)
                         } else {
-                            let url = tauri::WebviewUrl::App("/glow".into());
+                            let url = tauri::WebviewUrl::App("glow.html".into());
                             tauri::WebviewWindowBuilder::new(&self.app_handle, &win_label, url)
                                 .title("Curry Overlay")
                                 .transparent(true)

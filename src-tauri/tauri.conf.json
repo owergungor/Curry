@@ -14,6 +14,7 @@
       {
         "label": "main",
         "title": "Curry",
+        "url": "index.html",
         "width": 880,
         "height": 620,
         "minWidth": 720,
@@ -23,7 +24,7 @@
       {
         "label": "glow-overlay",
         "title": "Curry Overlay",
-        "url": "/glow",
+        "url": "glow.html",
         "transparent": true,
         "decorations": false,
         "alwaysOnTop": true,
