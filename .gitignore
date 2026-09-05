@@ -1,0 +1,79 @@
+# ==============================================================================
+# Curry - .gitignore
+# ==============================================================================
+
+# Node / Frontend Build & Dependencies
+node_modules/
+.svelte-kit/
+build/
+dist/
+package/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Tauri & Rust Build Artifacts
+src-tauri/target/
+**/target/
+src-tauri/gen/schemas/
+**/gen/schemas/
+*.pdb
+
+# Installers & Executable Binaries (published via GitHub Releases)
+*.exe
+*.msi
+*.zip
+*.7z
+*.tar.gz
+*.dmg
+*.deb
+*.appimage
+
+# IDE & Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.suo
+*.user
+*.userprefs
+*.sln.docstates
+
+# Environment, Certificates & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
+*.p12
+*.secret
+
+# OS-Specific Metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+*.directory
+
+# Logs & Diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tmp
+*.temp
+
+# Runtime Local Storage & Data (Never commit user settings/history)
+settings.json
+notifications.json
+glow_settings.json
+profiles.json
+*.runtime.json
+
+# Internal Development & Scratch Files
+scratch/
