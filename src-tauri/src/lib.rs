@@ -349,6 +349,81 @@ fn trigger_glow_preview(state: State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn get_application_profiles(
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::settings::ApplicationProfile>, String> {
+    let storage = state
+        .settings_storage()
+        .ok_or_else(|| "Settings storage is not initialized".to_string())?;
+
+    Ok(storage.get().applications)
+}
+
+#[tauri::command]
+fn save_application_profile(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    profile: crate::settings::ApplicationProfile,
+) -> Result<crate::settings::ApplicationProfile, String> {
+    let storage = state
+        .settings_storage()
+        .ok_or_else(|| "Settings storage is not initialized".to_string())?;
+
+    let mut settings = storage.get();
+    if let Some(idx) = settings.applications.iter().position(|p| p.id == profile.id) {
+        settings.applications[idx] = profile.clone();
+    } else {
+        settings.applications.push(profile.clone());
+    }
+
+    let updated = storage.update(settings)?;
+    let _ = app.emit("app-settings-updated", &updated);
+    Ok(profile)
+}
+
+#[tauri::command]
+fn delete_application_profile(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<bool, String> {
+    let storage = state
+        .settings_storage()
+        .ok_or_else(|| "Settings storage is not initialized".to_string())?;
+
+    let mut settings = storage.get();
+    let initial_len = settings.applications.len();
+    settings.applications.retain(|p| p.id != id);
+    let removed = settings.applications.len() < initial_len;
+
+    if removed {
+        let updated = storage.update(settings)?;
+        let _ = app.emit("app-settings-updated", &updated);
+    }
+    Ok(removed)
+}
+
+#[tauri::command]
+fn trigger_profile_preview(
+    state: State<'_, AppState>,
+    payload: crate::glow::model::GlowPayload,
+    monitor_target: Option<crate::glow::model::MonitorTarget>,
+) -> Result<(), String> {
+    let glow = state
+        .glow_manager()
+        .ok_or_else(|| "Glow manager is not initialized".to_string())?;
+
+    glow.trigger_payload_preview(payload, monitor_target);
+    Ok(())
+}
+
+#[tauri::command]
+fn get_fullscreen_state() -> crate::settings::FullscreenState {
+    crate::settings::detect_fullscreen_state()
+}
+
+
 /// [LEGACY / BACKWARDS COMPATIBILITY] Migrates settings, notifications, and glow configuration
 /// from legacy NotiGlow/Curry directories to Curry's com.curry.app storage directory.
 fn migrate_legacy_notiglow_data(app: &AppHandle) {
@@ -481,7 +556,12 @@ pub fn run() {
             open_notification_settings,
             get_glow_settings,
             update_glow_settings,
-            trigger_glow_preview
+            trigger_glow_preview,
+            get_application_profiles,
+            save_application_profile,
+            delete_application_profile,
+            trigger_profile_preview,
+            get_fullscreen_state
         ]);
 
     if let Err(err) = app.run(tauri::generate_context!()) {

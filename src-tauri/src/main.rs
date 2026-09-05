@@ -1130,4 +1130,394 @@ mod tests {
         assert_eq!(deserialized.theme, AppTheme::VintagePaper);
         assert_eq!(settings, deserialized);
     }
+
+    // =========================================================================
+    // FAZ 11: APPLICATION PROFILES, 5 ANIMATIONS & FULLSCREEN TESTS
+    // =========================================================================
+
+    #[test]
+    fn test_application_profile_serialization() {
+        use curry_lib::glow::model::{GlowAnimationStyle, MonitorTarget};
+        use curry_lib::settings::ApplicationProfile;
+
+        let profile = ApplicationProfile {
+            id: "prof-discord".to_string(),
+            application_name: "Discord".to_string(),
+            executable_name: "Discord.exe".to_string(),
+            enabled: true,
+            color: Some("#5865F2".to_string()),
+            animation: Some(GlowAnimationStyle::Comet),
+            intensity: Some(0.85),
+            duration: Some(2.5),
+            monitor_target: Some(MonitorTarget::Primary),
+            suppress_in_fullscreen: Some(false),
+        };
+
+        let json = serde_json::to_string(&profile).expect("Failed to serialize profile");
+        assert!(json.contains("\"applicationName\":\"Discord\""));
+        assert!(json.contains("\"executableName\":\"Discord.exe\""));
+        assert!(json.contains("\"color\":\"#5865F2\""));
+        assert!(json.contains("\"animation\":\"comet\""));
+        assert!(json.contains("\"intensity\":0.85"));
+        assert!(json.contains("\"duration\":2.5"));
+        assert!(json.contains("\"suppressInFullscreen\":false"));
+    }
+
+    #[test]
+    fn test_application_profile_deserialization() {
+        use curry_lib::glow::model::GlowAnimationStyle;
+        use curry_lib::settings::ApplicationProfile;
+
+        let json = r##"{
+            "id": "prof-spotify",
+            "applicationName": "Spotify",
+            "executableName": "Spotify.exe",
+            "enabled": true,
+            "color": "#1DB954",
+            "animation": "ambient",
+            "intensity": 0.7,
+            "duration": 2.0,
+            "suppressInFullscreen": true
+        }"##;
+
+        let profile: ApplicationProfile = serde_json::from_str(json).expect("Failed to deserialize profile");
+        assert_eq!(profile.id, "prof-spotify");
+        assert_eq!(profile.application_name, "Spotify");
+        assert_eq!(profile.executable_name, "Spotify.exe");
+        assert!(profile.enabled);
+        assert_eq!(profile.color.as_deref(), Some("#1DB954"));
+        assert_eq!(profile.animation, Some(GlowAnimationStyle::Ambient));
+        assert_eq!(profile.intensity, Some(0.7));
+        assert_eq!(profile.duration, Some(2.0));
+        assert_eq!(profile.suppress_in_fullscreen, Some(true));
+    }
+
+    #[test]
+    fn test_missing_profile_fallback() {
+        use curry_lib::glow::model::GlowSettings;
+        use curry_lib::settings::resolve_glow_params;
+
+        let global = GlowSettings {
+            enabled: true,
+            duration_ms: 2500,
+            intensity: 0.8,
+            color: "#6366f1".to_string(),
+            ..Default::default()
+        };
+
+        let resolved = resolve_glow_params(None, &global, false, true);
+        assert!(resolved.should_glow);
+        assert_eq!(resolved.color, "#6366f1");
+        assert_eq!(resolved.duration_ms, 2500);
+        assert_eq!(resolved.intensity, 0.8);
+    }
+
+    #[test]
+    fn test_disabled_profile_suppression() {
+        use curry_lib::glow::model::GlowSettings;
+        use curry_lib::settings::{resolve_glow_params, ApplicationProfile};
+
+        let mut profile = ApplicationProfile::new("Slack", "Slack.exe");
+        profile.enabled = false;
+
+        let global = GlowSettings::default();
+        let resolved = resolve_glow_params(Some(&profile), &global, false, true);
+
+        assert!(!resolved.should_glow, "Disabled profile should suppress glow effect");
+    }
+
+    #[test]
+    fn test_global_plus_profile_merge() {
+        use curry_lib::glow::model::{GlowAnimationStyle, GlowSettings};
+        use curry_lib::settings::{resolve_glow_params, ApplicationProfile};
+
+        let mut profile = ApplicationProfile::new("Discord", "Discord.exe");
+        profile.color = Some("#5865F2".to_string());
+        profile.animation = None; // fallback to global
+        profile.intensity = None; // fallback to global
+
+        let global = GlowSettings {
+            color: "#6366f1".to_string(),
+            animation_style: GlowAnimationStyle::Sweep,
+            intensity: 0.75,
+            duration_ms: 3000,
+            ..Default::default()
+        };
+
+        let resolved = resolve_glow_params(Some(&profile), &global, false, false);
+        assert_eq!(resolved.color, "#5865F2", "Color should come from profile");
+        assert_eq!(resolved.animation_style, GlowAnimationStyle::Sweep, "Animation should fallback to global");
+        assert_eq!(resolved.intensity, 0.75, "Intensity should fallback to global");
+        assert_eq!(resolved.duration_ms, 3000, "Duration should fallback to global");
+    }
+
+    #[test]
+    fn test_color_override() {
+        use curry_lib::glow::model::GlowSettings;
+        use curry_lib::settings::{resolve_glow_params, ApplicationProfile};
+
+        let mut profile = ApplicationProfile::new("Steam", "steam.exe");
+        profile.color = Some("#171a21".to_string());
+
+        let global = GlowSettings {
+            color: "#6366f1".to_string(),
+            ..Default::default()
+        };
+
+        let resolved = resolve_glow_params(Some(&profile), &global, false, false);
+        assert_eq!(resolved.color, "#171a21");
+    }
+
+    #[test]
+    fn test_animation_override() {
+        use curry_lib::glow::model::{GlowAnimationStyle, GlowSettings};
+        use curry_lib::settings::{resolve_glow_params, ApplicationProfile};
+
+        let mut profile = ApplicationProfile::new("VSCode", "Code.exe");
+        profile.animation = Some(GlowAnimationStyle::Comet);
+
+        let global = GlowSettings {
+            animation_style: GlowAnimationStyle::Pulse,
+            ..Default::default()
+        };
+
+        let resolved = resolve_glow_params(Some(&profile), &global, false, false);
+        assert_eq!(resolved.animation_style, GlowAnimationStyle::Comet);
+    }
+
+    #[test]
+    fn test_intensity_override() {
+        use curry_lib::glow::model::GlowSettings;
+        use curry_lib::settings::{resolve_glow_params, ApplicationProfile};
+
+        let mut profile = ApplicationProfile::new("Spotify", "Spotify.exe");
+        profile.intensity = Some(0.95);
+
+        let global = GlowSettings {
+            intensity: 0.4,
+            ..Default::default()
+        };
+
+        let resolved = resolve_glow_params(Some(&profile), &global, false, false);
+        assert!((resolved.intensity - 0.95).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_duration_override() {
+        use curry_lib::glow::model::GlowSettings;
+        use curry_lib::settings::{resolve_glow_params, ApplicationProfile};
+
+        let mut profile = ApplicationProfile::new("App", "app.exe");
+        profile.duration = Some(4.0); // 4 seconds = 4000ms
+
+        let global = GlowSettings {
+            duration_ms: 1500,
+            ..Default::default()
+        };
+
+        let resolved = resolve_glow_params(Some(&profile), &global, false, false);
+        assert_eq!(resolved.duration_ms, 4000);
+    }
+
+    #[test]
+    fn test_monitor_override() {
+        use curry_lib::glow::model::{GlowSettings, MonitorTarget};
+        use curry_lib::settings::{resolve_glow_params, ApplicationProfile};
+
+        let mut profile = ApplicationProfile::new("Game", "game.exe");
+        profile.monitor_target = Some(MonitorTarget::Active);
+
+        let global = GlowSettings {
+            monitor_target: MonitorTarget::Primary,
+            ..Default::default()
+        };
+
+        let resolved = resolve_glow_params(Some(&profile), &global, false, false);
+        assert_eq!(resolved.monitor_target, MonitorTarget::Active);
+    }
+
+    #[test]
+    fn test_fullscreen_suppression() {
+        use curry_lib::settings::{should_suppress_for_fullscreen, FullscreenBehavior, FullscreenState};
+
+        let suppressed = should_suppress_for_fullscreen(
+            FullscreenBehavior::SuppressInFullscreen,
+            None,
+            FullscreenState::Fullscreen,
+        );
+        assert!(suppressed, "Should suppress when fullscreen state is Fullscreen");
+
+        let gaming_suppressed = should_suppress_for_fullscreen(
+            FullscreenBehavior::SuppressGaming,
+            None,
+            FullscreenState::Fullscreen,
+        );
+        assert!(gaming_suppressed, "Gaming suppression policy should suppress during fullscreen");
+    }
+
+    #[test]
+    fn test_fullscreen_allowed() {
+        use curry_lib::settings::{should_suppress_for_fullscreen, FullscreenBehavior, FullscreenState};
+
+        // AlwaysShow should allow glow even in Fullscreen
+        let allowed_always = should_suppress_for_fullscreen(
+            FullscreenBehavior::AlwaysShow,
+            None,
+            FullscreenState::Fullscreen,
+        );
+        assert!(!allowed_always, "AlwaysShow policy should allow glow in fullscreen");
+
+        // Profile override Some(false) should allow glow even if global policy is suppress
+        let allowed_override = should_suppress_for_fullscreen(
+            FullscreenBehavior::SuppressInFullscreen,
+            Some(false),
+            FullscreenState::Fullscreen,
+        );
+        assert!(!allowed_override, "Profile override false should allow glow in fullscreen");
+
+        // When not fullscreen, should never suppress
+        let not_fs = should_suppress_for_fullscreen(
+            FullscreenBehavior::SuppressInFullscreen,
+            None,
+            FullscreenState::NotFullscreen,
+        );
+        assert!(!not_fs, "Not fullscreen should never suppress");
+    }
+
+    #[test]
+    fn test_unknown_fullscreen_behavior() {
+        use curry_lib::settings::{should_suppress_for_fullscreen, FullscreenBehavior, FullscreenState};
+
+        // Unknown fullscreen state should safely default to not suppressed
+        let unknown = should_suppress_for_fullscreen(
+            FullscreenBehavior::SuppressInFullscreen,
+            None,
+            FullscreenState::Unknown,
+        );
+        assert!(!unknown, "Unknown state should safely allow display");
+    }
+
+    #[test]
+    fn test_invalid_profile_recovery() {
+        use curry_lib::settings::{AppSettings, ApplicationProfile};
+
+        let mut settings = AppSettings::default();
+        let mut profile = ApplicationProfile::new("Test", "test.exe");
+        profile.intensity = Some(2.5); // Invalid out of bound
+        profile.duration = Some(150.0); // Out of bound duration
+        settings.applications.push(profile);
+
+        let sanitized = settings.sanitized();
+        assert!(sanitized.applications[0].intensity.unwrap() <= 1.0);
+        assert!(sanitized.applications[0].duration.unwrap() <= 10000.0);
+    }
+
+    #[test]
+    fn test_malformed_json_recovery() {
+        use curry_lib::settings::AppSettings;
+
+        let malformed = r#"{"enabled": true, "applications": "invalid_type_instead_of_array"}"#;
+        let recovered: Result<AppSettings, _> = serde_json::from_str(malformed);
+        assert!(recovered.is_err());
+
+        let partial = r#"{"enabled": true}"#;
+        let loaded: AppSettings = serde_json::from_str(partial).unwrap_or_default();
+        assert!(loaded.enabled);
+        assert!(loaded.applications.is_empty());
+    }
+
+    #[test]
+    fn test_legacy_animation_migration() {
+        use curry_lib::glow::model::GlowAnimationStyle;
+
+        let json_breathing = "\"breathing\"";
+        let style_breathing: GlowAnimationStyle = serde_json::from_str(json_breathing).unwrap();
+        assert_eq!(style_breathing.canonical(), GlowAnimationStyle::Ambient);
+
+        let json_solid = "\"solid\"";
+        let style_solid: GlowAnimationStyle = serde_json::from_str(json_solid).unwrap();
+        assert_eq!(style_solid.canonical(), GlowAnimationStyle::Ambient);
+    }
+
+    #[test]
+    fn test_all_five_animation_serialization() {
+        use curry_lib::glow::model::GlowAnimationStyle;
+
+        let animations = [
+            (GlowAnimationStyle::Pulse, "\"pulse\""),
+            (GlowAnimationStyle::Sweep, "\"sweep\""),
+            (GlowAnimationStyle::Ambient, "\"ambient\""),
+            (GlowAnimationStyle::Comet, "\"comet\""),
+            (GlowAnimationStyle::Ripple, "\"ripple\""),
+        ];
+
+        for (style, expected_json) in animations {
+            let serialized = serde_json::to_string(&style).unwrap();
+            assert_eq!(serialized, expected_json);
+            let deserialized: GlowAnimationStyle = serde_json::from_str(&serialized).unwrap();
+            assert_eq!(deserialized, style);
+        }
+    }
+
+    #[test]
+    fn test_oled_intensity_limiting() {
+        use curry_lib::glow::model::GlowSettings;
+        use curry_lib::settings::resolve_glow_params;
+
+        let global = GlowSettings {
+            intensity: 1.0,
+            duration_ms: 5000,
+            thickness: 16,
+            ..Default::default()
+        };
+
+        let resolved = resolve_glow_params(None, &global, true, false);
+        assert!(resolved.oled_mode);
+        assert!(resolved.intensity <= 0.60, "OLED mode should cap intensity to 0.60");
+        assert!(resolved.duration_ms <= 2000, "OLED mode should cap duration to 2000ms");
+        assert!(resolved.thickness <= 8, "OLED mode should reduce border thickness");
+    }
+
+    #[test]
+    fn test_profile_matching_case_insensitive() {
+        use curry_lib::settings::ApplicationProfile;
+
+        let profile = ApplicationProfile::new("Discord", "Discord.exe");
+
+        assert!(profile.matches("Discord"));
+        assert!(profile.matches("discord"));
+        assert!(profile.matches("DISCORD"));
+        assert!(profile.matches("Discord.exe"));
+        assert!(profile.matches("discord.exe"));
+        assert!(profile.matches("DISCORD.EXE"));
+
+        assert!(!profile.matches("Spotify"));
+        assert!(!profile.matches("Slack.exe"));
+    }
+
+    #[test]
+    fn test_multiple_profiles() {
+        use curry_lib::settings::ApplicationProfile;
+
+        let prof1 = ApplicationProfile::new("Discord", "Discord.exe");
+        let prof2 = ApplicationProfile::new("Spotify", "Spotify.exe");
+        let prof3 = ApplicationProfile::new("Steam", "steam.exe");
+
+        let profiles = vec![prof1, prof2, prof3];
+
+        let find_discord = profiles.iter().find(|p| p.matches("discord.exe"));
+        assert!(find_discord.is_some());
+        assert_eq!(find_discord.unwrap().application_name, "Discord");
+
+        let find_spotify = profiles.iter().find(|p| p.matches("spotify"));
+        assert!(find_spotify.is_some());
+        assert_eq!(find_spotify.unwrap().application_name, "Spotify");
+
+        let find_steam = profiles.iter().find(|p| p.matches("STEAM.EXE"));
+        assert!(find_steam.is_some());
+        assert_eq!(find_steam.unwrap().application_name, "Steam");
+
+        let find_unknown = profiles.iter().find(|p| p.matches("notepad.exe"));
+        assert!(find_unknown.is_none());
+    }
 }

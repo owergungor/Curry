@@ -22,7 +22,7 @@
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline-success?style=flat-square" alt="100% Offline" />
-  <img src="https://img.shields.io/badge/Tests-43%20passed-brightgreen?style=flat-square" alt="Tests 43 passed" />
+  <img src="https://img.shields.io/badge/Tests-63%20passed-brightgreen?style=flat-square" alt="Tests 63 passed" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="MIT License" /></a>
 </p>
 
@@ -36,9 +36,12 @@
 - [✨ Why Curry?](#-why-curry)
 - [🖥️ Screenshots](#️-screenshots)
 - [🔔 Notifications](#-notifications)
-- [✨ Ambient Glow Engine](#-ambient-glow-engine)
+- [✨ Ambient Glow Engine (5 Animation Styles)](#-ambient-glow-engine-5-animation-styles)
+- [📱 Application Profiles](#-application-profiles)
+- [🎮 Fullscreen & Gaming Suppression](#-fullscreen--gaming-suppression)
+- [🖥️ OLED Mode Optimization](#️-oled-mode-optimization)
 - [🎨 Themes](#-themes)
-- [🪟 Windows Integration](#-windows-integration)
+- [🪟 Windows Integration & Supported Platforms](#-windows-integration--supported-platforms)
 - [🔒 Privacy First](#-privacy-first)
 - [🏗️ Architecture](#️-architecture)
 - [⚡ Tech Stack](#-tech-stack)
@@ -57,7 +60,7 @@
 
 Windows notifications frequently slip into the Action Center unnoticed while you are immersed in focus mode, coding, full-screen gaming, or media playback.
 
-**Curry** solves this with an ambient, hardware-accelerated desktop utility built with **Rust**, **Tauri 2**, and **Svelte 5**. It detects incoming Windows desktop notifications in real-time, illuminates your display borders with customizable screen-edge glow animations, maintains a searchable history feed, and runs entirely on your local machine with **zero telemetry**.
+**Curry** solves this with an ambient, hardware-accelerated desktop utility built with **Rust**, **Tauri 2**, and **Svelte 5**. It detects incoming Windows desktop notifications in real-time, illuminates your display borders with 5 customizable screen-edge glow animations, applies per-application custom glow profiles, suppresses distracting overlays while gaming or in fullscreen mode, maintains a searchable history feed, and runs entirely on your local machine with **zero telemetry**.
 
 ---
 
@@ -66,7 +69,10 @@ Windows notifications frequently slip into the Action Center unnoticed while you
 | | Feature | Description |
 |:---:|---|---|
 | 🔔 | **Notification Capture** | Native WinRT capture for incoming Windows desktop toast notifications |
-| 🌈 | **Ambient Glow** | Hardware-accelerated screen-edge border illumination with dynamic animation styles |
+| 🌈 | **5 Ambient Animations** | GPU-accelerated edge illumination: Pulse, Sweep, Ambient, Comet, and Ripple |
+| 📱 | **Application Profiles** | Per-app custom colors, animations, intensities, durations, and fullscreen rules |
+| 🎮 | **Gaming Suppression** | Native Win32 fullscreen detection to prevent glow disruptions during full-screen games |
+| 🛡️ | **OLED Optimization** | Peak intensity limiting and tighter spread to save power and prevent panel burn-in |
 | 🎨 | **Curated Themes** | 7 handcrafted dark-mode and aesthetic color palettes |
 | 📜 | **Searchable History** | In-memory ring buffer with full-text search, app filtering, and read/unread states |
 | 🔒 | **100% Private** | Completely offline architecture; notifications and settings never leave your machine |
@@ -85,7 +91,7 @@ Windows notifications frequently slip into the Action Center unnoticed while you
 ### 🔔 Notification History
 > 📸 *Screenshots coming soon.*
 
-### ✨ Ambient Glow
+### ✨ Ambient Glow & Application Profiles
 > 📸 *Screenshots coming soon.*
 
 ### 🎨 Themes
@@ -107,29 +113,66 @@ Curry integrates with the official modern Windows notification pipeline:
 
 ---
 
-## ✨ Ambient Glow Engine
+## ✨ Ambient Glow Engine (5 Animation Styles)
 
 The ambient glow engine displays a transparent, always-on-top, click-through overlay around your display borders whenever a notification arrives.
 
-### 🎬 Animation Styles
+### 🎬 5 Core Animation Styles
 
 | Style | Visual | Behavior | Recommended For |
 |---|:---:|---|---|
-| **Pulse** | ⚡ | Fast, rhythmic notification pulse with cubic-bezier easing | Urgent glanceable alerts |
-| **Breathing** | 🌬️ | Slow, ambient luminosity expansion and smooth fade | Subtle background awareness |
-| **Solid** | 🔒 | Instant illumination holding steady with smooth fadeout | High-contrast visual cues |
+| **Pulse** | ⚡ | Rhythmic pulse with soft intensity modulation | Urgent glanceable alerts |
+| **Sweep** | 🌊 | Dynamic, continuous perimeter border light travel | Smooth ambient transitions |
+| **Ambient** | 🌬️ | Low-frequency, organic harmonic border illumination | Subtle background awareness |
+| **Comet** | ☄️ | Focused bright travelling segment with a graceful fading trail | Distinct high-energy cues |
+| **Ripple** | 💫 | Expanding luminous wave radiating outward across screen edges | Expressive notifications |
+
+*(Legacy configurations with `breathing` or `solid` are seamlessly and safely migrated to `Ambient` without crashes).*
 
 ### 🎛️ Configurable Controls
 
 | Setting | Options / Range | Description |
 |---|---|---|
-| **Animation Style** | `Pulse` / `Breathing` / `Solid` | Visual animation timing curve |
-| **Border Thickness** | `1px` to `32px` | Visual width of the screen-border glow |
+| **Animation Style** | `Pulse` / `Sweep` / `Ambient` / `Comet` / `Ripple` | Visual animation timing and motion dynamic |
+| **Border Thickness** | `2px` to `32px` | Visual width of the screen-border glow |
 | **Glow Duration** | `500ms` to `10,000ms` | Total active display duration |
-| **Max Opacity** | `10%` to `100%` | Peak luminosity scaling |
-| **Target Monitor** | `Primary` / `Active Window` / `All Displays` | Monitor overlay placement coordinates |
+| **Peak Opacity** | `10%` to `100%` | Peak luminosity scaling |
+| **Target Monitor** | `Primary` / `Active Window` / `All Displays` | Display coordinate routing for the overlay window |
 | **Color Palette** | Theme Swatches or Custom HEX | Theme-matched accents or personalized colors |
-| **Window Interaction** | `WS_EX_TRANSPARENT` | Click-through styles; never intercepts mouse or keyboard input |
+| **Window Interaction** | `WS_EX_TRANSPARENT` | True click-through overlay; never steals mouse or keyboard focus |
+
+---
+
+## 📱 Application Profiles
+
+Curry supports **per-application glow customization**:
+
+- **Per-App Overrides**: Configure dedicated colors, animations, intensities, durations, monitor targets, and fullscreen behaviors for applications like Discord, Spotify, Steam, VS Code, and more.
+- **Nullable Fallbacks**: Any unset profile field automatically inherits the global ambient settings.
+- **Case-Insensitive Resolution**: Accurately matches applications by window title, friendly app name, or executable name (e.g. `Discord.exe` or `discord`).
+- **Live Preview**: Test application-specific illumination in real-time directly from the Applications management tab without firing real notifications.
+
+---
+
+## 🎮 Fullscreen & Gaming Suppression
+
+Curry features intelligent fullscreen detection powered by native Win32 APIs (`GetForegroundWindow`, `GetWindowRect`, and `GetMonitorInfoW`):
+
+- **Always Show**: Overlay renders over all desktop windows, including games.
+- **Suppress in Fullscreen**: Silences ambient glow when any application or game is running in true fullscreen mode.
+- **Suppress Gaming**: Automatically protects gaming sessions from visual interruptions.
+- **Per-App Overrides**: Granularly override fullscreen behavior for specific apps (e.g. suppress games while allowing urgent team chat alerts).
+
+---
+
+## 🖥️ OLED Mode Optimization
+
+Built for modern OLED and Mini-LED monitors:
+
+- **Luminosity Capping**: Caps maximum glow intensity to 60% peak brightness.
+- **Reduced Spread**: Halves border thickness and box-shadow diffusion to minimize illuminated pixel surface.
+- **Duration Limiting**: Caps sustained illumination to a maximum of 2,000ms.
+- **Burn-In Protection**: Lowers panel stress and reduces power consumption.
 
 ---
 
@@ -149,9 +192,17 @@ Curry includes **7 curated themes**. **Perpetuity** is the canonical default the
 
 ---
 
-## 🪟 Windows Integration
+## 🪟 Supported Platforms & Windows Integration
 
-- **Modern OS Compatibility**: Designed for Windows 10 (Version 1607+) and Windows 11.
+### Supported Platforms
+- ✅ **Windows 11**: Fully supported (All editions)
+- ✅ **Windows 10**: Fully supported (Version 1607+ / Build 14393+)
+- 🗺️ **macOS**: *On Roadmap* (Planned for future release via macOS UserNotifications framework)
+- 🗺️ **Linux**: *On Roadmap* (Planned for future release via FreeDesktop / D-Bus Notification specification)
+
+### Windows Deep Integration
+- **WinRT Toast Capture**: Accesses native desktop notifications using `Windows.UI.Notifications.Management.UserNotificationListener`.
+- **Win32 Fullscreen Query**: High-frequency geometric matching against foreground window bounds and display geometry.
 - **System Tray Lifecycle**: Closing the window hides Curry to the tray (`tauri::tray::TrayIcon`); double-clicking or selecting **Open Curry** restores and focuses the window.
 - **Silent Autostart**: Queries and writes to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` with `reg.exe` using `CREATE_NO_WINDOW` (`0x08000000`) to guarantee zero console flashes on system startup.
 - **Single-Instance Protection**: Enforced by the Win32 named system mutex `Global\Curry`. Launching a second instance automatically focuses the existing window and terminates the duplicate process.

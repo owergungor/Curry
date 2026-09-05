@@ -36,9 +36,22 @@
     intensity: number;
     thickness: number;
     corner_radius: number;
-    animation_style: "pulse" | "breathing" | "solid";
-    monitor_target: "primary" | "active" | "all";
+    animation_style: "pulse" | "sweep" | "ambient" | "comet" | "ripple" | "breathing" | "solid";
+    monitor_target: "primary" | "active" | "all" | string;
     color: string;
+  }
+
+  interface ApplicationProfile {
+    id: string;
+    applicationName: string;
+    executableName: string;
+    enabled: boolean;
+    color?: string | null;
+    animation?: "pulse" | "sweep" | "ambient" | "comet" | "ripple" | null;
+    intensity?: number | null;
+    duration?: number | null;
+    monitorTarget?: "primary" | "active" | "all" | string | null;
+    suppressInFullscreen?: boolean | null;
   }
 
   interface AppSettings {
@@ -49,6 +62,9 @@
     sound_enabled: boolean;
     glow: GlowSettings;
     theme?: ThemeId;
+    applications?: ApplicationProfile[];
+    oled_mode?: boolean;
+    fullscreen_behavior?: "always_show" | "suppress_in_fullscreen" | "suppress_gaming";
   }
 
   type ProviderStatus =
@@ -105,13 +121,14 @@
     }
   });
 
-  type TabKey = "dashboard" | "notifications" | "glow" | "settings";
+  type TabKey = "dashboard" | "notifications" | "applications" | "glow" | "settings";
 
   const TAB_ORDER: Record<TabKey, number> = {
     dashboard: 0,
     notifications: 1,
-    glow: 2,
-    settings: 3,
+    applications: 2,
+    glow: 3,
+    settings: 4,
   };
 
   // Top Tab Navigation State with Directional Motion
@@ -128,7 +145,7 @@
   }
 
   function handleTabKeyDown(e: KeyboardEvent, current: TabKey) {
-    const tabs: TabKey[] = ["dashboard", "notifications", "glow", "settings"];
+    const tabs: TabKey[] = ["dashboard", "notifications", "applications", "glow", "settings"];
     const currentIdx = TAB_ORDER[current];
     if (e.key === "ArrowRight") {
       e.preventDefault();
@@ -171,7 +188,217 @@
       color: "#6366f1",
     },
     theme: DEFAULT_THEME,
+    applications: [],
+    oled_mode: false,
+    fullscreen_behavior: "suppress_in_fullscreen",
   });
+
+  // Application Profiles State
+  let applications = $state<ApplicationProfile[]>([]);
+  let appSearchQuery = $state("");
+  let editingProfile = $state<ApplicationProfile | null>(null);
+  let isProfileModalOpen = $state(false);
+  let isCreatingNewProfile = $state(false);
+  let isPreviewingProfile = $state(false);
+  let profileActionError = $state<string | null>(null);
+
+  let filteredProfiles = $derived.by(() => {
+    const q = appSearchQuery.trim().toLowerCase();
+    if (!q) return applications;
+    return applications.filter(
+      (p) =>
+        p.applicationName.toLowerCase().includes(q) ||
+        p.executableName.toLowerCase().includes(q)
+    );
+  });
+
+  const DEFAULT_STARTER_PROFILES: ApplicationProfile[] = [
+    {
+      id: "prof-discord",
+      applicationName: "Discord",
+      executableName: "Discord.exe",
+      enabled: true,
+      color: "#5865F2",
+      animation: "comet",
+      intensity: 0.85,
+      duration: 2.5,
+      monitorTarget: "primary",
+      suppressInFullscreen: false,
+    },
+    {
+      id: "prof-spotify",
+      applicationName: "Spotify",
+      executableName: "Spotify.exe",
+      enabled: true,
+      color: "#1DB954",
+      animation: "ambient",
+      intensity: 0.70,
+      duration: 2.0,
+      monitorTarget: "primary",
+      suppressInFullscreen: true,
+    },
+    {
+      id: "prof-steam",
+      applicationName: "Steam",
+      executableName: "steam.exe",
+      enabled: true,
+      color: "#1b2838",
+      animation: "pulse",
+      intensity: 0.80,
+      duration: 2.0,
+      monitorTarget: "primary",
+      suppressInFullscreen: true,
+    },
+  ];
+
+  async function fetchApplicationProfiles() {
+    try {
+      const list = await invoke<ApplicationProfile[]>("get_application_profiles");
+      if (list && list.length > 0) {
+        applications = list;
+      } else if (applications.length === 0) {
+        // Initialize starter presets
+        applications = [...DEFAULT_STARTER_PROFILES];
+        for (const p of DEFAULT_STARTER_PROFILES) {
+          try {
+            await invoke("save_application_profile", { profile: p });
+          } catch {
+            // ignore initial seeding error
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch application profiles:", err);
+    }
+  }
+
+  function openAddProfileModal() {
+    profileActionError = null;
+    editingProfile = {
+      id: `prof-${Date.now()}`,
+      applicationName: "",
+      executableName: "",
+      enabled: true,
+      color: appSettings.glow.color,
+      animation: "pulse",
+      intensity: appSettings.glow.intensity,
+      duration: Math.round((appSettings.glow.duration_ms / 1000) * 10) / 10,
+      monitorTarget: appSettings.glow.monitor_target,
+      suppressInFullscreen: false,
+    };
+    isCreatingNewProfile = true;
+    isProfileModalOpen = true;
+  }
+
+  function openEditProfileModal(p: ApplicationProfile) {
+    profileActionError = null;
+    editingProfile = {
+      ...p,
+      color: p.color ?? appSettings.glow.color,
+      animation: p.animation ?? "pulse",
+      intensity: p.intensity ?? appSettings.glow.intensity,
+      duration: p.duration ?? Math.round((appSettings.glow.duration_ms / 1000) * 10) / 10,
+      monitorTarget: p.monitorTarget ?? appSettings.glow.monitor_target,
+      suppressInFullscreen: p.suppressInFullscreen ?? false,
+    };
+    isCreatingNewProfile = false;
+    isProfileModalOpen = true;
+  }
+
+  function closeProfileModal() {
+    isProfileModalOpen = false;
+    editingProfile = null;
+    profileActionError = null;
+  }
+
+  async function saveProfile() {
+    if (!editingProfile) return;
+    if (!editingProfile.applicationName.trim()) {
+      profileActionError = "Application name is required";
+      return;
+    }
+    if (!editingProfile.executableName.trim()) {
+      profileActionError = "Executable name is required (e.g. Discord.exe)";
+      return;
+    }
+
+    try {
+      const saved = await invoke<ApplicationProfile>("save_application_profile", {
+        profile: {
+          ...editingProfile,
+          applicationName: editingProfile.applicationName.trim(),
+          executableName: editingProfile.executableName.trim(),
+        },
+      });
+
+      const idx = applications.findIndex((p) => p.id === saved.id);
+      if (idx >= 0) {
+        applications[idx] = saved;
+      } else {
+        applications = [...applications, saved];
+      }
+
+      closeProfileModal();
+    } catch (err) {
+      console.error("Failed to save application profile:", err);
+      profileActionError = String(err);
+    }
+  }
+
+  async function deleteProfile(id: string) {
+    try {
+      await invoke("delete_application_profile", { id });
+      applications = applications.filter((p) => p.id !== id);
+      if (editingProfile?.id === id) {
+        closeProfileModal();
+      }
+    } catch (err) {
+      console.error("Failed to delete application profile:", err);
+    }
+  }
+
+  async function toggleProfile(p: ApplicationProfile) {
+    const updated: ApplicationProfile = { ...p, enabled: !p.enabled };
+    try {
+      const saved = await invoke<ApplicationProfile>("save_application_profile", {
+        profile: updated,
+      });
+      const idx = applications.findIndex((x) => x.id === saved.id);
+      if (idx >= 0) {
+        applications[idx] = saved;
+      }
+    } catch (err) {
+      console.error("Failed to toggle profile enabled status:", err);
+    }
+  }
+
+  async function previewProfileGlow(p: ApplicationProfile | null) {
+    if (!p) return;
+    isPreviewingProfile = true;
+    try {
+      const durSec = p.duration ?? (appSettings.glow.duration_ms / 1000);
+      const durMs = Math.round(durSec * 1000);
+
+      await invoke("trigger_profile_preview", {
+        payload: {
+          color: p.color || appSettings.glow.color,
+          duration_ms: durMs,
+          intensity: p.intensity ?? appSettings.glow.intensity,
+          thickness: appSettings.glow.thickness,
+          corner_radius: appSettings.glow.corner_radius,
+          animation_style: p.animation || appSettings.glow.animation_style,
+          oled_mode: appSettings.oled_mode ?? false,
+        },
+        monitorTarget: p.monitorTarget || appSettings.glow.monitor_target,
+      });
+    } catch (err) {
+      console.error("Failed to trigger profile preview:", err);
+    } finally {
+      setTimeout(() => {
+        isPreviewingProfile = false;
+      }, 1000);
+    }
+  }
 
   // Notification Storage State
   let notifications = $state<Notification[]>([]);
@@ -236,6 +463,7 @@
       pingCount += 1;
 
       await fetchAppSettings();
+      await fetchApplicationProfiles();
       await fetchNotifications();
       await fetchPipelineStatus();
     } catch (err: unknown) {
@@ -588,6 +816,24 @@
         <span>Notifications</span>
         {#if unreadCount > 0}
           <span class="nav-badge-pill">{unreadCount}</span>
+        {/if}
+      </button>
+
+      <button
+        id="tab-applications-btn"
+        class="nav-tab {activeTab === 'applications' ? 'active' : ''}"
+        onclick={() => navigateToTab("applications")}
+        onkeydown={(e) => handleTabKeyDown(e, "applications")}
+        aria-current={activeTab === 'applications' ? 'page' : undefined}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
+          <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+        <span>Applications</span>
+        {#if applications.length > 0}
+          <span class="nav-badge-pill">{applications.length}</span>
         {/if}
       </button>
 
@@ -1056,6 +1302,156 @@
             </div>
           </div>
 
+        {:else if activeTab === "applications"}
+          <!-- ============================================================= -->
+          <!-- APPLICATIONS VIEW                                             -->
+          <!-- ============================================================= -->
+          <div class="view-container applications-view">
+            <div class="view-hero-header view-header-row">
+              <div>
+                <span class="hero-eyebrow">Per-App Customization</span>
+                <h2 class="view-title">Application Profiles</h2>
+                <p class="view-subtitle">Customize unique edge colors, animations, and fullscreen suppression rules for specific apps</p>
+              </div>
+
+              <button
+                id="add-application-btn"
+                class="primary-btn"
+                onclick={openAddProfileModal}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>+ Add Application</span>
+              </button>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="app-search-bar card">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input
+                type="text"
+                bind:value={appSearchQuery}
+                placeholder="Search applications (e.g. Discord, Spotify, steam.exe)..."
+                class="app-search-input"
+              />
+              {#if appSearchQuery}
+                <button class="clear-search-btn" onclick={() => (appSearchQuery = "")} title="Clear search">
+                  ✕
+                </button>
+              {/if}
+            </div>
+
+            <!-- Profiles Grid / List -->
+            <div class="applications-grid">
+              {#if filteredProfiles.length === 0}
+                <div class="empty-state-card card">
+                  <div class="empty-state-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                      <line x1="8" y1="21" x2="16" y2="21"></line>
+                      <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                  </div>
+                  <h3>No Application Profiles Found</h3>
+                  <p>{appSearchQuery ? `No applications match "${appSearchQuery}".` : "Create custom illumination rules for Discord, Spotify, Steam, and other desktop apps."}</p>
+                  <button class="primary-btn" onclick={openAddProfileModal}>
+                    <span>+ Add Application Profile</span>
+                  </button>
+                </div>
+              {:else}
+                {#each filteredProfiles as profile (profile.id)}
+                  <div class="app-profile-card card {profile.enabled ? '' : 'disabled'}">
+                    <div class="app-profile-left">
+                      <div
+                        class="app-avatar-box"
+                        style:--app-glow-color={profile.color || appSettings.glow.color}
+                        style:border-color={profile.color || appSettings.glow.color}
+                      >
+                        <span class="app-avatar-letter">{getAppInitial(profile.applicationName)}</span>
+                      </div>
+                      <div class="app-info">
+                        <div class="app-name-row">
+                          <h4 class="app-name">{profile.applicationName}</h4>
+                          <span class="custom-profile-badge">Custom profile</span>
+                          {#if !profile.enabled}
+                            <span class="suppressed-badge">Disabled</span>
+                          {/if}
+                        </div>
+                        <span class="app-executable-text">{profile.executableName}</span>
+                        <div class="app-tags-row">
+                          <span class="app-tag anim">
+                            {(profile.animation || appSettings.glow.animation_style).toUpperCase()}
+                          </span>
+                          <span class="app-tag">
+                            {Math.round((profile.intensity ?? appSettings.glow.intensity) * 100)}%
+                          </span>
+                          <span class="app-tag">
+                            {profile.duration ? `${profile.duration}s` : `${appSettings.glow.duration_ms / 1000}s`}
+                          </span>
+                          {#if profile.suppressInFullscreen}
+                            <span class="app-tag fs-suppressed">Fullscreen Suppressed</span>
+                          {/if}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="app-profile-actions">
+                      <button
+                        class="icon-action-btn"
+                        onclick={() => previewProfileGlow(profile)}
+                        title="Preview glow for this application"
+                        disabled={isPreviewingProfile}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon {isPreviewingProfile ? 'pulse' : ''}">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <span>Preview</span>
+                      </button>
+
+                      <button
+                        class="switch-control {profile.enabled ? 'on' : 'off'}"
+                        onclick={() => toggleProfile(profile)}
+                        role="switch"
+                        aria-checked={profile.enabled}
+                        title={profile.enabled ? "Disable this profile" : "Enable this profile"}
+                      >
+                        <span class="switch-ball"></span>
+                      </button>
+
+                      <button
+                        class="secondary-btn edit-btn"
+                        onclick={() => openEditProfileModal(profile)}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        class="danger-icon-btn"
+                        onclick={() => deleteProfile(profile.id)}
+                        title="Delete application profile"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                {/each}
+              {/if}
+            </div>
+          </div>
+
         {:else if activeTab === "glow"}
           <!-- ============================================================= -->
           <!-- GLOW EXPERIENCE VIEW                                          -->
@@ -1131,8 +1527,10 @@
                       class="native-select"
                     >
                       <option value="pulse">Pulse (Periodic rhythmic pulse)</option>
-                      <option value="breathing">Breathing (Slow organic swell)</option>
-                      <option value="solid">Solid (Stationary static border)</option>
+                      <option value="sweep">Sweep (Dynamic continuous perimeter travel)</option>
+                      <option value="ambient">Ambient (Harmonic low-frequency border glow)</option>
+                      <option value="comet">Comet (High-intensity moving segment with fading tail)</option>
+                      <option value="ripple">Ripple (Expanding wave radiating outward)</option>
                     </select>
                   </div>
                 </div>
@@ -1333,6 +1731,62 @@
                         <span class="custom-color-hex-tag">{appSettings.glow.color.toUpperCase()}</span>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Fullscreen & OLED Optimization -->
+              <section class="card panel-card">
+                <div class="panel-header">
+                  <div class="panel-title-wrap">
+                    <div class="panel-icon-circle">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 class="panel-title">Fullscreen & OLED Optimization</h3>
+                      <p class="panel-desc">Configure gaming suppression and display panel burn-in protection</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="controls-list">
+                  <div class="control-item">
+                    <div class="control-label-group">
+                      <span class="control-title">Fullscreen Behavior</span>
+                      <span class="control-sub">Overlay display behavior when games or fullscreen applications are active</span>
+                    </div>
+                    <select
+                      bind:value={appSettings.fullscreen_behavior}
+                      onchange={saveAppSettings}
+                      class="native-select"
+                    >
+                      <option value="always_show">Always Show (Display overlay even during fullscreen)</option>
+                      <option value="suppress_in_fullscreen">Suppress in Fullscreen (Hide overlay during fullscreen windows)</option>
+                      <option value="suppress_gaming">Suppress Gaming (Automatically suppress during gaming & fullscreen)</option>
+                    </select>
+                  </div>
+
+                  <div class="control-item">
+                    <div class="control-label-group">
+                      <span class="control-title">OLED Mode Optimization</span>
+                      <span class="control-sub">Caps peak brightness to 60%, narrows border spread, and limits duration to prevent burn-in</span>
+                    </div>
+                    <button
+                      class="switch-control {appSettings.oled_mode ? 'on' : 'off'}"
+                      onclick={() => {
+                        appSettings.oled_mode = !appSettings.oled_mode;
+                        saveAppSettings();
+                      }}
+                      role="switch"
+                      aria-checked={appSettings.oled_mode}
+                      aria-label="Toggle OLED optimization mode"
+                    >
+                      <span class="switch-ball"></span>
+                    </button>
                   </div>
                 </div>
               </section>
@@ -1667,6 +2121,233 @@
           >
             {isClearing ? "Deleting..." : "Yes, Delete All"}
           </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Application Profile Add / Edit Modal -->
+  {#if isProfileModalOpen && editingProfile}
+    <div class="modal-backdrop" onclick={closeProfileModal} role="presentation">
+      <div
+        class="modal-card card profile-modal-card"
+        onclick={(e) => e.stopPropagation()}
+        onkeydown={(e) => e.stopPropagation()}
+        role="dialog"
+        tabindex="-1"
+        aria-modal="true"
+        aria-labelledby="profile-modal-title"
+      >
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div
+              class="app-avatar-box modal-avatar"
+              style:--app-glow-color={editingProfile.color || appSettings.glow.color}
+              style:border-color={editingProfile.color || appSettings.glow.color}
+            >
+              <span class="app-avatar-letter">{getAppInitial(editingProfile.applicationName)}</span>
+            </div>
+            <div>
+              <h3 id="profile-modal-title" class="modal-title">
+                {isCreatingNewProfile ? "Add Application Profile" : "Edit Application Profile"}
+              </h3>
+              <p class="modal-subtitle">Configure per-application illumination and suppression</p>
+            </div>
+          </div>
+          <button class="modal-close-btn" onclick={closeProfileModal} aria-label="Close dialog">✕</button>
+        </div>
+
+        {#if profileActionError}
+          <div class="alert-banner danger">
+            <span>{profileActionError}</span>
+          </div>
+        {/if}
+
+        <div class="modal-body-form">
+          <div class="form-row">
+            <label class="form-label" for="prof-app-name">Application Name</label>
+            <input
+              id="prof-app-name"
+              type="text"
+              bind:value={editingProfile.applicationName}
+              placeholder="e.g. Discord, Spotify, Steam"
+              class="native-input"
+            />
+          </div>
+
+          <div class="form-row">
+            <label class="form-label" for="prof-exe-name">Executable Name</label>
+            <input
+              id="prof-exe-name"
+              type="text"
+              bind:value={editingProfile.executableName}
+              placeholder="e.g. Discord.exe, Spotify.exe, steam.exe"
+              class="native-input"
+            />
+          </div>
+
+          <div class="control-item modal-toggle-item">
+            <div class="control-label-group">
+              <span class="control-title">Enabled</span>
+              <span class="control-sub">Enable custom ambient glow for this application</span>
+            </div>
+            <button
+              class="switch-control {editingProfile.enabled ? 'on' : 'off'}"
+              onclick={() => {
+                if (editingProfile) editingProfile.enabled = !editingProfile.enabled;
+              }}
+              role="switch"
+              aria-checked={editingProfile.enabled}
+              aria-label="Toggle profile enabled state"
+            >
+              <span class="switch-ball"></span>
+            </button>
+          </div>
+
+          <!-- Glow Color -->
+          <div class="form-row">
+            <span class="form-label">Glow Color</span>
+            <div class="color-palette-wrap">
+              {#each currentGlowPalette as col}
+                <button
+                  type="button"
+                  class="color-dot {editingProfile.color?.toLowerCase() === col.toLowerCase() ? 'selected' : ''}"
+                  style:background-color={col}
+                  onclick={() => {
+                    if (editingProfile) editingProfile.color = col;
+                  }}
+                  title="Preset {col}"
+                  aria-label="Select preset color {col}"
+                ></button>
+              {/each}
+              <div class="color-divider" aria-hidden="true"></div>
+              <div class="custom-color-control">
+                <label class="custom-color-picker-label" aria-label="Open custom color picker">
+                  <svg class="palette-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+                    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+                    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+                    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 9.5 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.24-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.5-4.5-10-10-10z"></path>
+                  </svg>
+                  <input
+                    type="color"
+                    bind:value={editingProfile.color}
+                    class="custom-color-input-hidden"
+                    aria-label="Custom color picker"
+                  />
+                </label>
+                <span class="custom-color-hex-tag">{editingProfile.color || appSettings.glow.color}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Animation -->
+          <div class="form-row">
+            <label class="form-label" for="prof-animation">Animation Dynamic</label>
+            <select id="prof-animation" bind:value={editingProfile.animation} class="native-select">
+              <option value="pulse">Pulse (Periodic rhythmic pulse)</option>
+              <option value="sweep">Sweep (Dynamic continuous perimeter travel)</option>
+              <option value="ambient">Ambient (Harmonic low-frequency border glow)</option>
+              <option value="comet">Comet (High-intensity moving segment with fading tail)</option>
+              <option value="ripple">Ripple (Expanding wave radiating outward)</option>
+            </select>
+          </div>
+
+          <!-- Intensity Slider -->
+          <div class="form-row">
+            <div class="control-label-group">
+              <label class="form-label" for="prof-intensity">Intensity ({Math.round((editingProfile.intensity ?? appSettings.glow.intensity) * 100)}%)</label>
+            </div>
+            <div class="slider-box">
+              <input
+                id="prof-intensity"
+                type="range"
+                min="0.1"
+                max="1.0"
+                step="0.05"
+                bind:value={editingProfile.intensity}
+                class="native-slider"
+              />
+              <span class="slider-val-badge">{Math.round((editingProfile.intensity ?? appSettings.glow.intensity) * 100)}%</span>
+            </div>
+          </div>
+
+          <!-- Duration Slider -->
+          <div class="form-row">
+            <div class="control-label-group">
+              <label class="form-label" for="prof-duration">Duration ({editingProfile.duration ?? 2.0}s)</label>
+            </div>
+            <div class="slider-box">
+              <input
+                id="prof-duration"
+                type="range"
+                min="0.5"
+                max="10.0"
+                step="0.5"
+                bind:value={editingProfile.duration}
+                class="native-slider"
+              />
+              <span class="slider-val-badge">{editingProfile.duration ?? 2.0}s</span>
+            </div>
+          </div>
+
+          <!-- Monitor Target -->
+          <div class="form-row">
+            <label class="form-label" for="prof-monitor">Monitor Target</label>
+            <select id="prof-monitor" bind:value={editingProfile.monitorTarget} class="native-select">
+              <option value="primary">Primary Display</option>
+              <option value="active">Active Window Display</option>
+              <option value="all">All Displays (Multi-Monitor)</option>
+            </select>
+          </div>
+
+          <!-- Suppress in Fullscreen -->
+          <div class="control-item modal-toggle-item">
+            <div class="control-label-group">
+              <span class="control-title">Suppress in Fullscreen</span>
+              <span class="control-sub">Silence glow overlay when games or fullscreen apps are active</span>
+            </div>
+            <button
+              class="switch-control {editingProfile.suppressInFullscreen ? 'on' : 'off'}"
+              onclick={() => {
+                if (editingProfile) editingProfile.suppressInFullscreen = !editingProfile.suppressInFullscreen;
+              }}
+              role="switch"
+              aria-checked={editingProfile.suppressInFullscreen}
+              aria-label="Toggle fullscreen suppression"
+            >
+              <span class="switch-ball"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-footer profile-modal-footer">
+          <div class="modal-footer-left">
+            {#if !isCreatingNewProfile}
+              <button
+                class="danger-btn"
+                onclick={() => editingProfile && deleteProfile(editingProfile.id)}
+              >
+                Delete
+              </button>
+            {/if}
+            <button
+              class="secondary-btn preview-action-btn"
+              onclick={() => previewProfileGlow(editingProfile)}
+              disabled={isPreviewingProfile}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon {isPreviewingProfile ? 'pulse' : ''}">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <span>{isPreviewingProfile ? "Previewing..." : "Preview"}</span>
+            </button>
+          </div>
+          <div class="modal-footer-right">
+            <button class="secondary-btn" onclick={closeProfileModal}>Cancel</button>
+            <button class="primary-btn" onclick={saveProfile}>Save</button>
+          </div>
         </div>
       </div>
     </div>
@@ -3619,6 +4300,321 @@
     .listening-toggle-btn {
       padding: 4px 8px;
     }
+  }
+
+  /* ========================================================================= */
+  /* APPLICATION PROFILES VIEW & MODAL STYLING                                */
+  /* ========================================================================= */
+  .applications-view {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .app-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md, 10px);
+  }
+
+  .app-search-bar .search-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+
+  .app-search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+  }
+
+  .app-search-input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .clear-search-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+  }
+
+  .clear-search-btn:hover {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+  }
+
+  .applications-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .app-profile-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md, 10px);
+    transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .app-profile-card:hover {
+    border-color: var(--border-strong);
+    background: var(--surface-hover);
+    transform: translateY(-1px);
+  }
+
+  .app-profile-card.disabled {
+    opacity: 0.65;
+  }
+
+  .app-profile-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .app-avatar-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid var(--app-glow-color, var(--primary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 0 12px -2px var(--app-glow-color, var(--primary));
+  }
+
+  .app-avatar-letter {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .app-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .app-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .app-name {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .custom-profile-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+  }
+
+  .suppressed-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--danger-bg);
+    color: var(--danger-text);
+  }
+
+  .app-executable-text {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  .app-tags-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+    flex-wrap: wrap;
+  }
+
+  .app-tag {
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 4px;
+    background: var(--surface-subtle);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  .app-tag.anim {
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  .app-tag.fs-suppressed {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+
+  .app-profile-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .icon-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .icon-action-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+
+  .danger-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .danger-icon-btn:hover {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  /* Profile Modal specific styles */
+  .profile-modal-card {
+    max-width: 520px;
+    text-align: left;
+    align-items: stretch;
+    padding: 24px;
+  }
+
+  .modal-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .modal-body-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 16px 0 20px 0;
+  }
+
+  .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .native-input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease;
+  }
+
+  .native-input:focus {
+    border-color: var(--primary);
+  }
+
+  .modal-toggle-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+  }
+
+  .profile-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .modal-footer-left,
+  .modal-footer-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .preview-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   /* Reduced Motion Accessibility */

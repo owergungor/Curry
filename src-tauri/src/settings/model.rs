@@ -46,6 +46,9 @@ impl<'de> Deserialize<'de> for AppTheme {
     }
 }
 
+use crate::settings::fullscreen::FullscreenBehavior;
+use crate::settings::profiles::ApplicationProfile;
+
 /// Centralized user-configurable application settings for Curry.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppSettings {
@@ -61,9 +64,18 @@ pub struct AppSettings {
     pub sound_enabled: bool,
     /// Detailed configuration for the screen-edge glow overlay.
     pub glow: GlowSettings,
-    /// Selected visual theme (defaults to Catppuccin, resilient to invalid values).
+    /// Selected visual theme (defaults to Perpetuity, resilient to invalid values).
     #[serde(default)]
     pub theme: AppTheme,
+    /// Per-application custom glow configurations.
+    #[serde(default)]
+    pub applications: Vec<ApplicationProfile>,
+    /// Whether OLED power and burn-in prevention optimizations are active.
+    #[serde(default, alias = "oledMode")]
+    pub oled_mode: bool,
+    /// Fullscreen / gaming overlay suppression policy.
+    #[serde(default, alias = "fullscreenBehavior")]
+    pub fullscreen_behavior: FullscreenBehavior,
 }
 
 impl Default for AppSettings {
@@ -76,6 +88,9 @@ impl Default for AppSettings {
             sound_enabled: false,
             glow: GlowSettings::default(),
             theme: AppTheme::default(),
+            applications: Vec::new(),
+            oled_mode: false,
+            fullscreen_behavior: FullscreenBehavior::default(),
         }
     }
 }
@@ -89,8 +104,36 @@ impl AppSettings {
         self.glow.thickness = self.glow.thickness.clamp(2, 32);
         self.glow.corner_radius = self.glow.corner_radius.clamp(0, 48);
 
+        if self.oled_mode {
+            self.glow.intensity = self.glow.intensity.min(0.60);
+            self.glow.thickness = (self.glow.thickness / 2).max(2);
+            self.glow.duration_ms = self.glow.duration_ms.min(2000);
+        }
+
         if self.glow.color.trim().is_empty() {
             self.glow.color = "#6366f1".to_string();
+        }
+
+        for prof in &mut self.applications {
+            if let Some(ref mut intensity) = prof.intensity {
+                *intensity = intensity.clamp(0.1, 1.0);
+                if self.oled_mode {
+                    *intensity = intensity.min(0.60);
+                }
+            }
+            if let Some(ref mut dur) = prof.duration {
+                if *dur <= 60.0 {
+                    *dur = dur.clamp(0.5, 10.0);
+                    if self.oled_mode {
+                        *dur = dur.min(2.0);
+                    }
+                } else {
+                    *dur = dur.clamp(500.0, 10000.0);
+                    if self.oled_mode {
+                        *dur = dur.min(2000.0);
+                    }
+                }
+            }
         }
 
         self

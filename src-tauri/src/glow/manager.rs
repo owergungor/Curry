@@ -51,67 +51,155 @@ impl GlowManager {
 
     /// Triggers the screen-edge glow effect on the overlay window.
     pub fn trigger_glow(&self, custom_color: Option<&str>) {
-        self.trigger_glow_internal(custom_color, None, None);
-    }
-
-    /// Triggers the screen-edge glow effect calibrated to a specific notification's urgency and duration.
-    pub fn trigger_glow_for_notification(&self, notification: &crate::notification::model::Notification) {
         let settings = self.get_settings();
-        if !settings.enabled {
-            return;
+        let oled_mode = self
+            .settings_storage
+            .get()
+            .map(|s| s.get().oled_mode)
+            .unwrap_or(false);
+
+        let mut intensity = settings.intensity;
+        let mut thickness = settings.thickness;
+        let mut duration_ms = settings.duration_ms;
+        if oled_mode {
+            intensity = intensity.min(0.60);
+            thickness = (thickness / 2).max(2);
+            duration_ms = duration_ms.min(2000);
         }
-
-        // Play native sound alert if enabled in settings
-        if let Some(storage) = self.settings_storage.get() {
-            if storage.get().sound_enabled {
-                crate::settings::SoundManager::play_alert();
-            }
-        }
-
-        let (color, intensity_mult) = match notification.urgency {
-            Some(crate::notification::model::NotificationUrgency::Critical) => ("#ef4444", 1.25),
-            Some(crate::notification::model::NotificationUrgency::High) => ("#f59e0b", 1.15),
-            Some(crate::notification::model::NotificationUrgency::Low) => (settings.color.as_str(), 0.75),
-            _ => (settings.color.as_str(), 1.0),
-        };
-
-        let duration = notification.duration.unwrap_or(settings.duration_ms);
-        let adjusted_intensity = (settings.intensity * intensity_mult).min(1.0);
-
-        self.trigger_glow_internal(Some(color), Some(duration), Some(adjusted_intensity));
-    }
-
-    fn trigger_glow_internal(
-        &self,
-        custom_color: Option<&str>,
-        custom_duration_ms: Option<u64>,
-        custom_intensity: Option<f32>,
-    ) {
-        let settings = self.get_settings();
-        if !settings.enabled {
-            return;
-        }
-
-        let duration_ms = custom_duration_ms.unwrap_or(settings.duration_ms);
-        let intensity = custom_intensity.unwrap_or(settings.intensity);
 
         let payload = GlowPayload {
             color: custom_color.unwrap_or(&settings.color).to_string(),
             duration_ms,
             intensity,
-            thickness: settings.thickness,
+            thickness,
             corner_radius: settings.corner_radius,
-            animation_style: settings.animation_style,
+            animation_style: settings.animation_style.canonical(),
+            oled_mode,
         };
 
-        match settings.monitor_target {
+        self.dispatch_overlay(&payload, &settings.monitor_target);
+    }
+
+    /// Triggers preview for a specific payload without writing to notification storage.
+    pub fn trigger_payload_preview(&self, payload: GlowPayload, target: Option<MonitorTarget>) {
+        let monitor_target = target.unwrap_or_else(|| self.get_settings().monitor_target);
+        self.dispatch_overlay(&payload, &monitor_target);
+    }
+
+    /// Triggers the screen-edge glow effect calibrated to a specific notification's urgency, duration,
+    /// matching application profile overrides, and fullscreen suppression checks.
+    pub fn trigger_glow_for_notification(
+        &self,
+        notification: &crate::notification::model::Notification,
+    ) {
+        let app_settings = self
+            .settings_storage
+            .get()
+            .map(|s| s.get())
+            .unwrap_or_default();
+
+        let glow_settings = &app_settings.glow;
+        if !glow_settings.enabled || !app_settings.enabled {
+            return;
+        }
+
+        // Determine matching application profile by display name or executable name
+        let profile = app_settings.applications.iter().find(|p| {
+            p.matches(&notification.app_name)
+                || notification
+                    .source
+                    .as_deref()
+                    .map(|s| p.matches(s))
+                    .unwrap_or(false)
+                || (!notification.source_app.is_empty() && p.matches(&notification.source_app))
+        });
+
+        // Suppress if the matching profile is explicitly disabled
+        if let Some(prof) = profile {
+            if !prof.enabled {
+                return;
+            }
+        }
+
+        // Check fullscreen / gaming state and policy
+        let fullscreen_state = crate::settings::detect_fullscreen_state();
+        let prof_suppress = profile.and_then(|p| p.suppress_in_fullscreen);
+        if crate::settings::should_suppress_for_fullscreen(
+            app_settings.fullscreen_behavior,
+            prof_suppress,
+            fullscreen_state,
+        ) {
+            return;
+        }
+
+        // Play native sound alert if enabled in settings
+        if app_settings.sound_enabled {
+            crate::settings::SoundManager::play_alert();
+        }
+
+        let resolved = crate::settings::resolve_glow_params(
+            profile,
+            glow_settings,
+            app_settings.oled_mode,
+            app_settings.fullscreen_behavior
+                != crate::settings::FullscreenBehavior::AlwaysShow,
+        );
+
+        if !resolved.should_glow {
+            return;
+        }
+
+        // Urgency adjustments
+        let (urgency_color, urgency_mult) = match notification.urgency {
+            Some(crate::notification::model::NotificationUrgency::Critical) => {
+                (Some("#ef4444"), 1.25)
+            }
+            Some(crate::notification::model::NotificationUrgency::High) => (Some("#f59e0b"), 1.15),
+            Some(crate::notification::model::NotificationUrgency::Low) => (None, 0.75),
+            _ => (None, 1.0),
+        };
+
+        let color = if profile.and_then(|p| p.color.as_ref()).is_some() {
+            if matches!(
+                notification.urgency,
+                Some(crate::notification::model::NotificationUrgency::Critical)
+            ) {
+                "#ef4444".to_string()
+            } else {
+                resolved.color
+            }
+        } else {
+            urgency_color.unwrap_or(&resolved.color).to_string()
+        };
+
+        let mut final_intensity = (resolved.intensity * urgency_mult).clamp(0.1, 1.0);
+        if app_settings.oled_mode {
+            final_intensity = final_intensity.min(0.60);
+        }
+
+        let payload = GlowPayload {
+            color,
+            duration_ms: notification.duration.unwrap_or(resolved.duration_ms),
+            intensity: final_intensity,
+            thickness: resolved.thickness,
+            corner_radius: resolved.corner_radius,
+            animation_style: resolved.animation_style,
+            oled_mode: resolved.oled_mode,
+        };
+
+        self.dispatch_overlay(&payload, &resolved.monitor_target);
+    }
+
+    /// Dispatches the overlay presentation to the appropriate monitor target.
+    fn dispatch_overlay(&self, payload: &GlowPayload, target: &MonitorTarget) {
+        match target {
             MonitorTarget::Primary => {
                 if let Some(w) = self.app_handle.get_webview_window("glow-overlay") {
                     if let Ok(Some(mon)) = w.primary_monitor() {
                         let _ = w.set_position(*mon.position());
                         let _ = w.set_size(*mon.size());
                     }
-                    self.present_overlay(&w, &payload, duration_ms);
+                    self.present_overlay(&w, payload, payload.duration_ms);
                 }
             }
             MonitorTarget::Active => {
@@ -120,7 +208,23 @@ impl GlowManager {
                         let _ = w.set_position(*mon.position());
                         let _ = w.set_size(*mon.size());
                     }
-                    self.present_overlay(&w, &payload, duration_ms);
+                    self.present_overlay(&w, payload, payload.duration_ms);
+                }
+            }
+            MonitorTarget::Specific(target_name) => {
+                if let Some(w) = self.app_handle.get_webview_window("glow-overlay") {
+                    let matched = w.available_monitors().ok().and_then(|mons| {
+                        mons.into_iter().find(|m| {
+                            m.name()
+                                .map(|n| n.eq_ignore_ascii_case(target_name))
+                                .unwrap_or(false)
+                        })
+                    });
+                    if let Some(mon) = matched.or_else(|| w.primary_monitor().ok().flatten()) {
+                        let _ = w.set_position(*mon.position());
+                        let _ = w.set_size(*mon.size());
+                    }
+                    self.present_overlay(&w, payload, payload.duration_ms);
                 }
             }
             MonitorTarget::All => {
@@ -132,7 +236,7 @@ impl GlowManager {
 
                 if monitors.is_empty() {
                     if let Some(w) = self.app_handle.get_webview_window("glow-overlay") {
-                        self.present_overlay(&w, &payload, duration_ms);
+                        self.present_overlay(&w, payload, payload.duration_ms);
                     }
                 } else {
                     for (idx, mon) in monitors.into_iter().enumerate() {
@@ -142,7 +246,9 @@ impl GlowManager {
                             format!("glow-overlay-{}", idx)
                         };
 
-                        let window = if let Some(existing) = self.app_handle.get_webview_window(&win_label) {
+                        let window = if let Some(existing) =
+                            self.app_handle.get_webview_window(&win_label)
+                        {
                             Some(existing)
                         } else {
                             let url = tauri::WebviewUrl::App("/glow".into());
@@ -161,7 +267,7 @@ impl GlowManager {
                         if let Some(w) = window {
                             let _ = w.set_position(*mon.position());
                             let _ = w.set_size(*mon.size());
-                            self.present_overlay(&w, &payload, duration_ms);
+                            self.present_overlay(&w, payload, payload.duration_ms);
                         }
                     }
                 }

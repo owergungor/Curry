@@ -5,8 +5,24 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "lowercase")]
 pub enum GlowAnimationStyle {
     Pulse,
+    Sweep,
+    Ambient,
+    Comet,
+    Ripple,
+    #[serde(rename = "breathing")]
     Breathing,
+    #[serde(rename = "solid")]
     Solid,
+}
+
+impl GlowAnimationStyle {
+    /// Returns the active canonical style, migrating legacy styles (Breathing, Solid) to Ambient.
+    pub fn canonical(&self) -> Self {
+        match self {
+            Self::Breathing | Self::Solid => Self::Ambient,
+            other => *other,
+        }
+    }
 }
 
 impl Default for GlowAnimationStyle {
@@ -22,6 +38,11 @@ impl<'de> Deserialize<'de> for GlowAnimationStyle {
     {
         let s = String::deserialize(deserializer)?;
         match s.to_lowercase().as_str() {
+            "pulse" => Ok(Self::Pulse),
+            "sweep" => Ok(Self::Sweep),
+            "ambient" => Ok(Self::Ambient),
+            "comet" => Ok(Self::Comet),
+            "ripple" => Ok(Self::Ripple),
             "breathing" => Ok(Self::Breathing),
             "solid" => Ok(Self::Solid),
             _ => Ok(Self::Pulse),
@@ -30,12 +51,14 @@ impl<'de> Deserialize<'de> for GlowAnimationStyle {
 }
 
 /// Target monitor configuration for overlay placement.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MonitorTarget {
     Primary,
     Active,
     All,
+    #[serde(rename = "specific")]
+    Specific(String),
 }
 
 impl Default for MonitorTarget {
@@ -53,6 +76,11 @@ impl<'de> Deserialize<'de> for MonitorTarget {
         match s.to_lowercase().as_str() {
             "active" => Ok(Self::Active),
             "all" => Ok(Self::All),
+            "primary" => Ok(Self::Primary),
+            val if val.starts_with("specific:") => {
+                let id = val.trim_start_matches("specific:").to_string();
+                Ok(Self::Specific(id))
+            }
             _ => Ok(Self::Primary),
         }
     }
@@ -71,7 +99,7 @@ pub struct GlowSettings {
     pub thickness: u32,
     /// Screen corner rounding in pixels (0 to 48).
     pub corner_radius: u32,
-    /// Visual animation mode (Pulse, Breathing, Solid).
+    /// Visual animation mode (Pulse, Sweep, Ambient, Comet, Ripple).
     pub animation_style: GlowAnimationStyle,
     /// Target display on which the glow will render.
     pub monitor_target: MonitorTarget,
@@ -103,4 +131,6 @@ pub struct GlowPayload {
     pub thickness: u32,
     pub corner_radius: u32,
     pub animation_style: GlowAnimationStyle,
+    #[serde(default)]
+    pub oled_mode: bool,
 }
