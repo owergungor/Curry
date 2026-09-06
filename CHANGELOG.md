@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [1.1.0] - 2026-09-06
 
 ### Added
 - **5 Screen-Edge Glow Animation Styles**:
@@ -63,3 +63,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Tauri IPC command registry with profile management and live preview handlers.
 - Enhanced overlay Webview CSS with GPU-accelerated CSS keyframe animations and `prefers-reduced-motion` compliance.
 - Clarified supported platforms documentation: Windows 10 & 11 fully supported; macOS & Linux roadmapped.
+
+---
+
+## [1.0.0] - 2026-09-05
+
+### Added
+- Initial public release of Curry.
+- Native Windows notification listener and capture engine.
+- Screen-edge glow overlay window with ambient border effects.
+- Pulse, Breathing, and Solid illumination modes.
+- 7 curated visual themes with high contrast support.
+- Multi-monitor support and system tray integration.
+- Offline and local privacy architecture.
+- Non-destructive legacy configuration migration from NotiGlow installations.
