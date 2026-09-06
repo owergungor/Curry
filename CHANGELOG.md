@@ -42,9 +42,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Live Preview Button**: Instantly triggers overlay demonstration without injecting dummy items into notification history.
 - **Multi-Monitor Targeting Expansion**:
   - Support for `Primary`, `All`, and `Specific` monitor targeting across profiles and global settings.
-- **Automated Test Suite**:
-  - 20 new comprehensive Rust unit tests covering profile resolution, fallback, overrides, OLED bounds, fullscreen state detection, and legacy migration.
-  - Total automated unit test suite now stands at **63 passing tests**.
+- **Native Windows File Picker (`.exe`) for Application Profiles**:
+  - Integrated official Tauri v2 dialog plugin (`tauri-plugin-dialog` & `@tauri-apps/plugin-dialog`).
+  - Added native **Browse...** button in the profile editor to open the standard Windows Open File Dialog filtering for `.exe` files.
+  - Automatic extraction and population of clean application display name, executable filename, and full executable path.
+  - Optional `executablePath` (`executable_path`) property with zero-migration backward compatibility for legacy JSON profiles.
+  - Case-insensitive duplicate executable validation preventing redundant profiles for the same application.
+- **Desktop Window Experience & Responsive UI**:
+  - Adapted Curry's main window into a standard resizable Windows desktop settings application (`width: 1152`, `height: 768`, `minWidth: 900`, `minHeight: 600`, `center: true`).
+  - Native window controls: resizable, minimizable, maximizable, and closable with system tray hide-on-close behavior.
+  - Responsive layouts across resolutions (900x600, 1024x768, 1280x720, 1440x900, 1920x1080) with zero horizontal overflow.
+  - Responsive Application Profile modal with scrollable body and sticky header/footer actions.
+  - Complete architectural isolation ensuring screen-edge glow overlay windows remain transparent, borderless, click-through, and always-on-top.
+- **Expanded Automated Test Suite**:
+  - 7 new comprehensive Rust unit tests covering `.exe` filename extraction, `.exe` extension validation, case-insensitive process matching, duplicate profile detection, legacy profile compatibility, optional executable path compatibility, and profile serialization/deserialization.
+  - Total automated unit test suite now stands at **70 passing tests** (0 failed).
 
 ### Changed
 - Refactored `GlowManager` to perform runtime profile resolution, monitor targeting, fullscreen evaluation, and OLED adjustments per notification.

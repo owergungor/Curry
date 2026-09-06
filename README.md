@@ -22,7 +22,7 @@
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline-success?style=flat-square" alt="100% Offline" />
-  <img src="https://img.shields.io/badge/Tests-63%20passed-brightgreen?style=flat-square" alt="Tests 63 passed" />
+  <img src="https://img.shields.io/badge/Tests-70%20passed-brightgreen?style=flat-square" alt="Tests 70 passed" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="MIT License" /></a>
 </p>
 
@@ -147,6 +147,9 @@ The ambient glow engine displays a transparent, always-on-top, click-through ove
 
 Curry supports **per-application glow customization**:
 
+- **Native Windows File Picker (`.exe`)**: Convenient **Browse...** button opens the standard Windows Open File Dialog filtering for `.exe` executables, automatically extracting the application display name, executable name, and full path.
+- **Duplicate Protection**: Case-insensitive executable validation prevents duplicate profiles for the same application (e.g., `Discord.exe` vs `discord.exe`).
+- **Full Path Tracking**: Optional executable path tracking (`executablePath`) with 100% backward compatibility for existing profile configurations.
 - **Per-App Overrides**: Configure dedicated colors, animations, intensities, durations, monitor targets, and fullscreen behaviors for applications like Discord, Spotify, Steam, VS Code, and more.
 - **Nullable Fallbacks**: Any unset profile field automatically inherits the global ambient settings.
 - **Case-Insensitive Resolution**: Accurately matches applications by window title, friendly app name, or executable name (e.g. `Discord.exe` or `discord`).
@@ -205,6 +208,7 @@ Curry includes **7 curated themes**. **Perpetuity** is the canonical default the
 - **Win32 Fullscreen Query**: High-frequency geometric matching against foreground window bounds and display geometry.
 - **System Tray Lifecycle**: Closing the window hides Curry to the tray (`tauri::tray::TrayIcon`); double-clicking or selecting **Open Curry** restores and focuses the window.
 - **Silent Autostart**: Queries and writes to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` with `reg.exe` using `CREATE_NO_WINDOW` (`0x08000000`) to guarantee zero console flashes on system startup.
+- **Desktop Window Experience**: True desktop settings application window (default 1152x768, minimum 900x600, centered) with native minimize, maximize, and resize controls; strictly separated from the transparent, borderless screen-edge glow overlay windows.
 - **Single-Instance Protection**: Enforced by the Win32 named system mutex `Global\Curry`. Launching a second instance automatically focuses the existing window and terminates the duplicate process.
 
 ---

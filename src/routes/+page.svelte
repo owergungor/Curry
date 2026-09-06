@@ -45,6 +45,7 @@
     id: string;
     applicationName: string;
     executableName: string;
+    executablePath?: string | null;
     enabled: boolean;
     color?: string | null;
     animation?: "pulse" | "sweep" | "ambient" | "comet" | "ripple" | null;
@@ -52,6 +53,12 @@
     duration?: number | null;
     monitorTarget?: "primary" | "active" | "all" | string | null;
     suppressInFullscreen?: boolean | null;
+  }
+
+  interface ParsedExecutableInfo {
+    displayName: string;
+    executableName: string;
+    executablePath: string | null;
   }
 
   interface AppSettings {
@@ -278,6 +285,7 @@
       id: `prof-${Date.now()}`,
       applicationName: "",
       executableName: "",
+      executablePath: null,
       enabled: true,
       color: appSettings.glow.color,
       animation: "pulse",
@@ -294,6 +302,7 @@
     profileActionError = null;
     editingProfile = {
       ...p,
+      executablePath: p.executablePath ?? null,
       color: p.color ?? appSettings.glow.color,
       animation: p.animation ?? "pulse",
       intensity: p.intensity ?? appSettings.glow.intensity,
@@ -311,14 +320,83 @@
     profileActionError = null;
   }
 
+  async function browseForExecutable() {
+    profileActionError = null;
+    try {
+      const res = await invoke<ParsedExecutableInfo | null>("pick_executable_file");
+      if (res && editingProfile) {
+        editingProfile.executableName = res.executableName;
+        editingProfile.executablePath = res.executablePath || null;
+        if (!editingProfile.applicationName || editingProfile.applicationName.trim() === "" || isCreatingNewProfile) {
+          editingProfile.applicationName = res.displayName;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to pick executable:", err);
+      profileActionError = String(err);
+    }
+  }
+
+  async function handleExeBlur() {
+    if (!editingProfile || !editingProfile.executableName.trim()) return;
+    const val = editingProfile.executableName.trim();
+    if (val.includes("\\") || val.includes("/")) {
+      try {
+        const info = await invoke<ParsedExecutableInfo>("parse_executable_path", { path: val });
+        editingProfile.executableName = info.executableName;
+        editingProfile.executablePath = info.executablePath || val;
+        if (!editingProfile.applicationName || editingProfile.applicationName.trim() === "" || isCreatingNewProfile) {
+          editingProfile.applicationName = info.displayName;
+        }
+      } catch {
+        // preserve as-is
+      }
+    } else if (!editingProfile.applicationName || editingProfile.applicationName.trim() === "") {
+      const stripped = val.toLowerCase().endsWith(".exe") ? val.slice(0, -4) : val;
+      if (stripped.length > 0) {
+        editingProfile.applicationName = stripped.charAt(0).toUpperCase() + stripped.slice(1);
+      }
+    }
+  }
+
   async function saveProfile() {
     if (!editingProfile) return;
-    if (!editingProfile.applicationName.trim()) {
-      profileActionError = "Application name is required";
+    const appName = editingProfile.applicationName.trim();
+    const exeName = editingProfile.executableName.trim();
+
+    if (!appName) {
+      profileActionError = "Application name is required.";
       return;
     }
-    if (!editingProfile.executableName.trim()) {
-      profileActionError = "Executable name is required (e.g. Discord.exe)";
+    if (appName.length > 100) {
+      profileActionError = "Application name is too long (maximum 100 characters).";
+      return;
+    }
+    if (!exeName) {
+      profileActionError = "Executable name is required (e.g. Discord.exe).";
+      return;
+    }
+    if (!exeName.toLowerCase().endsWith(".exe")) {
+      profileActionError = "Executable name must end with .exe (e.g. Discord.exe).";
+      return;
+    }
+    if (editingProfile.executablePath && editingProfile.executablePath.length > 512) {
+      profileActionError = "Executable path is too long (maximum 512 characters).";
+      return;
+    }
+
+    // Client-side duplicate check (case-insensitive)
+    const normExe = exeName.toLowerCase();
+    const normExeStripped = normExe.endsWith(".exe") ? normExe.slice(0, -4) : normExe;
+    const isDuplicate = applications.some((p) => {
+      if (p.id === editingProfile!.id) return false;
+      const pExe = p.executableName.trim().toLowerCase();
+      const pExeStripped = pExe.endsWith(".exe") ? pExe.slice(0, -4) : pExe;
+      return pExe === normExe || pExeStripped === normExeStripped;
+    });
+
+    if (isDuplicate) {
+      profileActionError = `An application profile for ${exeName} already exists.`;
       return;
     }
 
@@ -326,8 +404,9 @@
       const saved = await invoke<ApplicationProfile>("save_application_profile", {
         profile: {
           ...editingProfile,
-          applicationName: editingProfile.applicationName.trim(),
-          executableName: editingProfile.executableName.trim(),
+          applicationName: appName,
+          executableName: exeName,
+          executablePath: editingProfile.executablePath?.trim() || null,
         },
       });
 
@@ -1357,8 +1436,8 @@
                       <line x1="12" y1="17" x2="12" y2="21"></line>
                     </svg>
                   </div>
-                  <h3>No Application Profiles Found</h3>
-                  <p>{appSearchQuery ? `No applications match "${appSearchQuery}".` : "Create custom illumination rules for Discord, Spotify, Steam, and other desktop apps."}</p>
+                  <h3>{appSearchQuery ? "No Matching Profiles" : "No application profiles yet"}</h3>
+                  <p>{appSearchQuery ? `No applications match "${appSearchQuery}".` : "Add an application to customize its notification glow."}</p>
                   <button class="primary-btn" onclick={openAddProfileModal}>
                     <span>+ Add Application Profile</span>
                   </button>
@@ -1382,7 +1461,12 @@
                             <span class="suppressed-badge">Disabled</span>
                           {/if}
                         </div>
-                        <span class="app-executable-text">{profile.executableName}</span>
+                        <span class="app-executable-text" title={profile.executablePath || profile.executableName}>
+                          {profile.executableName}
+                          {#if profile.executablePath}
+                            <span class="app-path-hint" title={profile.executablePath}>• {profile.executablePath}</span>
+                          {/if}
+                        </span>
                         <div class="app-tags-row">
                           <span class="app-tag anim">
                             {(profile.animation || appSettings.glow.animation_style).toUpperCase()}
@@ -1395,6 +1479,11 @@
                           </span>
                           {#if profile.suppressInFullscreen}
                             <span class="app-tag fs-suppressed">Fullscreen Suppressed</span>
+                          {/if}
+                          {#if profile.monitorTarget && profile.monitorTarget !== 'primary'}
+                            <span class="app-tag monitor">
+                              {profile.monitorTarget === 'all' ? 'All Displays' : 'Active Window'}
+                            </span>
                           {/if}
                         </div>
                       </div>
@@ -2164,6 +2253,8 @@
         {/if}
 
         <div class="modal-body-form">
+          <div class="form-section-header">Application</div>
+
           <div class="form-row">
             <label class="form-label" for="prof-app-name">Application Name</label>
             <input
@@ -2176,15 +2267,49 @@
           </div>
 
           <div class="form-row">
-            <label class="form-label" for="prof-exe-name">Executable Name</label>
-            <input
-              id="prof-exe-name"
-              type="text"
-              bind:value={editingProfile.executableName}
-              placeholder="e.g. Discord.exe, Spotify.exe, steam.exe"
-              class="native-input"
-            />
+            <label class="form-label" for="prof-exe-name">Executable</label>
+            <div class="input-with-action">
+              <input
+                id="prof-exe-name"
+                type="text"
+                bind:value={editingProfile.executableName}
+                onblur={handleExeBlur}
+                placeholder="e.g. Discord.exe, Spotify.exe, steam.exe"
+                class="native-input"
+              />
+              <button
+                type="button"
+                id="prof-browse-btn"
+                class="secondary-btn browse-btn"
+                onclick={browseForExecutable}
+                title="Browse Windows executable (*.exe)"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <span>Browse...</span>
+              </button>
+            </div>
           </div>
+
+          {#if editingProfile.executablePath}
+            <div class="form-row path-row">
+              <label class="form-label" for="prof-exe-path">Path</label>
+              <div class="path-display-box">
+                <span id="prof-exe-path" class="path-text" title={editingProfile.executablePath}>
+                  {editingProfile.executablePath}
+                </span>
+                <button
+                  type="button"
+                  class="clear-path-btn"
+                  onclick={() => { if (editingProfile) editingProfile.executablePath = null; }}
+                  title="Clear path"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          {/if}
 
           <div class="control-item modal-toggle-item">
             <div class="control-label-group">
@@ -2203,6 +2328,8 @@
               <span class="switch-ball"></span>
             </button>
           </div>
+
+          <div class="form-section-header">Glow Illumination</div>
 
           <!-- Glow Color -->
           <div class="form-row">
@@ -2291,6 +2418,8 @@
               <span class="slider-val-badge">{editingProfile.duration ?? 2.0}s</span>
             </div>
           </div>
+
+          <div class="form-section-header">Display & Suppression</div>
 
           <!-- Monitor Target -->
           <div class="form-row">
@@ -4540,9 +4669,15 @@
   /* Profile Modal specific styles */
   .profile-modal-card {
     max-width: 520px;
+    width: 100%;
+    max-height: min(90vh, 640px);
+    display: flex;
+    flex-direction: column;
     text-align: left;
     align-items: stretch;
     padding: 24px;
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   .modal-avatar {
@@ -4555,6 +4690,22 @@
     flex-direction: column;
     gap: 14px;
     margin: 16px 0 20px 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
+    padding-right: 6px;
+  }
+
+  .form-section-header {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+    margin: 8px 0 2px 0;
   }
 
   .form-row {
@@ -4589,6 +4740,73 @@
     border-color: var(--primary);
   }
 
+  .input-with-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .browse-btn {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .path-row {
+    margin-top: -2px;
+  }
+
+  .path-display-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    overflow: hidden;
+  }
+
+  .path-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: rtl;
+    text-align: left;
+  }
+
+  .clear-path-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0 4px;
+    flex-shrink: 0;
+  }
+
+  .clear-path-btn:hover {
+    color: var(--danger-text);
+  }
+
+  .app-path-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    opacity: 0.75;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
   .modal-toggle-item {
     display: flex;
     align-items: center;
@@ -4615,6 +4833,44 @@
     display: flex;
     align-items: center;
     gap: 6px;
+  }
+
+  /* Desktop Responsive Adaptation */
+  @media (max-width: 980px) {
+    .app-header {
+      padding: 8px 12px;
+      gap: 8px;
+    }
+    .nav-tab {
+      padding: 6px 10px;
+      gap: 5px;
+      font-size: 11px;
+    }
+    .brand-title {
+      font-size: 14px;
+    }
+    .brand-version-pill {
+      display: none;
+    }
+    .main-viewport {
+      padding: 16px 18px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .header-center-tabs {
+      overflow-x: auto;
+      max-width: 100%;
+    }
+    .app-profile-card {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .app-profile-actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
   }
 
   /* Reduced Motion Accessibility */

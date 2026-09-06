@@ -4,6 +4,7 @@
   "description": "Capability for the main window",
   "windows": ["main", "glow-overlay"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "dialog:default"
   ]
 }

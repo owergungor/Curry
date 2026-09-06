@@ -15,10 +15,14 @@
         "label": "main",
         "title": "Curry",
         "url": "index.html",
-        "width": 880,
-        "height": 620,
-        "minWidth": 720,
-        "minHeight": 500,
+        "width": 1152,
+        "height": 768,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "maximizable": true,
+        "minimizable": true,
+        "closable": true,
         "center": true
       },
       {

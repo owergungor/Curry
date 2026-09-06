@@ -1144,6 +1144,7 @@ mod tests {
             id: "prof-discord".to_string(),
             application_name: "Discord".to_string(),
             executable_name: "Discord.exe".to_string(),
+            executable_path: None,
             enabled: true,
             color: Some("#5865F2".to_string()),
             animation: Some(GlowAnimationStyle::Comet),
@@ -1519,5 +1520,188 @@ mod tests {
 
         let find_unknown = profiles.iter().find(|p| p.matches("notepad.exe"));
         assert!(find_unknown.is_none());
+    }
+
+    // =========================================================================
+    // SECTION: APPLICATION PROFILES FILE PICKER & ENHANCED MATCHING TESTS
+    // =========================================================================
+
+    #[test]
+    fn test_exe_filename_extraction() {
+        use curry_lib::settings::parse_executable_info;
+
+        // Windows absolute path with backslashes
+        let res1 = parse_executable_info(r"C:\Program Files\Discord\Discord.exe").expect("Should parse");
+        assert_eq!(res1.executable_name, "Discord.exe");
+        assert_eq!(res1.display_name, "Discord");
+        assert_eq!(res1.executable_path, Some(r"C:\Program Files\Discord\Discord.exe".to_string()));
+
+        // Path with lowercase exe and spaces
+        let res2 = parse_executable_info(r"C:\Users\user\AppData\Local\Spotify\Spotify.exe").expect("Should parse");
+        assert_eq!(res2.executable_name, "Spotify.exe");
+        assert_eq!(res2.display_name, "Spotify");
+        assert_eq!(res2.executable_path, Some(r"C:\Users\user\AppData\Local\Spotify\Spotify.exe".to_string()));
+
+        // Relative or standalone filename
+        let res3 = parse_executable_info("notepad.exe").expect("Should parse");
+        assert_eq!(res3.executable_name, "notepad.exe");
+        assert_eq!(res3.display_name, "Notepad");
+        assert_eq!(res3.executable_path, None);
+
+        // Path with forward slashes
+        let res4 = parse_executable_info("D:/Games/Steam/steam.exe").expect("Should parse");
+        assert_eq!(res4.executable_name, "steam.exe");
+        assert_eq!(res4.display_name, "Steam");
+        assert_eq!(res4.executable_path, Some("D:/Games/Steam/steam.exe".to_string()));
+    }
+
+    #[test]
+    fn test_exe_validation() {
+        use curry_lib::settings::parse_executable_info;
+
+        // Valid .exe cases
+        assert!(parse_executable_info("app.exe").is_ok());
+        assert!(parse_executable_info("APP.EXE").is_ok());
+        assert!(parse_executable_info(r"C:\Windows\explorer.exe").is_ok());
+
+        // Invalid non-exe cases
+        assert!(parse_executable_info("").is_err());
+        assert!(parse_executable_info("   ").is_err());
+        assert!(parse_executable_info("image.png").is_err());
+        assert!(parse_executable_info("document.pdf").is_err());
+        assert!(parse_executable_info("script.bat").is_err());
+        assert!(parse_executable_info("folder/").is_err());
+    }
+
+    #[test]
+    fn test_case_insensitive_matching() {
+        use curry_lib::settings::ApplicationProfile;
+
+        let profile = ApplicationProfile::new("Discord", "Discord.exe")
+            .with_executable_path(r"C:\Program Files\Discord\Discord.exe");
+
+        // Match by exact executable name
+        assert!(profile.matches("Discord.exe"));
+        // Match by lowercase executable name
+        assert!(profile.matches("discord.exe"));
+        // Match by uppercase executable name
+        assert!(profile.matches("DISCORD.EXE"));
+        // Match without extension
+        assert!(profile.matches("discord"));
+        assert!(profile.matches("Discord"));
+        // Match by application name
+        assert!(profile.matches("DISCORD"));
+        // Match by full path
+        assert!(profile.matches(r"C:\Program Files\Discord\Discord.exe"));
+        assert!(profile.matches(r"c:\program files\discord\discord.exe"));
+
+        // Non-matching
+        assert!(!profile.matches("Spotify.exe"));
+        assert!(!profile.matches("DiscordHelper.exe"));
+    }
+
+    #[test]
+    fn test_duplicate_profile_detection() {
+        use curry_lib::settings::{is_duplicate_profile, ApplicationProfile};
+
+        let prof1 = ApplicationProfile::new("Discord", "Discord.exe");
+        let prof2 = ApplicationProfile::new("Steam", "steam.exe");
+        let profiles = vec![prof1.clone(), prof2];
+
+        // Duplicate checks (case-insensitive, with/without .exe)
+        assert!(is_duplicate_profile(&profiles, "Discord.exe", None));
+        assert!(is_duplicate_profile(&profiles, "discord.exe", None));
+        assert!(is_duplicate_profile(&profiles, "DISCORD.EXE", None));
+        assert!(is_duplicate_profile(&profiles, "discord", None));
+        assert!(is_duplicate_profile(&profiles, "STEAM.EXE", None));
+
+        // Non-duplicate checks
+        assert!(!is_duplicate_profile(&profiles, "Spotify.exe", None));
+        assert!(!is_duplicate_profile(&profiles, "notepad.exe", None));
+
+        // When editing existing profile, excluding its own ID allows saving same executable
+        assert!(!is_duplicate_profile(&profiles, "Discord.exe", Some(&prof1.id)));
+        assert!(!is_duplicate_profile(&profiles, "discord.exe", Some(&prof1.id)));
+    }
+
+    #[test]
+    fn test_legacy_profile_compatibility() {
+        use curry_lib::settings::ApplicationProfile;
+
+        // Legacy JSON without executablePath field
+        let legacy_json = r##"{
+            "id": "prof-legacy-1",
+            "applicationName": "Legacy Discord",
+            "executableName": "Discord.exe",
+            "enabled": true,
+            "color": "#5865F2"
+        }"##;
+
+        let profile: ApplicationProfile = serde_json::from_str(legacy_json)
+            .expect("Legacy JSON profile without executablePath must deserialize cleanly");
+
+        assert_eq!(profile.id, "prof-legacy-1");
+        assert_eq!(profile.application_name, "Legacy Discord");
+        assert_eq!(profile.executable_name, "Discord.exe");
+        assert_eq!(profile.executable_path, None);
+        assert!(profile.enabled);
+        assert_eq!(profile.color, Some("#5865F2".to_string()));
+    }
+
+    #[test]
+    fn test_optional_executable_path_compatibility() {
+        use curry_lib::settings::ApplicationProfile;
+
+        // Modern JSON with camelCase executablePath
+        let camel_json = r#"{
+            "id": "prof-modern-1",
+            "applicationName": "Modern Discord",
+            "executableName": "Discord.exe",
+            "executablePath": "C:\\Program Files\\Discord\\Discord.exe",
+            "enabled": true
+        }"#;
+
+        let prof_camel: ApplicationProfile = serde_json::from_str(camel_json)
+            .expect("Profile with camelCase executablePath must deserialize cleanly");
+        assert_eq!(
+            prof_camel.executable_path,
+            Some(r"C:\Program Files\Discord\Discord.exe".to_string())
+        );
+
+        // Modern JSON with snake_case executable_path
+        let snake_json = r#"{
+            "id": "prof-modern-2",
+            "applicationName": "Snake App",
+            "executableName": "app.exe",
+            "executable_path": "D:\\Apps\\app.exe",
+            "enabled": true
+        }"#;
+
+        let prof_snake: ApplicationProfile = serde_json::from_str(snake_json)
+            .expect("Profile with snake_case executable_path must deserialize cleanly");
+        assert_eq!(
+            prof_snake.executable_path,
+            Some(r"D:\Apps\app.exe".to_string())
+        );
+    }
+
+    #[test]
+    fn test_profile_serialization_deserialization_with_path() {
+        use curry_lib::settings::ApplicationProfile;
+
+        let original = ApplicationProfile::new("Steam", "steam.exe")
+            .with_executable_path(r"C:\Program Files (x86)\Steam\steam.exe");
+
+        let serialized = serde_json::to_string(&original).expect("Serialization failed");
+        assert!(serialized.contains("\"executablePath\":\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\""));
+
+        let deserialized: ApplicationProfile =
+            serde_json::from_str(&serialized).expect("Deserialization failed");
+
+        assert_eq!(original, deserialized);
+        assert_eq!(
+            deserialized.executable_path,
+            Some(r"C:\Program Files (x86)\Steam\steam.exe".to_string())
+        );
     }
 }

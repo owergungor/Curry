@@ -370,7 +370,25 @@ fn save_application_profile(
         .settings_storage()
         .ok_or_else(|| "Settings storage is not initialized".to_string())?;
 
+    let trimmed_exe = profile.executable_name.trim();
+    if trimmed_exe.is_empty() {
+        return Err("Executable name cannot be empty".to_string());
+    }
+
     let mut settings = storage.get();
+
+    // Check for duplicate profile by executable name (case-insensitive)
+    if crate::settings::is_duplicate_profile(
+        &settings.applications,
+        trimmed_exe,
+        Some(&profile.id),
+    ) {
+        return Err(format!(
+            "An application profile for {} already exists.",
+            trimmed_exe
+        ));
+    }
+
     if let Some(idx) = settings.applications.iter().position(|p| p.id == profile.id) {
         settings.applications[idx] = profile.clone();
     } else {
@@ -380,6 +398,35 @@ fn save_application_profile(
     let updated = storage.update(settings)?;
     let _ = app.emit("app-settings-updated", &updated);
     Ok(profile)
+}
+
+#[tauri::command]
+async fn pick_executable_file(
+    app: AppHandle,
+) -> Result<Option<crate::settings::ParsedExecutableInfo>, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let picked = app
+        .dialog()
+        .file()
+        .set_title("Select Application Executable")
+        .add_filter("Executable Files (*.exe)", &["exe"])
+        .add_filter("All Files (*.*)", &["*"])
+        .blocking_pick_file();
+
+    match picked {
+        Some(file_path) => {
+            let path_str = file_path.to_string();
+            let info = crate::settings::parse_executable_info(&path_str)?;
+            Ok(Some(info))
+        }
+        None => Ok(None),
+    }
+}
+
+#[tauri::command]
+fn parse_executable_path(path: String) -> Result<crate::settings::ParsedExecutableInfo, String> {
+    crate::settings::parse_executable_info(&path)
 }
 
 #[tauri::command]
@@ -481,6 +528,7 @@ pub fn run() {
     };
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::new())
         .setup(|app| {
             // Safely migrate any existing user data from NotiGlow to Curry
@@ -561,7 +609,9 @@ pub fn run() {
             save_application_profile,
             delete_application_profile,
             trigger_profile_preview,
-            get_fullscreen_state
+            get_fullscreen_state,
+            pick_executable_file,
+            parse_executable_path
         ]);
 
     if let Err(err) = app.run(tauri::generate_context!()) {

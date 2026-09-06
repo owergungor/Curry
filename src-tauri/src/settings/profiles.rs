@@ -18,6 +18,15 @@ pub struct ApplicationProfile {
     #[serde(alias = "executable_name", alias = "exe_name", alias = "executable")]
     pub executable_name: String,
 
+    /// Optional full path to the executable (e.g. "C:\Program Files\Discord\Discord.exe").
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "executable_path",
+        alias = "executablePath"
+    )]
+    pub executable_path: Option<String>,
+
     /// Whether this application profile is enabled. If false, glow is suppressed.
     #[serde(default = "default_true")]
     pub enabled: bool,
@@ -63,6 +72,96 @@ fn default_true() -> bool {
     true
 }
 
+/// Parsed and sanitized metadata from an executable path or filename.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParsedExecutableInfo {
+    pub display_name: String,
+    pub executable_name: String,
+    pub executable_path: Option<String>,
+}
+
+/// Parses an executable path or name, validates .exe extension, and derives a clean display name.
+pub fn parse_executable_info(input: &str) -> Result<ParsedExecutableInfo, String> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return Err("Executable path or name cannot be empty".to_string());
+    }
+
+    let path = std::path::Path::new(trimmed);
+    let filename = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| "Invalid executable path: unable to extract filename".to_string())?
+        .trim();
+
+    if filename.is_empty() {
+        return Err("Executable filename cannot be empty".to_string());
+    }
+
+    if !filename.to_lowercase().ends_with(".exe") {
+        return Err("Selected file must be a Windows executable (.exe)".to_string());
+    }
+
+    let clean_name = filename
+        .strip_suffix(".exe")
+        .or_else(|| filename.strip_suffix(".EXE"))
+        .unwrap_or(filename);
+
+    let display_name = format_display_name(clean_name);
+
+    let executable_path = if path.is_absolute() || trimmed.contains('\\') || trimmed.contains('/') {
+        Some(trimmed.to_string())
+    } else {
+        None
+    };
+
+    Ok(ParsedExecutableInfo {
+        display_name,
+        executable_name: filename.to_string(),
+        executable_path,
+    })
+}
+
+/// Formats a raw executable base name into a cleaner user-facing display name.
+pub fn format_display_name(raw_name: &str) -> String {
+    let cleaned = raw_name.replace(['_', '-'], " ");
+    let mut words = Vec::new();
+    for word in cleaned.split_whitespace() {
+        let mut chars = word.chars();
+        if let Some(first) = chars.next() {
+            let capitalized = format!("{}{}", first.to_uppercase(), chars.as_str());
+            words.push(capitalized);
+        }
+    }
+    if words.is_empty() {
+        raw_name.to_string()
+    } else {
+        words.join(" ")
+    }
+}
+
+/// Checks if an executable name is already used by another profile (case-insensitive).
+pub fn is_duplicate_profile(
+    profiles: &[ApplicationProfile],
+    executable_name: &str,
+    exclude_id: Option<&str>,
+) -> bool {
+    let target = executable_name.trim().to_lowercase();
+    let target_stripped = target.strip_suffix(".exe").unwrap_or(&target);
+
+    profiles.iter().any(|p| {
+        if let Some(id) = exclude_id {
+            if p.id == id {
+                return false;
+            }
+        }
+        let p_exe = p.executable_name.trim().to_lowercase();
+        let p_exe_stripped = p_exe.strip_suffix(".exe").unwrap_or(&p_exe);
+        p_exe == target || p_exe_stripped == target_stripped
+    })
+}
+
 impl ApplicationProfile {
     /// Creates a new profile with sanitized executable and display names.
     pub fn new(app_name: impl Into<String>, exe_name: impl Into<String>) -> Self {
@@ -77,6 +176,7 @@ impl ApplicationProfile {
             id,
             application_name: name,
             executable_name: exe,
+            executable_path: None,
             enabled: true,
             color: None,
             animation: None,
@@ -85,6 +185,12 @@ impl ApplicationProfile {
             monitor_target: None,
             suppress_in_fullscreen: None,
         }
+    }
+
+    /// Sets an optional full executable path on this profile.
+    pub fn with_executable_path(mut self, path: impl Into<String>) -> Self {
+        self.executable_path = Some(path.into());
+        self
     }
 
     /// Checks if this profile matches an incoming notification's app name or executable name.
@@ -105,10 +211,18 @@ impl ApplicationProfile {
             .strip_suffix(".exe")
             .unwrap_or(&exe_name_norm);
 
+        let path_matches = if let Some(ref path) = self.executable_path {
+            let path_norm = path.trim().to_lowercase();
+            path_norm == trimmed_query
+        } else {
+            false
+        };
+
         trimmed_query == app_name_norm
             || stripped_query == app_name_stripped
             || trimmed_query == exe_name_norm
             || stripped_query == exe_name_stripped
+            || path_matches
     }
 }
 
