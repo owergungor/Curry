@@ -307,10 +307,10 @@ For users upgrading from previous NotiGlow installations, Curry includes an auto
 ### Production Packages
 Production packages for Windows x64:
 
-- **Release Archive**: `Curry_1.1.0_win-x64.zip` (Standalone portable production binary)
+- **Release Archive**: `Curry_1.1_win-x64.zip` (Standalone portable production binary)
 - **Official GitHub Releases**: [github.com/owergungor/Curry/releases](https://github.com/owergungor/Curry/releases)
 
-Download `Curry_1.1.0_win-x64.zip`, extract it to your preferred location, and launch `curry.exe`. All application settings and profiles will be automatically created in `%APPDATA%\com.curry.app\`.
+Download `Curry_1.1_win-x64.zip`, extract it to your preferred location, and launch `curry.exe`. All application settings and profiles will be automatically created in `%APPDATA%\com.curry.app\`.
 
 ---
 
