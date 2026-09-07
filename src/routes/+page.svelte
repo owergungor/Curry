@@ -365,11 +365,11 @@
     const exeName = editingProfile.executableName.trim();
 
     if (!appName) {
-      profileActionError = "Application name is required.";
+      profileActionError = "App name is required.";
       return;
     }
     if (appName.length > 100) {
-      profileActionError = "Application name is too long (maximum 100 characters).";
+      profileActionError = "App name is too long (maximum 100 characters).";
       return;
     }
     if (!exeName) {
@@ -396,7 +396,7 @@
     });
 
     if (isDuplicate) {
-      profileActionError = `An application profile for ${exeName} already exists.`;
+      profileActionError = `An app profile for ${exeName} already exists.`;
       return;
     }
 
@@ -407,6 +407,7 @@
           applicationName: appName,
           executableName: exeName,
           executablePath: editingProfile.executablePath?.trim() || null,
+          animation: editingProfile.animation || "pulse",
         },
       });
 
@@ -419,7 +420,7 @@
 
       closeProfileModal();
     } catch (err) {
-      console.error("Failed to save application profile:", err);
+      console.error("Failed to save app profile:", err);
       profileActionError = String(err);
     }
   }
@@ -432,7 +433,7 @@
         closeProfileModal();
       }
     } catch (err) {
-      console.error("Failed to delete application profile:", err);
+      console.error("Failed to delete app profile:", err);
     }
   }
 
@@ -451,25 +452,43 @@
     }
   }
 
+  function normalizeAnimation(val?: string | null): string {
+    if (!val) return "pulse";
+    const lower = val.trim().toLowerCase();
+    if (["pulse", "sweep", "ambient", "comet", "ripple"].includes(lower)) {
+      return lower;
+    }
+    if (lower === "breathing" || lower === "solid") {
+      return "ambient";
+    }
+    return "pulse";
+  }
+
   async function previewProfileGlow(p: ApplicationProfile | null) {
     if (!p) return;
     isPreviewingProfile = true;
     try {
-      const durSec = p.duration ?? (appSettings.glow.duration_ms / 1000);
-      const durMs = Math.round(durSec * 1000);
-
-      await invoke("trigger_profile_preview", {
-        payload: {
+      let previewed = false;
+      if (p.id && p !== editingProfile) {
+        try {
+          await invoke("preview_application_glow", { profileId: p.id });
+          previewed = true;
+        } catch {
+          previewed = false;
+        }
+      }
+      if (!previewed) {
+        const durSec = p.duration ?? (appSettings.glow.duration_ms / 1000);
+        const durMs = Math.round(durSec * 1000);
+        await invoke("preview_glow", {
           color: p.color || appSettings.glow.color,
-          duration_ms: durMs,
+          animation: normalizeAnimation(p.animation) || normalizeAnimation(appSettings.glow.animation_style),
           intensity: p.intensity ?? appSettings.glow.intensity,
-          thickness: appSettings.glow.thickness,
-          corner_radius: appSettings.glow.corner_radius,
-          animation_style: p.animation || appSettings.glow.animation_style,
-          oled_mode: appSettings.oled_mode ?? false,
-        },
-        monitorTarget: p.monitorTarget || appSettings.glow.monitor_target,
-      });
+          duration: durSec,
+          durationMs: durMs,
+          monitorTarget: p.monitorTarget || appSettings.glow.monitor_target,
+        });
+      }
     } catch (err) {
       console.error("Failed to trigger profile preview:", err);
     } finally {
@@ -658,8 +677,7 @@
   async function previewGlow() {
     isPreviewingGlow = true;
     try {
-      await saveAppSettings();
-      await invoke("trigger_glow_preview");
+      await invoke("preview_global_glow");
     } catch (err) {
       console.error("Failed to trigger glow preview:", err);
     } finally {
@@ -904,13 +922,15 @@
         onclick={() => navigateToTab("applications")}
         onkeydown={(e) => handleTabKeyDown(e, "applications")}
         aria-current={activeTab === 'applications' ? 'page' : undefined}
+        aria-label="Apps"
+        title="Apps"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
           <rect x="2" y="3" width="20" height="14" rx="2"></rect>
           <line x1="8" y1="21" x2="16" y2="21"></line>
           <line x1="12" y1="17" x2="12" y2="21"></line>
         </svg>
-        <span>Applications</span>
+        <span>Apps</span>
         {#if applications.length > 0}
           <span class="nav-badge-pill">{applications.length}</span>
         {/if}
@@ -1304,7 +1324,7 @@
                   {#each filteredNotifications as item (item.id)}
                     <article class="notification-card {item.read ? 'is-read' : 'is-unread'} urgency-{item.urgency ?? 'normal'}">
                       <div class="card-avatar-col">
-                        <div class="card-avatar" title={item.app_name || item.source_app || "Application"}>
+                        <div class="card-avatar" title={item.app_name || item.source_app || "App"}>
                           {#if item.icon}
                             <img src={item.icon} alt={item.app_name} class="avatar-img" />
                           {:else}
@@ -1319,7 +1339,7 @@
                       <div class="card-body-col">
                         <div class="card-meta-line">
                           <div class="card-source-tags">
-                            <span class="card-source-name">{item.app_name || item.source_app || "Unknown Application"}</span>
+                            <span class="card-source-name">{item.app_name || item.source_app || "Unknown App"}</span>
                             <span class="platform-chip">{item.platform}</span>
                             {#if item.urgency}
                               <span class="urgency-chip {item.urgency}">{item.urgency}</span>
@@ -1389,7 +1409,7 @@
             <div class="view-hero-header view-header-row">
               <div>
                 <span class="hero-eyebrow">Per-App Customization</span>
-                <h2 class="view-title">Application Profiles</h2>
+                <h2 class="view-title">Apps</h2>
                 <p class="view-subtitle">Customize unique edge colors, animations, and fullscreen suppression rules for specific apps</p>
               </div>
 
@@ -1397,12 +1417,13 @@
                 id="add-application-btn"
                 class="primary-btn"
                 onclick={openAddProfileModal}
+                title="Add new app profile"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                <span>+ Add Application</span>
+                <span>+ Add App</span>
               </button>
             </div>
 
@@ -1415,7 +1436,7 @@
               <input
                 type="text"
                 bind:value={appSearchQuery}
-                placeholder="Search applications (e.g. Discord, Spotify, steam.exe)..."
+                placeholder="Search apps (e.g. Discord, Spotify, steam.exe)..."
                 class="app-search-input"
               />
               {#if appSearchQuery}
@@ -1436,10 +1457,10 @@
                       <line x1="12" y1="17" x2="12" y2="21"></line>
                     </svg>
                   </div>
-                  <h3>{appSearchQuery ? "No Matching Profiles" : "No application profiles yet"}</h3>
-                  <p>{appSearchQuery ? `No applications match "${appSearchQuery}".` : "Add an application to customize its notification glow."}</p>
+                  <h3>{appSearchQuery ? "No Matching Profiles" : "No apps configured yet"}</h3>
+                  <p>{appSearchQuery ? `No apps match "${appSearchQuery}".` : "Add an app to customize its notification glow."}</p>
                   <button class="primary-btn" onclick={openAddProfileModal}>
-                    <span>+ Add Application Profile</span>
+                    <span>+ Add App</span>
                   </button>
                 </div>
               {:else}
@@ -1493,7 +1514,7 @@
                       <button
                         class="icon-action-btn"
                         onclick={() => previewProfileGlow(profile)}
-                        title="Preview glow for this application"
+                        title="Preview glow for this app"
                         disabled={isPreviewingProfile}
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon {isPreviewingProfile ? 'pulse' : ''}">
@@ -1527,7 +1548,7 @@
                       <button
                         class="danger-icon-btn"
                         onclick={() => deleteProfile(profile.id)}
-                        title="Delete application profile"
+                        title="Delete app profile"
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
                           <polyline points="3 6 5 6 21 6"></polyline>
@@ -1846,7 +1867,7 @@
                   <div class="control-item">
                     <div class="control-label-group">
                       <span class="control-title">Fullscreen Behavior</span>
-                      <span class="control-sub">Overlay display behavior when games or fullscreen applications are active</span>
+                      <span class="control-sub">Overlay display behavior when games or fullscreen apps are active</span>
                     </div>
                     <select
                       bind:value={appSettings.fullscreen_behavior}
@@ -2238,9 +2259,9 @@
             </div>
             <div>
               <h3 id="profile-modal-title" class="modal-title">
-                {isCreatingNewProfile ? "Add Application Profile" : "Edit Application Profile"}
+                {isCreatingNewProfile ? "Add App Profile" : "Edit App Profile"}
               </h3>
-              <p class="modal-subtitle">Configure per-application illumination and suppression</p>
+              <p class="modal-subtitle">Configure per-app illumination and suppression</p>
             </div>
           </div>
           <button class="modal-close-btn" onclick={closeProfileModal} aria-label="Close dialog">✕</button>
@@ -2253,10 +2274,10 @@
         {/if}
 
         <div class="modal-body-form">
-          <div class="form-section-header">Application</div>
+          <div class="form-section-header">App Details</div>
 
           <div class="form-row">
-            <label class="form-label" for="prof-app-name">Application Name</label>
+            <label class="form-label" for="prof-app-name">App Name</label>
             <input
               id="prof-app-name"
               type="text"
@@ -2314,7 +2335,7 @@
           <div class="control-item modal-toggle-item">
             <div class="control-label-group">
               <span class="control-title">Enabled</span>
-              <span class="control-sub">Enable custom ambient glow for this application</span>
+              <span class="control-sub">Enable custom ambient glow for this app</span>
             </div>
             <button
               class="switch-control {editingProfile.enabled ? 'on' : 'off'}"
@@ -2490,6 +2511,7 @@
   :global(body) {
     margin: 0;
     padding: 0;
+    pointer-events: auto;
     background-color: #0b0f19;
     color: #f8fafc;
     font-family: "Segoe UI Variable Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;

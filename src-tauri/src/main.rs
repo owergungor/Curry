@@ -1704,4 +1704,215 @@ mod tests {
             Some(r"C:\Program Files (x86)\Steam\steam.exe".to_string())
         );
     }
+
+    #[test]
+    fn test_default_animation_is_pulse() {
+        use curry_lib::glow::model::{GlowAnimationStyle, GlowSettings};
+        assert_eq!(GlowAnimationStyle::default(), GlowAnimationStyle::Pulse);
+        assert_eq!(GlowSettings::default().animation_style, GlowAnimationStyle::Pulse);
+    }
+
+    #[test]
+    fn test_all_five_animations_and_legacy_compatibility() {
+        use curry_lib::glow::model::GlowAnimationStyle;
+
+        let styles = ["pulse", "sweep", "ambient", "comet", "ripple", "breathing", "solid"];
+        let expected = [
+            GlowAnimationStyle::Pulse,
+            GlowAnimationStyle::Sweep,
+            GlowAnimationStyle::Ambient,
+            GlowAnimationStyle::Comet,
+            GlowAnimationStyle::Ripple,
+            GlowAnimationStyle::Breathing,
+            GlowAnimationStyle::Solid,
+        ];
+
+        for (str_val, exp) in styles.iter().zip(expected.iter()) {
+            let json = format!("\"{}\"", str_val);
+            let parsed: GlowAnimationStyle = serde_json::from_str(&json).expect("Deserialization failed");
+            assert_eq!(&parsed, exp);
+        }
+
+        // Canonical mapping tests: legacy breathing/solid maps to ambient, active styles preserved
+        assert_eq!(GlowAnimationStyle::Breathing.canonical(), GlowAnimationStyle::Ambient);
+        assert_eq!(GlowAnimationStyle::Solid.canonical(), GlowAnimationStyle::Ambient);
+        assert_eq!(GlowAnimationStyle::Pulse.canonical(), GlowAnimationStyle::Pulse);
+        assert_eq!(GlowAnimationStyle::Sweep.canonical(), GlowAnimationStyle::Sweep);
+        assert_eq!(GlowAnimationStyle::Ambient.canonical(), GlowAnimationStyle::Ambient);
+        assert_eq!(GlowAnimationStyle::Comet.canonical(), GlowAnimationStyle::Comet);
+        assert_eq!(GlowAnimationStyle::Ripple.canonical(), GlowAnimationStyle::Ripple);
+    }
+
+    #[test]
+    fn test_preview_parameters_resolution_from_profile_and_globals() {
+        use curry_lib::glow::model::{GlowAnimationStyle, GlowSettings, MonitorTarget};
+        use curry_lib::settings::{resolve_glow_params, ApplicationProfile};
+
+        let global = GlowSettings {
+            enabled: true,
+            duration_ms: 2500,
+            intensity: 0.8,
+            thickness: 8,
+            corner_radius: 24,
+            animation_style: GlowAnimationStyle::Pulse,
+            monitor_target: MonitorTarget::Primary,
+            color: "#6366f1".to_string(),
+        };
+
+        let mut profile = ApplicationProfile::new("Discord", "Discord.exe");
+        profile.color = Some("#5865F2".to_string());
+        profile.animation = Some(GlowAnimationStyle::Comet);
+        profile.intensity = Some(0.95);
+        profile.duration = Some(3.5);
+        profile.monitor_target = Some(MonitorTarget::Active);
+
+        let resolved = resolve_glow_params(Some(&profile), &global, false, false);
+        assert_eq!(resolved.color, "#5865F2");
+        assert_eq!(resolved.animation_style, GlowAnimationStyle::Comet);
+        assert!((resolved.intensity - 0.95).abs() < f32::EPSILON);
+        assert_eq!(resolved.duration_ms, 3500);
+        assert_eq!(resolved.monitor_target, MonitorTarget::Active);
+    }
+
+    #[test]
+    fn test_preview_oled_safety_caps() {
+        use curry_lib::glow::model::{GlowAnimationStyle, GlowSettings};
+        use curry_lib::settings::{resolve_glow_params, ApplicationProfile};
+
+        let global = GlowSettings {
+            enabled: true,
+            duration_ms: 5000,
+            intensity: 0.9,
+            thickness: 16,
+            corner_radius: 24,
+            animation_style: GlowAnimationStyle::Ripple,
+            monitor_target: Default::default(),
+            color: "#ffffff".to_string(),
+        };
+
+        let mut profile = ApplicationProfile::new("OledApp", "oled.exe");
+        profile.intensity = Some(1.0);
+        profile.duration = Some(4.0);
+
+        let resolved = resolve_glow_params(Some(&profile), &global, true, false);
+        // Under OLED mode: intensity clamped to <= 0.60, duration capped at <= 2000, thickness halved
+        assert!(resolved.intensity <= 0.60);
+        assert!(resolved.duration_ms <= 2000);
+        assert_eq!(resolved.thickness, 8);
+        assert!(resolved.oled_mode);
+    }
+
+    #[test]
+    fn test_preview_does_not_record_notification_history() {
+        use curry_lib::notification::model::Notification;
+        use curry_lib::notification::storage::NotificationStorage;
+
+        let storage = NotificationStorage::new(10);
+        assert_eq!(storage.len(), 0);
+
+        // Preview operations bypass notification storage completely
+        // Only real notifications are stored
+        let notif = Notification::new_test("Discord", "Message", "Hello");
+        storage.add(notif);
+        assert_eq!(storage.len(), 1);
+    }
+
+    #[test]
+    fn test_existing_config_animation_not_overwritten() {
+        use curry_lib::settings::model::AppSettings;
+
+        let custom_json = r##"{
+            "enabled": true,
+            "startup_enabled": false,
+            "show_notifications": true,
+            "history_limit": 100,
+            "sound_enabled": false,
+            "glow": {
+                "enabled": true,
+                "duration_ms": 3000,
+                "intensity": 0.75,
+                "thickness": 10,
+                "corner_radius": 20,
+                "animation_style": "sweep",
+                "monitor_target": "all",
+                "color": "#ff0077"
+            }
+        }"##;
+
+        let settings: AppSettings = serde_json::from_str(custom_json).expect("Failed to deserialize existing settings");
+        assert_eq!(settings.glow.animation_style, curry_lib::glow::model::GlowAnimationStyle::Sweep);
+        assert_eq!(settings.glow.monitor_target, curry_lib::glow::model::MonitorTarget::All);
+        assert_eq!(settings.glow.color, "#ff0077");
+    }
+
+    #[test]
+    fn test_normalize_animation_cases_and_unknown() {
+        use curry_lib::glow::model::{normalize_animation, GlowAnimationStyle};
+
+        assert_eq!(normalize_animation("Pulse"), GlowAnimationStyle::Pulse);
+        assert_eq!(normalize_animation("PULSE"), GlowAnimationStyle::Pulse);
+        assert_eq!(normalize_animation("pulse"), GlowAnimationStyle::Pulse);
+        assert_eq!(normalize_animation("  pulse  "), GlowAnimationStyle::Pulse);
+        assert_eq!(normalize_animation("Sweep"), GlowAnimationStyle::Sweep);
+        assert_eq!(normalize_animation("Ambient"), GlowAnimationStyle::Ambient);
+        assert_eq!(normalize_animation("Comet"), GlowAnimationStyle::Comet);
+        assert_eq!(normalize_animation("Ripple"), GlowAnimationStyle::Ripple);
+        assert_eq!(normalize_animation("Breathing"), GlowAnimationStyle::Breathing);
+        assert_eq!(normalize_animation("Solid"), GlowAnimationStyle::Solid);
+        assert_eq!(normalize_animation("unknown_style"), GlowAnimationStyle::Pulse);
+        assert_eq!(normalize_animation(""), GlowAnimationStyle::Pulse);
+    }
+
+    #[test]
+    fn test_glow_preview_config_serialization() {
+        use curry_lib::glow::model::MonitorTarget;
+        use curry_lib::GlowPreviewConfig;
+
+        let config = GlowPreviewConfig {
+            color: Some("#ff0000".to_string()),
+            animation: Some("comet".to_string()),
+            intensity: Some(0.85),
+            duration: Some(3.0),
+            duration_ms: Some(3000),
+            monitor_target: Some(MonitorTarget::Primary),
+        };
+
+        let json = serde_json::to_string(&config).expect("Failed to serialize GlowPreviewConfig");
+        assert!(json.contains("\"color\":\"#ff0000\""));
+        assert!(json.contains("\"animation\":\"comet\""));
+        assert!(json.contains("\"intensity\":0.85"));
+
+        let deserialized: GlowPreviewConfig =
+            serde_json::from_str(&json).expect("Failed to deserialize GlowPreviewConfig");
+        assert_eq!(config, deserialized);
+    }
+
+    #[test]
+    fn test_missing_or_null_animation_deserializes_to_pulse() {
+        use curry_lib::glow::model::{GlowAnimationStyle, GlowSettings};
+
+        // Missing animation_style field completely
+        let json_missing = r##"{
+            "enabled": true,
+            "duration_ms": 2500,
+            "intensity": 0.8,
+            "thickness": 8,
+            "corner_radius": 24,
+            "monitor_target": "primary",
+            "color": "#6366f1"
+        }"##;
+
+        let settings_missing: GlowSettings = serde_json::from_str(json_missing).unwrap();
+        assert_eq!(settings_missing.animation_style, GlowAnimationStyle::Pulse);
+
+        // When deserializing directly to GlowAnimationStyle with null/empty:
+        let parsed_null: GlowAnimationStyle = serde_json::from_str("null").unwrap();
+        assert_eq!(parsed_null, GlowAnimationStyle::Pulse);
+
+        let parsed_empty: GlowAnimationStyle = serde_json::from_str("\"\"").unwrap();
+        assert_eq!(parsed_empty, GlowAnimationStyle::Pulse);
+
+        let parsed_invalid: GlowAnimationStyle = serde_json::from_str("\"invalid_anim\"").unwrap();
+        assert_eq!(parsed_invalid, GlowAnimationStyle::Pulse);
+    }
 }

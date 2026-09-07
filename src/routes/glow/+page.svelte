@@ -25,6 +25,11 @@
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   onMount(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.add("glow-window");
+      document.body.classList.add("glow-window");
+    }
+
     const unlistenPromise = listen<GlowPayload>("trigger-glow", (event) => {
       payload = event.payload;
       isGlowing = true;
@@ -38,6 +43,10 @@
     return () => {
       if (timer) clearTimeout(timer);
       unlistenPromise.then((unlisten) => unlisten());
+      if (typeof document !== "undefined") {
+        document.documentElement.classList.remove("glow-window");
+        document.body.classList.remove("glow-window");
+      }
     };
   });
 </script>
@@ -55,13 +64,12 @@
 </div>
 
 <style>
-  :global(html, body) {
+  :global(html.glow-window, body.glow-window) {
     margin: 0 !important;
     padding: 0 !important;
     background: transparent !important;
     overflow: hidden !important;
     user-select: none !important;
-    pointer-events: none !important;
     width: 100vw;
     height: 100vh;
   }

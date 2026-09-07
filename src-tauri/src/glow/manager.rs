@@ -191,28 +191,30 @@ impl GlowManager {
     }
 
     /// Dispatches the overlay presentation to the appropriate monitor target.
-    fn dispatch_overlay(&self, payload: &GlowPayload, target: &MonitorTarget) {
+    pub fn dispatch_overlay(&self, payload: &GlowPayload, target: &MonitorTarget) {
+        let gen = self.active_generation.fetch_add(1, Ordering::SeqCst) + 1;
+
         match target {
             MonitorTarget::Primary => {
-                if let Some(w) = self.app_handle.get_webview_window("glow-overlay") {
+                if let Some(w) = self.get_or_create_overlay("glow-overlay") {
                     if let Ok(Some(mon)) = w.primary_monitor() {
                         let _ = w.set_position(*mon.position());
                         let _ = w.set_size(*mon.size());
                     }
-                    self.present_overlay(&w, payload, payload.duration_ms);
+                    self.present_overlay(&w, payload, payload.duration_ms, gen);
                 }
             }
             MonitorTarget::Active => {
-                if let Some(w) = self.app_handle.get_webview_window("glow-overlay") {
+                if let Some(w) = self.get_or_create_overlay("glow-overlay") {
                     if let Some(mon) = find_active_monitor(&w) {
                         let _ = w.set_position(*mon.position());
                         let _ = w.set_size(*mon.size());
                     }
-                    self.present_overlay(&w, payload, payload.duration_ms);
+                    self.present_overlay(&w, payload, payload.duration_ms, gen);
                 }
             }
             MonitorTarget::Specific(target_name) => {
-                if let Some(w) = self.app_handle.get_webview_window("glow-overlay") {
+                if let Some(w) = self.get_or_create_overlay("glow-overlay") {
                     let matched = w.available_monitors().ok().and_then(|mons| {
                         mons.into_iter().find(|m| {
                             m.name()
@@ -224,19 +226,19 @@ impl GlowManager {
                         let _ = w.set_position(*mon.position());
                         let _ = w.set_size(*mon.size());
                     }
-                    self.present_overlay(&w, payload, payload.duration_ms);
+                    self.present_overlay(&w, payload, payload.duration_ms, gen);
                 }
             }
             MonitorTarget::All => {
-                let monitors = self
-                    .app_handle
-                    .get_webview_window("glow-overlay")
+                let overlay_w = self.get_or_create_overlay("glow-overlay");
+                let monitors = overlay_w
+                    .as_ref()
                     .and_then(|w| w.available_monitors().ok())
                     .unwrap_or_default();
 
                 if monitors.is_empty() {
-                    if let Some(w) = self.app_handle.get_webview_window("glow-overlay") {
-                        self.present_overlay(&w, payload, payload.duration_ms);
+                    if let Some(w) = overlay_w {
+                        self.present_overlay(&w, payload, payload.duration_ms, gen);
                     }
                 } else {
                     for (idx, mon) in monitors.into_iter().enumerate() {
@@ -246,28 +248,10 @@ impl GlowManager {
                             format!("glow-overlay-{}", idx)
                         };
 
-                        let window = if let Some(existing) =
-                            self.app_handle.get_webview_window(&win_label)
-                        {
-                            Some(existing)
-                        } else {
-                            let url = tauri::WebviewUrl::App("glow.html".into());
-                            tauri::WebviewWindowBuilder::new(&self.app_handle, &win_label, url)
-                                .title("Curry Overlay")
-                                .transparent(true)
-                                .decorations(false)
-                                .always_on_top(true)
-                                .skip_taskbar(true)
-                                .visible(false)
-                                .shadow(false)
-                                .build()
-                                .ok()
-                        };
-
-                        if let Some(w) = window {
+                        if let Some(w) = self.get_or_create_overlay(&win_label) {
                             let _ = w.set_position(*mon.position());
                             let _ = w.set_size(*mon.size());
-                            self.present_overlay(&w, payload, payload.duration_ms);
+                            self.present_overlay(&w, payload, payload.duration_ms, gen);
                         }
                     }
                 }
@@ -275,7 +259,26 @@ impl GlowManager {
         }
     }
 
-    fn present_overlay(&self, window: &WebviewWindow, payload: &GlowPayload, duration_ms: u64) {
+    /// Retrieves an existing overlay window by label or builds a new borderless transparent window.
+    fn get_or_create_overlay(&self, label: &str) -> Option<WebviewWindow> {
+        if let Some(existing) = self.app_handle.get_webview_window(label) {
+            Some(existing)
+        } else {
+            let url = tauri::WebviewUrl::App("glow.html".into());
+            tauri::WebviewWindowBuilder::new(&self.app_handle, label, url)
+                .title("Curry Overlay")
+                .transparent(true)
+                .decorations(false)
+                .always_on_top(true)
+                .skip_taskbar(true)
+                .visible(false)
+                .shadow(false)
+                .build()
+                .ok()
+        }
+    }
+
+    fn present_overlay(&self, window: &WebviewWindow, payload: &GlowPayload, duration_ms: u64, gen: u64) {
         let _ = window.set_ignore_cursor_events(true);
         let _ = window.set_always_on_top(true);
 
@@ -285,7 +288,6 @@ impl GlowManager {
         let _ = window.emit("trigger-glow", payload);
         let _ = window.show();
 
-        let gen = self.active_generation.fetch_add(1, Ordering::SeqCst) + 1;
         let gen_arc = Arc::clone(&self.active_generation);
         let window_clone = window.clone();
         let total_duration = std::time::Duration::from_millis(duration_ms + 400);

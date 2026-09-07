@@ -25,6 +25,21 @@ impl GlowAnimationStyle {
     }
 }
 
+/// Normalizes any animation name string (case-insensitive, trimmed, legacy, or unknown)
+/// into a valid GlowAnimationStyle with Pulse as the fallback.
+pub fn normalize_animation(value: &str) -> GlowAnimationStyle {
+    match value.trim().to_lowercase().as_str() {
+        "pulse" => GlowAnimationStyle::Pulse,
+        "sweep" => GlowAnimationStyle::Sweep,
+        "ambient" => GlowAnimationStyle::Ambient,
+        "comet" => GlowAnimationStyle::Comet,
+        "ripple" => GlowAnimationStyle::Ripple,
+        "breathing" => GlowAnimationStyle::Breathing,
+        "solid" => GlowAnimationStyle::Solid,
+        _ => GlowAnimationStyle::Pulse,
+    }
+}
+
 impl Default for GlowAnimationStyle {
     fn default() -> Self {
         Self::Pulse
@@ -36,16 +51,10 @@ impl<'de> Deserialize<'de> for GlowAnimationStyle {
     where
         D: serde::Deserializer<'de>,
     {
-        let s = String::deserialize(deserializer)?;
-        match s.to_lowercase().as_str() {
-            "pulse" => Ok(Self::Pulse),
-            "sweep" => Ok(Self::Sweep),
-            "ambient" => Ok(Self::Ambient),
-            "comet" => Ok(Self::Comet),
-            "ripple" => Ok(Self::Ripple),
-            "breathing" => Ok(Self::Breathing),
-            "solid" => Ok(Self::Solid),
-            _ => Ok(Self::Pulse),
+        let opt: Option<String> = Option::deserialize(deserializer)?;
+        match opt {
+            Some(s) => Ok(normalize_animation(&s)),
+            None => Ok(Self::Pulse),
         }
     }
 }

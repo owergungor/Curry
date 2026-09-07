@@ -5,6 +5,23 @@
     <link rel="icon" href="%sveltekit.assets%/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Curry</title>
+    <script>
+      (function () {
+        try {
+          var p = window.location.pathname;
+          if (p === "/glow.html" || p.endsWith("/glow.html")) {
+            window.history.replaceState(window.history.state, "", "/glow" + window.location.search + window.location.hash);
+          } else if (p === "/index.html" || p.endsWith("/index.html")) {
+            window.history.replaceState(window.history.state, "", "/" + window.location.search + window.location.hash);
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <style>
+      html, body {
+        pointer-events: auto;
+      }
+    </style>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

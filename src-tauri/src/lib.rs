@@ -339,14 +339,142 @@ fn update_glow_settings(state: State<'_, AppState>, settings: GlowSettings) -> R
     glow.update_settings(settings)
 }
 
-#[tauri::command]
-fn trigger_glow_preview(state: State<'_, AppState>) -> Result<(), String> {
+/// Unified configuration for screen-edge glow preview requests.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GlowPreviewConfig {
+    #[serde(default)]
+    pub color: Option<String>,
+    #[serde(default)]
+    pub animation: Option<String>,
+    #[serde(default)]
+    pub intensity: Option<f32>,
+    #[serde(default)]
+    pub duration: Option<f64>,
+    #[serde(default, alias = "duration_ms", alias = "durationMs")]
+    pub duration_ms: Option<u64>,
+    #[serde(default, alias = "monitor_target", alias = "monitorTarget")]
+    pub monitor_target: Option<crate::glow::model::MonitorTarget>,
+}
+
+/// Core execution helper for screen-edge preview rendering.
+pub fn execute_preview(state: &AppState, config: GlowPreviewConfig) -> Result<(), String> {
     let glow = state
         .glow_manager()
         .ok_or_else(|| "Glow manager is not initialized".to_string())?;
 
-    glow.trigger_glow(None);
+    let settings = glow.get_settings();
+    let oled_mode = state
+        .settings_storage()
+        .map(|s| s.get().oled_mode)
+        .unwrap_or(false);
+
+    let resolved_color = config
+        .color
+        .filter(|c| !c.trim().is_empty())
+        .unwrap_or(settings.color);
+
+    let animation_style = match config.animation.as_deref() {
+        Some(a) if !a.trim().is_empty() => crate::glow::model::normalize_animation(a),
+        _ => settings.animation_style,
+    };
+
+    let mut final_intensity = config.intensity.unwrap_or(settings.intensity).clamp(0.1, 1.0);
+    let mut final_thickness = settings.thickness.clamp(2, 32);
+    let mut final_duration_ms = config
+        .duration_ms
+        .unwrap_or_else(|| {
+            config
+                .duration
+                .map(|d| (d * 1000.0).round() as u64)
+                .unwrap_or(settings.duration_ms)
+        })
+        .clamp(200, 15_000);
+
+    if oled_mode {
+        final_intensity = final_intensity.min(0.60);
+        final_thickness = (final_thickness / 2).max(2);
+        final_duration_ms = final_duration_ms.min(2000);
+    }
+
+    let target = config.monitor_target.unwrap_or(settings.monitor_target);
+
+    let payload = crate::glow::model::GlowPayload {
+        color: resolved_color,
+        duration_ms: final_duration_ms,
+        intensity: final_intensity,
+        thickness: final_thickness,
+        corner_radius: settings.corner_radius,
+        animation_style,
+        oled_mode,
+    };
+
+    glow.trigger_payload_preview(payload, Some(target));
     Ok(())
+}
+
+#[tauri::command]
+fn preview_global_glow(state: State<'_, AppState>) -> Result<(), String> {
+    execute_preview(&state, GlowPreviewConfig::default())
+}
+
+#[tauri::command]
+fn preview_application_glow(state: State<'_, AppState>, profile_id: String) -> Result<(), String> {
+    let storage = state
+        .settings_storage()
+        .ok_or_else(|| "Settings storage is not initialized".to_string())?;
+
+    let settings = storage.get();
+    let profile = settings
+        .applications
+        .iter()
+        .find(|p| p.id == profile_id)
+        .ok_or_else(|| format!("Application profile with ID '{}' not found", profile_id))?;
+
+    let config = GlowPreviewConfig {
+        color: profile.color.clone(),
+        animation: profile.animation.map(|a| match a {
+            crate::glow::model::GlowAnimationStyle::Pulse => "pulse".to_string(),
+            crate::glow::model::GlowAnimationStyle::Sweep => "sweep".to_string(),
+            crate::glow::model::GlowAnimationStyle::Ambient => "ambient".to_string(),
+            crate::glow::model::GlowAnimationStyle::Comet => "comet".to_string(),
+            crate::glow::model::GlowAnimationStyle::Ripple => "ripple".to_string(),
+            crate::glow::model::GlowAnimationStyle::Breathing => "breathing".to_string(),
+            crate::glow::model::GlowAnimationStyle::Solid => "solid".to_string(),
+        }),
+        intensity: profile.intensity,
+        duration: profile.duration,
+        duration_ms: profile.duration.map(|d| (d * 1000.0).round() as u64),
+        monitor_target: profile.monitor_target.clone(),
+    };
+
+    execute_preview(&state, config)
+}
+
+#[tauri::command]
+fn preview_glow(
+    state: State<'_, AppState>,
+    color: Option<String>,
+    animation: Option<String>,
+    intensity: Option<f32>,
+    duration: Option<f64>,
+    duration_ms: Option<u64>,
+    monitor_target: Option<crate::glow::model::MonitorTarget>,
+) -> Result<(), String> {
+    let config = GlowPreviewConfig {
+        color,
+        animation,
+        intensity,
+        duration,
+        duration_ms,
+        monitor_target,
+    };
+    execute_preview(&state, config)
+}
+
+#[tauri::command]
+fn trigger_glow_preview(state: State<'_, AppState>) -> Result<(), String> {
+    preview_global_glow(state)
 }
 
 #[tauri::command]
@@ -561,6 +689,11 @@ pub fn run() {
                 eprintln!("[Curry] Failed to start notification provider: {}", err);
             }
 
+            // Ensure transparent glow-overlay ignores cursor events immediately on creation
+            if let Some(overlay) = app.get_webview_window("glow-overlay") {
+                let _ = overlay.set_ignore_cursor_events(true);
+            }
+
             tray::setup_tray(app.handle())?;
 
             // Autostart handling: if launched with --autostart, start hidden in system tray
@@ -605,6 +738,9 @@ pub fn run() {
             get_glow_settings,
             update_glow_settings,
             trigger_glow_preview,
+            preview_global_glow,
+            preview_application_glow,
+            preview_glow,
             get_application_profiles,
             save_application_profile,
             delete_application_profile,
