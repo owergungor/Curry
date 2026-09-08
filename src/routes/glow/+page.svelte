@@ -81,11 +81,11 @@
     opacity: 0;
     transition: opacity 0.25s ease-out;
     box-sizing: border-box;
-    will-change: opacity, filter;
   }
 
   .glow-viewport.active {
     opacity: 1;
+    will-change: opacity;
   }
 
   .glow-edge-inner {
@@ -100,6 +100,9 @@
       inset 0 0 calc(var(--glow-thickness) * 3) var(--glow-color),
       0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
     opacity: var(--glow-intensity);
+  }
+
+  .glow-viewport.active .glow-edge-inner {
     will-change: opacity, transform, filter;
   }
 
@@ -110,6 +113,9 @@
     pointer-events: none;
     box-sizing: border-box;
     opacity: 0;
+  }
+
+  .glow-viewport.active .glow-edge-accent {
     will-change: opacity, transform;
   }
 

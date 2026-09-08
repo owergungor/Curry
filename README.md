@@ -22,7 +22,7 @@
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline-success?style=flat-square" alt="100% Offline" />
-  <img src="https://img.shields.io/badge/Tests-70%20passed-brightgreen?style=flat-square" alt="Tests 70 passed" />
+  <img src="https://img.shields.io/badge/Tests-79%20passed-brightgreen?style=flat-square" alt="Tests 79 passed" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="MIT License" /></a>
 </p>
 

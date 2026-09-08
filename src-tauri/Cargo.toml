@@ -1,6 +1,6 @@
 [package]
 name = "curry"
-version = "1.1.0"
+version = "1.2.0"
 description = "Curry Desktop Application"
 authors = ["Curry Contributors"]
 edition = "2021"
@@ -32,4 +32,11 @@ features = [
     "Foundation_Collections",
     "ApplicationModel",
 ]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "unwind"
+strip = true
 

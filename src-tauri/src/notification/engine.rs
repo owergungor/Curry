@@ -160,13 +160,7 @@ impl NotificationEngine {
         }
 
         // Prevent duplicate entries in the storage list
-        let already_exists = self
-            .storage
-            .get_all()
-            .iter()
-            .any(|item| item.id == notification.id);
-
-        if already_exists {
+        if self.storage.contains_id(&notification.id) {
             return Ok(());
         }
 

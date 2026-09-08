@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2] - 2026-09-08
+
+### Added
+- **Zero-CPU Windows Notification Listener Synchronization**:
+  - Replaced busy-wait polling loop with `Condvar::wait_timeout(250ms)`. Thread sleeps at the OS level and unblocks immediately upon stop requests with zero wakeups/sec during idle periods.
+- **Zero-Allocation Notification Deduplication & Storage Lookup**:
+  - Implemented `contains_id(&self, id: &str) -> bool` on `NotificationStorage`, eliminating full `VecDeque<Notification>` clones during incoming toast ingestion.
+- **Visibility-Aware Frontend Background Polling**:
+  - Pauses periodic pipeline status checks when Curry is minimized or hidden in the system tray (`document.hidden`), immediately re-synchronizing on `visibilitychange`.
+- **GPU Compositor & Hardware Layer Scoping**:
+  - Scoped hardware compositing hints (`will-change`) strictly to `.glow-viewport.active`, releasing GPU VRAM compositor layers when no glow is displayed.
+- **Optimized Standalone Production Profile**:
+  - Configured `[profile.release]` with `opt-level = 3`, `lto = "thin"`, `codegen-units = 1`, `panic = "unwind"`, and `strip = true`, reducing executable size by 71.0% (from 24.0 MB to 6.96 MB).
+
+### Changed
+- Refactored notification counters in Dashboard to single-pass O(N) evaluation.
+- All user-facing features, 5 glow animation styles, profiles, multi-monitor modes, OLED burn-in protections, and fullscreen suppression logic strictly preserved without compromises.
+
+---
+
 ## [1.1] - 2026-09-06
 
 ### Added

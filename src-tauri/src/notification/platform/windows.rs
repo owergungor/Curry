@@ -1,5 +1,5 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 
 use super::{Deduplicator, NotificationCallback, NotificationError, NotificationProvider, ProviderStatus};
@@ -9,6 +9,7 @@ use crate::notification::model::{Notification, NotificationUrgency};
 pub struct WindowsNotificationProvider {
     status: Arc<Mutex<ProviderStatus>>,
     is_running: Arc<AtomicBool>,
+    stop_signal: Arc<(Mutex<bool>, Condvar)>,
     worker_handle: Option<JoinHandle<()>>,
 }
 
@@ -17,6 +18,7 @@ impl WindowsNotificationProvider {
         Self {
             status: Arc::new(Mutex::new(ProviderStatus::Idle)),
             is_running: Arc::new(AtomicBool::new(false)),
+            stop_signal: Arc::new((Mutex::new(false), Condvar::new())),
             worker_handle: None,
         }
     }
@@ -45,13 +47,18 @@ impl NotificationProvider for WindowsNotificationProvider {
         }
 
         self.is_running.store(true, Ordering::SeqCst);
+        if let Ok(mut stop_flag) = self.stop_signal.0.lock() {
+            *stop_flag = false;
+        }
+
         let is_running = Arc::clone(&self.is_running);
         let status = Arc::clone(&self.status);
+        let stop_signal = Arc::clone(&self.stop_signal);
 
         let handle = std::thread::Builder::new()
             .name("curry-win-listener".to_string())
             .spawn(move || {
-                run_windows_listener(is_running, status, callback);
+                run_windows_listener(is_running, status, stop_signal, callback);
             })
             .map_err(|err| NotificationError::ProviderError(format!("Failed to spawn worker thread: {}", err)))?;
 
@@ -71,6 +78,10 @@ impl NotificationProvider for WindowsNotificationProvider {
 
     fn stop(&mut self) -> Result<(), NotificationError> {
         self.is_running.store(false, Ordering::SeqCst);
+        if let Ok(mut stop_flag) = self.stop_signal.0.lock() {
+            *stop_flag = true;
+        }
+        self.stop_signal.1.notify_all();
 
         if let Some(handle) = self.worker_handle.take() {
             let _ = handle.join();
@@ -91,6 +102,7 @@ impl NotificationProvider for WindowsNotificationProvider {
 fn run_windows_listener(
     is_running: Arc<AtomicBool>,
     status: Arc<Mutex<ProviderStatus>>,
+    stop_signal: Arc<(Mutex<bool>, Condvar)>,
     callback: NotificationCallback,
 ) {
     use windows::UI::Notifications::Management::{
@@ -216,12 +228,13 @@ fn run_windows_listener(
             }
         }
 
-        // Sleep with fine-grained 10ms increments to stay promptly responsive to stop requests
-        for _ in 0..25 {
-            if !is_running.load(Ordering::SeqCst) {
+        // Zero-CPU wait: sleeps up to 250ms on Condvar, unblocks instantly on stop()
+        let (lock, cvar) = &*stop_signal;
+        if let Ok(guard) = lock.lock() {
+            if *guard || !is_running.load(Ordering::SeqCst) {
                 break;
             }
-            std::thread::sleep(std::time::Duration::from_millis(10));
+            let _ = cvar.wait_timeout(guard, std::time::Duration::from_millis(250));
         }
     }
 

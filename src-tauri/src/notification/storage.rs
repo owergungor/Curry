@@ -157,6 +157,16 @@ impl NotificationStorage {
         list.iter().cloned().collect()
     }
 
+    /// Checks if a notification exists by ID without cloning the entire storage.
+    pub fn contains_id(&self, id: &str) -> bool {
+        let list = match self.notifications.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+
+        list.iter().any(|item| item.id == id)
+    }
+
     /// Removes a notification by its unique ID. Returns `true` if an item was removed.
     pub fn remove(&self, id: &str) -> bool {
         let mut list = match self.notifications.lock() {

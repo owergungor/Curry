@@ -515,9 +515,21 @@
 
   // Derived Computed Values
   let statusInfo = $derived(getStatusLabel(pipelineStatus?.provider_status));
-  let unreadCount = $derived(notifications.filter((n) => !n.read).length);
-  let criticalCount = $derived(notifications.filter((n) => n.urgency === "critical").length);
-  let highCount = $derived(notifications.filter((n) => n.urgency === "high").length);
+  let notificationCounts = $derived.by(() => {
+    let unread = 0;
+    let critical = 0;
+    let high = 0;
+    for (let i = 0; i < notifications.length; i++) {
+      const n = notifications[i];
+      if (!n.read) unread++;
+      if (n.urgency === "critical") critical++;
+      else if (n.urgency === "high") high++;
+    }
+    return { unread, critical, high };
+  });
+  let unreadCount = $derived(notificationCounts.unread);
+  let criticalCount = $derived(notificationCounts.critical);
+  let highCount = $derived(notificationCounts.high);
   let filteredNotifications = $derived.by(() => {
     if (feedFilter === "unread") return notifications.filter((n) => !n.read);
     if (feedFilter === "critical") return notifications.filter((n) => n.urgency === "critical" || n.urgency === "high");
@@ -828,11 +840,25 @@
     });
 
     const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
       fetchPipelineStatus();
     }, 4000);
 
+    const handleVisibilityChange = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        fetchPipelineStatus();
+      }
+    };
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
+
     return () => {
       clearInterval(interval);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
       unlistenStatePromise.then((unlisten) => unlisten());
       unlistenSettingsPromise.then((unlisten) => unlisten());
       unlistenTraySettingsPromise.then((unlisten) => unlisten());
