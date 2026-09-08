@@ -618,10 +618,23 @@
   async function fetchAppSettings() {
     try {
       const s = await invoke<AppSettings>("get_app_settings");
-      appSettings = s;
-      isEnabled = s.enabled;
-      if (s.theme && THEMES.some((t) => t.id === s.theme)) {
-        selectedTheme = s.theme;
+      if (
+        appSettings.enabled !== s.enabled ||
+        appSettings.startup_enabled !== s.startup_enabled ||
+        appSettings.show_notifications !== s.show_notifications ||
+        appSettings.history_limit !== s.history_limit ||
+        appSettings.sound_enabled !== s.sound_enabled ||
+        appSettings.oled_mode !== s.oled_mode ||
+        appSettings.fullscreen_behavior !== s.fullscreen_behavior ||
+        appSettings.theme !== s.theme ||
+        JSON.stringify(appSettings.glow) !== JSON.stringify(s.glow) ||
+        JSON.stringify(appSettings.applications) !== JSON.stringify(s.applications)
+      ) {
+        appSettings = s;
+        isEnabled = s.enabled;
+        if (s.theme && THEMES.some((t) => t.id === s.theme)) {
+          selectedTheme = s.theme;
+        }
       }
     } catch (err) {
       console.error("Failed to fetch app settings:", err);
@@ -695,7 +708,16 @@
 
   async function fetchPipelineStatus() {
     try {
-      pipelineStatus = await invoke<PipelineStatus>("get_pipeline_status");
+      const nextStatus = await invoke<PipelineStatus>("get_pipeline_status");
+      if (
+        !pipelineStatus ||
+        pipelineStatus.captured_count !== nextStatus.captured_count ||
+        pipelineStatus.is_enabled !== nextStatus.is_enabled ||
+        pipelineStatus.provider_name !== nextStatus.provider_name ||
+        JSON.stringify(pipelineStatus.provider_status) !== JSON.stringify(nextStatus.provider_status)
+      ) {
+        pipelineStatus = nextStatus;
+      }
     } catch (err) {
       console.error("Failed to fetch pipeline status:", err);
     }
@@ -703,7 +725,13 @@
 
   async function fetchNotifications() {
     try {
-      notifications = await invoke<Notification[]>("get_notifications");
+      const list = await invoke<Notification[]>("get_notifications");
+      if (
+        notifications.length !== list.length ||
+        (list.length > 0 && notifications[0]?.id !== list[0]?.id)
+      ) {
+        notifications = list;
+      }
     } catch (err) {
       console.error("Failed to fetch stored notifications:", err);
     } finally {
@@ -836,8 +864,16 @@
       handleNewNotif(event.payload);
     });
 
-    const unlistenCreatedPromise = listen<Notification>("notification-created", (event) => {
-      handleNewNotif(event.payload);
+    let isWindowHiddenInTray = false;
+
+    const unlistenHiddenPromise = listen<void>("window-hidden-to-tray", () => {
+      isWindowHiddenInTray = true;
+    });
+
+    const unlistenRestoredPromise = listen<void>("window-restored", () => {
+      isWindowHiddenInTray = false;
+      fetchPipelineStatus();
+      fetchAppSettings();
     });
 
     const unlistenClearedPromise = listen<void>("notifications-cleared", () => {
@@ -865,12 +901,12 @@
     });
 
     const interval = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
+      if (isWindowHiddenInTray || (typeof document !== "undefined" && document.hidden)) return;
       fetchPipelineStatus();
     }, 4000);
 
     const handleVisibilityChange = () => {
-      if (typeof document !== "undefined" && !document.hidden) {
+      if (typeof document !== "undefined" && !document.hidden && !isWindowHiddenInTray) {
         fetchPipelineStatus();
       }
     };
@@ -888,7 +924,8 @@
       unlistenSettingsPromise.then((unlisten) => unlisten());
       unlistenTraySettingsPromise.then((unlisten) => unlisten());
       unlistenNotifPromise.then((unlisten) => unlisten());
-      unlistenCreatedPromise.then((unlisten) => unlisten());
+      unlistenHiddenPromise.then((unlisten) => unlisten());
+      unlistenRestoredPromise.then((unlisten) => unlisten());
       unlistenClearedPromise.then((unlisten) => unlisten());
       unlistenRemovedPromise.then((unlisten) => unlisten());
       unlistenReadPromise.then((unlisten) => unlisten());

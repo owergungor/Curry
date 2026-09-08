@@ -741,6 +741,7 @@ pub fn run() {
                 if window.label() == "main" {
                     api.prevent_close();
                     let _ = window.hide();
+                    let _ = window.emit("window-hidden-to-tray", ());
                 }
             }
         })
