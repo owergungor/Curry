@@ -674,7 +674,7 @@
     }
   }
 
-  async function previewGlow() {
+  async function previewDefaultGlow() {
     isPreviewingGlow = true;
     try {
       await invoke("preview_global_glow");
@@ -686,6 +686,8 @@
       }, 1000);
     }
   }
+
+  const previewGlow = previewDefaultGlow;
 
   async function confirmClearAll() {
     isClearing = true;
@@ -931,9 +933,6 @@
           <line x1="12" y1="17" x2="12" y2="21"></line>
         </svg>
         <span>Apps</span>
-        {#if applications.length > 0}
-          <span class="nav-badge-pill">{applications.length}</span>
-        {/if}
       </button>
 
       <button
@@ -964,7 +963,7 @@
       </button>
     </nav>
 
-    <!-- Right: Interactive Listening Status Button (Authoritative Listener State) -->
+    <!-- Right: Interactive Listening Status Button & Header Glow Button -->
     <div class="header-right">
       <button
         id="toggle-state-btn"
@@ -984,6 +983,20 @@
             {statusInfo.label}
           {/if}
         </span>
+      </button>
+
+      <button
+        id="header-glow-btn"
+        class="header-glow-btn"
+        onclick={previewDefaultGlow}
+        disabled={isPreviewingGlow || !appSettings.glow.enabled}
+        title="Preview default screen-edge glow"
+        aria-label="Preview default screen-edge glow"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-glow-icon {isPreviewingGlow ? 'pulse' : ''}">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+        <span>Glow</span>
       </button>
     </div>
   </header>
@@ -2943,11 +2956,62 @@
     line-height: 1.2;
   }
 
-  /* Right: Interactive Listening Status Button (Authoritative Toggle) */
+  /* Right: Interactive Listening Status Button & Header Glow Button */
   .header-right {
     display: flex;
     align-items: center;
+    gap: 8px;
     flex-shrink: 0;
+  }
+
+  .header-glow-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--surface-elevated);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .header-glow-btn:hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  }
+
+  .header-glow-btn:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  .header-glow-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .header-glow-icon {
+    width: 13px;
+    height: 13px;
+  }
+
+  .header-glow-icon.pulse {
+    animation: header-icon-pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes header-icon-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 0.8; }
   }
 
   .listening-toggle-btn {
