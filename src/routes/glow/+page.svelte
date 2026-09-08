@@ -79,12 +79,16 @@
     inset: 0;
     pointer-events: none;
     opacity: 0;
+    visibility: hidden;
+    content-visibility: hidden;
     transition: opacity 0.25s ease-out;
     box-sizing: border-box;
   }
 
   .glow-viewport.active {
     opacity: 1;
+    visibility: visible;
+    content-visibility: visible;
     will-change: opacity;
   }
 
