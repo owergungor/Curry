@@ -1,6 +1,6 @@
 {
   "name": "curry",
-  "version": "1.2",
+  "version": "1.2.0",
   "description": "Curry - Modern Windows desktop notification companion and ambient screen glow utility",
   "type": "module",
   "scripts": {
