@@ -47,6 +47,26 @@ pub struct ApplicationProfile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration: Option<f64>,
 
+    /// Optional per-app border thickness override (2 to 32 pixels). If None, uses global thickness.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "border_thickness",
+        alias = "borderThickness"
+    )]
+    pub border_thickness: Option<u32>,
+
+    /// Optional per-app corner rounding override (0 to 48 pixels). If None, uses global corner radius.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "corner_rounding",
+        alias = "cornerRounding",
+        alias = "corner_radius",
+        alias = "cornerRadius"
+    )]
+    pub corner_rounding: Option<u32>,
+
     /// Optional per-app monitor target override. If None, uses global monitor target.
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "monitor_target")]
     pub monitor_target: Option<MonitorTarget>,
@@ -182,6 +202,8 @@ impl ApplicationProfile {
             animation: None,
             intensity: None,
             duration: None,
+            border_thickness: None,
+            corner_rounding: None,
             monitor_target: None,
             suppress_in_fullscreen: None,
         }
@@ -190,6 +212,18 @@ impl ApplicationProfile {
     /// Sets an optional full executable path on this profile.
     pub fn with_executable_path(mut self, path: impl Into<String>) -> Self {
         self.executable_path = Some(path.into());
+        self
+    }
+
+    /// Sets an optional custom border thickness for this profile.
+    pub fn with_border_thickness(mut self, thickness: u32) -> Self {
+        self.border_thickness = Some(thickness);
+        self
+    }
+
+    /// Sets an optional custom corner rounding for this profile.
+    pub fn with_corner_rounding(mut self, rounding: u32) -> Self {
+        self.corner_rounding = Some(rounding);
         self
     }
 
@@ -257,8 +291,8 @@ pub fn resolve_glow_params(
                 animation_style: global.animation_style.canonical(),
                 intensity: 0.0,
                 duration_ms: 0,
-                thickness: global.thickness,
-                corner_radius: global.corner_radius,
+                thickness: prof.border_thickness.unwrap_or(global.thickness).clamp(2, 32),
+                corner_radius: prof.corner_rounding.unwrap_or(global.corner_radius).clamp(0, 48),
                 monitor_target: global.monitor_target.clone(),
                 suppress_in_fullscreen: true,
                 oled_mode,
@@ -293,7 +327,15 @@ pub fn resolve_glow_params(
     };
 
     let mut duration_ms = raw_duration_ms.clamp(500, 10_000);
-    let mut thickness = global.thickness.clamp(2, 32);
+    let raw_thickness = profile
+        .and_then(|p| p.border_thickness)
+        .unwrap_or(global.thickness);
+    let mut thickness = raw_thickness.clamp(2, 32);
+
+    let raw_corner_radius = profile
+        .and_then(|p| p.corner_rounding)
+        .unwrap_or(global.corner_radius);
+    let corner_radius = raw_corner_radius.clamp(0, 48);
 
     // OLED Mode Optimizations: cap intensity to 0.6 max, reduce thickness, cap duration to 2000ms
     if oled_mode {
@@ -318,7 +360,7 @@ pub fn resolve_glow_params(
         intensity,
         duration_ms,
         thickness,
-        corner_radius: global.corner_radius,
+        corner_radius,
         monitor_target,
         suppress_in_fullscreen,
         oled_mode,

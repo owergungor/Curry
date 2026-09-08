@@ -51,6 +51,8 @@
     animation?: "pulse" | "sweep" | "ambient" | "comet" | "ripple" | null;
     intensity?: number | null;
     duration?: number | null;
+    borderThickness?: number | null;
+    cornerRounding?: number | null;
     monitorTarget?: "primary" | "active" | "all" | string | null;
     suppressInFullscreen?: boolean | null;
   }
@@ -291,6 +293,8 @@
       animation: "pulse",
       intensity: appSettings.glow.intensity,
       duration: Math.round((appSettings.glow.duration_ms / 1000) * 10) / 10,
+      borderThickness: appSettings.glow.thickness,
+      cornerRounding: appSettings.glow.corner_radius,
       monitorTarget: appSettings.glow.monitor_target,
       suppressInFullscreen: false,
     };
@@ -307,6 +311,8 @@
       animation: p.animation ?? "pulse",
       intensity: p.intensity ?? appSettings.glow.intensity,
       duration: p.duration ?? Math.round((appSettings.glow.duration_ms / 1000) * 10) / 10,
+      borderThickness: p.borderThickness ?? appSettings.glow.thickness,
+      cornerRounding: p.cornerRounding ?? appSettings.glow.corner_radius,
       monitorTarget: p.monitorTarget ?? appSettings.glow.monitor_target,
       suppressInFullscreen: p.suppressInFullscreen ?? false,
     };
@@ -400,6 +406,21 @@
       return;
     }
 
+    if (editingProfile.borderThickness != null) {
+      const bt = Number(editingProfile.borderThickness);
+      if (isNaN(bt) || bt < 2 || bt > 32) {
+        profileActionError = "Border thickness must be between 2 and 32 px.";
+        return;
+      }
+    }
+    if (editingProfile.cornerRounding != null) {
+      const cr = Number(editingProfile.cornerRounding);
+      if (isNaN(cr) || cr < 0 || cr > 48) {
+        profileActionError = "Corner rounding must be between 0 and 48 px.";
+        return;
+      }
+    }
+
     try {
       const saved = await invoke<ApplicationProfile>("save_application_profile", {
         profile: {
@@ -408,6 +429,8 @@
           executableName: exeName,
           executablePath: editingProfile.executablePath?.trim() || null,
           animation: editingProfile.animation || "pulse",
+          borderThickness: editingProfile.borderThickness != null ? Number(editingProfile.borderThickness) : null,
+          cornerRounding: editingProfile.cornerRounding != null ? Number(editingProfile.cornerRounding) : null,
         },
       });
 
@@ -486,6 +509,8 @@
           intensity: p.intensity ?? appSettings.glow.intensity,
           duration: durSec,
           durationMs: durMs,
+          borderThickness: p.borderThickness != null ? Number(p.borderThickness) : appSettings.glow.thickness,
+          cornerRounding: p.cornerRounding != null ? Number(p.cornerRounding) : appSettings.glow.corner_radius,
           monitorTarget: p.monitorTarget || appSettings.glow.monitor_target,
         });
       }
@@ -542,7 +567,7 @@
     if (typeof st === "string") {
       switch (st) {
         case "listening":
-          return { label: "Listening", kind: "ok" };
+          return { label: "Active", kind: "ok" };
         case "permission_required":
           return { label: "Permission Required", kind: "warn" };
         case "permission_denied":
@@ -939,9 +964,6 @@
           <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
         </svg>
         <span>Notifications</span>
-        {#if unreadCount > 0}
-          <span class="nav-badge-pill">{unreadCount}</span>
-        {/if}
       </button>
 
       <button
@@ -1539,6 +1561,12 @@
                           </span>
                           {#if profile.suppressInFullscreen}
                             <span class="app-tag fs-suppressed">Fullscreen Suppressed</span>
+                          {/if}
+                          {#if profile.borderThickness != null}
+                            <span class="app-tag">{profile.borderThickness}px border</span>
+                          {/if}
+                          {#if profile.cornerRounding != null}
+                            <span class="app-tag">{profile.cornerRounding}px radius</span>
                           {/if}
                           {#if profile.monitorTarget && profile.monitorTarget !== 'primary'}
                             <span class="app-tag monitor">
@@ -2476,6 +2504,44 @@
                 class="native-slider"
               />
               <span class="slider-val-badge">{editingProfile.duration ?? 2.0}s</span>
+            </div>
+          </div>
+
+          <!-- Border Thickness Slider -->
+          <div class="form-row">
+            <div class="control-label-group">
+              <label class="form-label" for="prof-thickness">Border Thickness ({editingProfile.borderThickness ?? appSettings.glow.thickness}px)</label>
+            </div>
+            <div class="slider-box">
+              <input
+                id="prof-thickness"
+                type="range"
+                min="2"
+                max="32"
+                step="1"
+                bind:value={editingProfile.borderThickness}
+                class="native-slider"
+              />
+              <span class="slider-val-badge">{editingProfile.borderThickness ?? appSettings.glow.thickness}px</span>
+            </div>
+          </div>
+
+          <!-- Corner Rounding Slider -->
+          <div class="form-row">
+            <div class="control-label-group">
+              <label class="form-label" for="prof-rounding">Corner Rounding ({editingProfile.cornerRounding ?? appSettings.glow.corner_radius}px)</label>
+            </div>
+            <div class="slider-box">
+              <input
+                id="prof-rounding"
+                type="range"
+                min="0"
+                max="48"
+                step="2"
+                bind:value={editingProfile.cornerRounding}
+                class="native-slider"
+              />
+              <span class="slider-val-badge">{editingProfile.cornerRounding ?? appSettings.glow.corner_radius}px</span>
             </div>
           </div>
 

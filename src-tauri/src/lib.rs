@@ -353,6 +353,10 @@ pub struct GlowPreviewConfig {
     pub duration: Option<f64>,
     #[serde(default, alias = "duration_ms", alias = "durationMs")]
     pub duration_ms: Option<u64>,
+    #[serde(default, alias = "border_thickness", alias = "borderThickness")]
+    pub border_thickness: Option<u32>,
+    #[serde(default, alias = "corner_rounding", alias = "cornerRounding", alias = "corner_radius", alias = "cornerRadius")]
+    pub corner_rounding: Option<u32>,
     #[serde(default, alias = "monitor_target", alias = "monitorTarget")]
     pub monitor_target: Option<crate::glow::model::MonitorTarget>,
 }
@@ -380,7 +384,15 @@ pub fn execute_preview(state: &AppState, config: GlowPreviewConfig) -> Result<()
     };
 
     let mut final_intensity = config.intensity.unwrap_or(settings.intensity).clamp(0.1, 1.0);
-    let mut final_thickness = settings.thickness.clamp(2, 32);
+    let mut final_thickness = config
+        .border_thickness
+        .unwrap_or(settings.thickness)
+        .clamp(2, 32);
+    let final_corner_radius = config
+        .corner_rounding
+        .unwrap_or(settings.corner_radius)
+        .clamp(0, 48);
+
     let mut final_duration_ms = config
         .duration_ms
         .unwrap_or_else(|| {
@@ -404,7 +416,7 @@ pub fn execute_preview(state: &AppState, config: GlowPreviewConfig) -> Result<()
         duration_ms: final_duration_ms,
         intensity: final_intensity,
         thickness: final_thickness,
-        corner_radius: settings.corner_radius,
+        corner_radius: final_corner_radius,
         animation_style,
         oled_mode,
     };
@@ -445,6 +457,8 @@ fn preview_application_glow(state: State<'_, AppState>, profile_id: String) -> R
         intensity: profile.intensity,
         duration: profile.duration,
         duration_ms: profile.duration.map(|d| (d * 1000.0).round() as u64),
+        border_thickness: profile.border_thickness,
+        corner_rounding: profile.corner_rounding,
         monitor_target: profile.monitor_target.clone(),
     };
 
@@ -459,6 +473,8 @@ fn preview_glow(
     intensity: Option<f32>,
     duration: Option<f64>,
     duration_ms: Option<u64>,
+    border_thickness: Option<u32>,
+    corner_rounding: Option<u32>,
     monitor_target: Option<crate::glow::model::MonitorTarget>,
 ) -> Result<(), String> {
     let config = GlowPreviewConfig {
@@ -467,6 +483,8 @@ fn preview_glow(
         intensity,
         duration,
         duration_ms,
+        border_thickness,
+        corner_rounding,
         monitor_target,
     };
     execute_preview(&state, config)
@@ -501,6 +519,18 @@ fn save_application_profile(
     let trimmed_exe = profile.executable_name.trim();
     if trimmed_exe.is_empty() {
         return Err("Executable name cannot be empty".to_string());
+    }
+
+    if let Some(bt) = profile.border_thickness {
+        if !(2..=32).contains(&bt) {
+            return Err("Border thickness must be between 2 and 32 pixels".to_string());
+        }
+    }
+
+    if let Some(cr) = profile.corner_rounding {
+        if cr > 48 {
+            return Err("Corner rounding must be between 0 and 48 pixels".to_string());
+        }
     }
 
     let mut settings = storage.get();

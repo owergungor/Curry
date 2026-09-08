@@ -1150,6 +1150,8 @@ mod tests {
             animation: Some(GlowAnimationStyle::Comet),
             intensity: Some(0.85),
             duration: Some(2.5),
+            border_thickness: Some(14),
+            corner_rounding: Some(22),
             monitor_target: Some(MonitorTarget::Primary),
             suppress_in_fullscreen: Some(false),
         };
@@ -1161,7 +1163,72 @@ mod tests {
         assert!(json.contains("\"animation\":\"comet\""));
         assert!(json.contains("\"intensity\":0.85"));
         assert!(json.contains("\"duration\":2.5"));
+        assert!(json.contains("\"borderThickness\":14"));
+        assert!(json.contains("\"cornerRounding\":22"));
         assert!(json.contains("\"suppressInFullscreen\":false"));
+    }
+
+    #[test]
+    fn test_profile_border_thickness_and_corner_rounding_resolution() {
+        use curry_lib::glow::model::GlowSettings;
+        use curry_lib::settings::{resolve_glow_params, ApplicationProfile};
+
+        let mut profile = ApplicationProfile::new("Terminal", "wt.exe");
+        profile.border_thickness = Some(18);
+        profile.corner_rounding = Some(30);
+
+        let global = GlowSettings {
+            thickness: 8,
+            corner_radius: 12,
+            ..Default::default()
+        };
+
+        // Normal mode: profile overrides global
+        let resolved = resolve_glow_params(Some(&profile), &global, false, false);
+        assert_eq!(resolved.thickness, 18, "Border thickness must come from profile override");
+        assert_eq!(resolved.corner_radius, 30, "Corner rounding must come from profile override");
+
+        // OLED mode: profile thickness halved (18 / 2 = 9), corner radius unchanged
+        let resolved_oled = resolve_glow_params(Some(&profile), &global, true, false);
+        assert_eq!(resolved_oled.thickness, 9, "OLED mode should halve profile border thickness");
+        assert_eq!(resolved_oled.corner_radius, 30, "Corner rounding should be preserved in OLED mode");
+
+        // Fallback to global when profile does not specify
+        let empty_profile = ApplicationProfile::new("DefaultApp", "app.exe");
+        let resolved_fallback = resolve_glow_params(Some(&empty_profile), &global, false, false);
+        assert_eq!(resolved_fallback.thickness, 8, "Should fallback to global border thickness");
+        assert_eq!(resolved_fallback.corner_radius, 12, "Should fallback to global corner radius");
+    }
+
+    #[test]
+    fn test_profile_backward_compatibility_deserialization() {
+        use curry_lib::settings::ApplicationProfile;
+
+        // Legacy profile JSON without borderThickness or cornerRounding
+        let legacy_json = r##"{
+            "id": "prof-legacy",
+            "applicationName": "LegacyApp",
+            "executableName": "legacy.exe",
+            "enabled": true
+        }"##;
+
+        let profile: ApplicationProfile = serde_json::from_str(legacy_json).expect("Legacy profile must deserialize");
+        assert_eq!(profile.border_thickness, None, "Legacy profiles without thickness must be None");
+        assert_eq!(profile.corner_rounding, None, "Legacy profiles without rounding must be None");
+
+        // New profile JSON with camelCase fields
+        let new_json = r##"{
+            "id": "prof-new",
+            "applicationName": "NewApp",
+            "executableName": "new.exe",
+            "enabled": true,
+            "borderThickness": 15,
+            "cornerRounding": 25
+        }"##;
+
+        let new_profile: ApplicationProfile = serde_json::from_str(new_json).expect("New profile must deserialize");
+        assert_eq!(new_profile.border_thickness, Some(15));
+        assert_eq!(new_profile.corner_rounding, Some(25));
     }
 
     #[test]
@@ -1874,6 +1941,8 @@ mod tests {
             intensity: Some(0.85),
             duration: Some(3.0),
             duration_ms: Some(3000),
+            border_thickness: Some(16),
+            corner_rounding: Some(24),
             monitor_target: Some(MonitorTarget::Primary),
         };
 
@@ -1881,6 +1950,8 @@ mod tests {
         assert!(json.contains("\"color\":\"#ff0000\""));
         assert!(json.contains("\"animation\":\"comet\""));
         assert!(json.contains("\"intensity\":0.85"));
+        assert!(json.contains("\"borderThickness\":16"));
+        assert!(json.contains("\"cornerRounding\":24"));
 
         let deserialized: GlowPreviewConfig =
             serde_json::from_str(&json).expect("Failed to deserialize GlowPreviewConfig");
