@@ -130,7 +130,7 @@ impl NotificationEngine {
     /// Respects enabled status, dismissed ID suppression, duplicate checks,
     /// feed visibility preferences, and glow triggering.
     pub fn process_notification(&self, notification: Notification) -> Result<(), NotificationError> {
-        let settings = self.settings_storage.get().map(|s| s.get());
+        let settings = self.settings_storage.get().map(|s| s.get_arc());
         let is_active = self.is_enabled() && settings.as_ref().map(|s| s.enabled).unwrap_or(true);
 
         if !is_active {
@@ -172,8 +172,6 @@ impl NotificationEngine {
             self.app_handle
                 .emit("notification-received", &notification)
                 .map_err(|err| NotificationError::EmitFailed(err.to_string()))?;
-
-            let _ = self.app_handle.emit("notification-created", &notification);
         } else {
             self.captured_count.fetch_add(1, Ordering::SeqCst);
         }

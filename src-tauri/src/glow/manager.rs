@@ -95,8 +95,8 @@ impl GlowManager {
         let app_settings = self
             .settings_storage
             .get()
-            .map(|s| s.get())
-            .unwrap_or_default();
+            .map(|s| s.get_arc())
+            .unwrap_or_else(|| Arc::new(crate::settings::model::AppSettings::default()));
 
         let glow_settings = &app_settings.glow;
         if !glow_settings.enabled || !app_settings.enabled {
@@ -292,8 +292,8 @@ impl GlowManager {
         let window_clone = window.clone();
         let total_duration = std::time::Duration::from_millis(duration_ms + 400);
 
-        std::thread::spawn(move || {
-            std::thread::sleep(total_duration);
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(total_duration).await;
             if gen_arc.load(Ordering::SeqCst) == gen {
                 let _ = window_clone.hide();
             }

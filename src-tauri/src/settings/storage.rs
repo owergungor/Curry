@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager};
 
 use crate::settings::model::AppSettings;
@@ -8,7 +8,7 @@ use crate::settings::startup::StartupManager;
 
 /// Local JSON persistence and in-memory cache for AppSettings.
 pub struct SettingsStorage {
-    settings: Mutex<AppSettings>,
+    settings: Mutex<Arc<AppSettings>>,
     config_path: Option<PathBuf>,
 }
 
@@ -75,23 +75,28 @@ impl SettingsStorage {
         };
 
         Self {
-            settings: Mutex::new(initial_settings),
+            settings: Mutex::new(Arc::new(initial_settings)),
             config_path,
+        }
+    }
+
+    /// Gets an Arc reference to the current cached AppSettings (zero-copy).
+    pub fn get_arc(&self) -> Arc<AppSettings> {
+        match self.settings.lock() {
+            Ok(guard) => Arc::clone(&guard),
+            Err(poisoned) => Arc::clone(&poisoned.into_inner()),
         }
     }
 
     /// Gets a cloned snapshot of current AppSettings.
     pub fn get(&self) -> AppSettings {
-        match self.settings.lock() {
-            Ok(guard) => guard.clone(),
-            Err(poisoned) => poisoned.into_inner().clone(),
-        }
+        (*self.get_arc()).clone()
     }
 
     pub fn update(&self, new_settings: AppSettings) -> Result<AppSettings, String> {
         let sanitized = new_settings.sanitized();
-        let current = self.get();
-        if current == sanitized {
+        let current = self.get_arc();
+        if *current == sanitized {
             return Ok(sanitized);
         }
 
@@ -124,7 +129,7 @@ impl SettingsStorage {
         }
 
         if let Ok(mut guard) = self.settings.lock() {
-            *guard = sanitized.clone();
+            *guard = Arc::new(sanitized.clone());
         }
 
         Ok(sanitized)
