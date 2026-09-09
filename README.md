@@ -86,16 +86,22 @@ Windows notifications frequently slip into the Action Center unnoticed while you
 <div align="center">
 
 ### 📊 Dashboard
-> 📸 *Screenshots coming soon.*
+> <img width="1583" height="1338" alt="image" src="https://github.com/user-attachments/assets/d87a9463-1c53-4339-81ce-cc2ae3548b98" />
+
 
 ### 🔔 Notification History
-> 📸 *Screenshots coming soon.*
+> <img width="1587" height="1342" alt="image" src="https://github.com/user-attachments/assets/dc52f713-f6e3-4429-acdb-0d84f94db38e" />
+
 
 ### ✨ Ambient Glow & Application Profiles
-> 📸 *Screenshots coming soon.*
+> <img width="1585" height="1342" alt="image" src="https://github.com/user-attachments/assets/91b7a03f-2dcb-47dc-b335-ae2493910098" /> <img width="1587" height="1212" alt="image" src="https://github.com/user-attachments/assets/4d0ac293-1cb5-42af-9092-f09f56b61644" />
+
+
 
 ### 🎨 Themes
-> 📸 *Screenshots coming soon.*
+> <img width="1583" height="1211" alt="image" src="https://github.com/user-attachments/assets/b5370193-bd32-47bb-80bd-7e3b3ebdcefd" /> <img width="1585" height="1209" alt="image" src="https://github.com/user-attachments/assets/95985dee-6eac-4f86-9d70-40e67e9d2bb3" />
+
+
 
 </div>
 
