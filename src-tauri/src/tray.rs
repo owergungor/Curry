@@ -28,6 +28,12 @@ pub fn restore_main_window(app: &AppHandle) {
 
 /// Sets up the cross-platform system tray icon and native context menu.
 pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    // Duplicate initialization guard
+    if let Some(existing) = app.tray_by_id("curry-tray") {
+        let _ = existing.set_visible(true);
+        return Ok(());
+    }
+
     let state = app.state::<AppState>();
     let initial_enabled = state.is_enabled();
 
@@ -64,12 +70,16 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     // Store a reference to update the checkmark when toggled from frontend or IPC
     let _ = TRAY_TOGGLE_ITEM.set(toggle_item.clone());
 
-    let icon = app
-        .default_window_icon()
-        .cloned()
-        .ok_or("Default window icon not found in application bundle")?;
+    // Infallible icon resolution: try bundle icon, fallback to embedded icon binary bytes
+    let icon = if let Some(icon) = app.default_window_icon().cloned() {
+        icon
+    } else {
+        tauri::image::Image::from_bytes(include_bytes!("../icons/icon.ico"))
+            .or_else(|_| tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png")))
+            .map_err(|e| format!("Default window icon and embedded fallback failed: {}", e))?
+    };
 
-    let _tray = TrayIconBuilder::with_id("curry-tray")
+    let tray = TrayIconBuilder::with_id("curry-tray")
         .icon(icon)
         .menu(&menu)
         .tooltip("Curry")
@@ -112,6 +122,8 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             }
         })
         .build(app)?;
+
+    let _ = tray.set_visible(true);
 
     Ok(())
 }
