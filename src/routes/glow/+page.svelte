@@ -263,36 +263,64 @@
       border-top-color: var(--glow-color);
       border-right-color: transparent;
       border-bottom-color: transparent;
-      border-left-color: color-mix(in srgb, var(--glow-color) 40%, transparent);
-      box-shadow: 0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
+      border-left-color: color-mix(in srgb, var(--glow-color) 45%, transparent);
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2.2) var(--glow-color);
+    }
+    12.5% {
+      border-top-color: var(--glow-color);
+      border-right-color: color-mix(in srgb, var(--glow-color) 65%, transparent);
+      border-bottom-color: transparent;
+      border-left-color: transparent;
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2.2) var(--glow-color);
     }
     25% {
-      border-top-color: color-mix(in srgb, var(--glow-color) 40%, transparent);
+      border-top-color: color-mix(in srgb, var(--glow-color) 35%, transparent);
       border-right-color: var(--glow-color);
       border-bottom-color: transparent;
       border-left-color: transparent;
-      box-shadow: 0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2.2) var(--glow-color);
+    }
+    37.5% {
+      border-top-color: transparent;
+      border-right-color: var(--glow-color);
+      border-bottom-color: color-mix(in srgb, var(--glow-color) 65%, transparent);
+      border-left-color: transparent;
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2.2) var(--glow-color);
     }
     50% {
       border-top-color: transparent;
-      border-right-color: color-mix(in srgb, var(--glow-color) 40%, transparent);
+      border-right-color: color-mix(in srgb, var(--glow-color) 35%, transparent);
       border-bottom-color: var(--glow-color);
       border-left-color: transparent;
-      box-shadow: 0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2.2) var(--glow-color);
+    }
+    62.5% {
+      border-top-color: transparent;
+      border-right-color: transparent;
+      border-bottom-color: var(--glow-color);
+      border-left-color: color-mix(in srgb, var(--glow-color) 65%, transparent);
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2.2) var(--glow-color);
     }
     75% {
       border-top-color: transparent;
       border-right-color: transparent;
-      border-bottom-color: color-mix(in srgb, var(--glow-color) 40%, transparent);
+      border-bottom-color: color-mix(in srgb, var(--glow-color) 35%, transparent);
       border-left-color: var(--glow-color);
-      box-shadow: 0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2.2) var(--glow-color);
+    }
+    87.5% {
+      border-top-color: color-mix(in srgb, var(--glow-color) 65%, transparent);
+      border-right-color: transparent;
+      border-bottom-color: transparent;
+      border-left-color: var(--glow-color);
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2.2) var(--glow-color);
     }
     100% {
       border-top-color: var(--glow-color);
       border-right-color: transparent;
       border-bottom-color: transparent;
-      border-left-color: color-mix(in srgb, var(--glow-color) 40%, transparent);
-      box-shadow: 0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
+      border-left-color: color-mix(in srgb, var(--glow-color) 45%, transparent);
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2.2) var(--glow-color);
     }
   }
 

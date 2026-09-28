@@ -208,7 +208,7 @@
         updateAvailable = true;
         updateStatusMessage = `Curry v${update.version} is available!`;
       } else {
-        updateStatusMessage = "Curry v1.4 is up to date.";
+        updateStatusMessage = "Curry v1.5 is up to date.";
       }
     } catch (err: unknown) {
       updateStatusMessage = "Unable to reach update server (offline or rate-limited).";
@@ -2477,12 +2477,12 @@
                 <div class="controls-list">
                   <div class="control-item updater-row">
                     <div class="control-label-group">
-                      <span class="control-title">Curry v1.4</span>
+                      <span class="control-title">Curry v1.5</span>
                       <span class="control-sub">
                         {#if updateStatusMessage}
                           {updateStatusMessage}
                         {:else}
-                          Curry v1.4 is up to date.
+                          Curry v1.5 is up to date.
                         {/if}
                       </span>
                     </div>

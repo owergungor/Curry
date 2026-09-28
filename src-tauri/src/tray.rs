@@ -128,3 +128,17 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+/// Periodically asserts tray icon visibility during the initial application launch window,
+/// protecting against Windows Explorer startup lag or delayed taskbar initialization.
+pub fn ensure_tray_resilience(app: &AppHandle) {
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        for delay in [500, 1500, 3500, 6000] {
+            tokio::time::sleep(tokio::time::Duration::from_millis(delay)).await;
+            if let Some(tray) = handle.tray_by_id("curry-tray") {
+                let _ = tray.set_visible(true);
+            }
+        }
+    });
+}

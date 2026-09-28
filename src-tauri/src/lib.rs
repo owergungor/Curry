@@ -739,8 +739,9 @@ pub fn run() {
                 let _ = overlay.set_ignore_cursor_events(true);
             }
 
-            // 1. Guaranteed tray icon creation
+            // 1. Guaranteed tray icon creation and startup resilience
             tray::setup_tray(app.handle())?;
+            tray::ensure_tray_resilience(app.handle());
 
             // 2. Main window lifecycle
             let is_autostart = std::env::args().any(|arg| arg == "--autostart");
