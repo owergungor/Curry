@@ -2,10 +2,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 
-use super::{
-    Deduplicator, NotificationCallback, NotificationError, NotificationProvider, ProviderStatus,
-};
-use crate::notification::model::{Notification, NotificationUrgency};
+#[cfg(target_os = "windows")]
+use super::Deduplicator;
+use super::{NotificationCallback, NotificationError, NotificationProvider, ProviderStatus};
+#[cfg(target_os = "windows")]
+use crate::notification::model::Notification;
+use crate::notification::model::NotificationUrgency;
 
 /// Native Windows Notification Provider using WinRT `UserNotificationListener`.
 pub struct WindowsNotificationProvider {

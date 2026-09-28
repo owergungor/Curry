@@ -286,16 +286,18 @@ impl GlowManager {
             Some(existing)
         } else {
             let url = tauri::WebviewUrl::App("glow.html".into());
-            tauri::WebviewWindowBuilder::new(&self.app_handle, label, url)
+            let builder = tauri::WebviewWindowBuilder::new(&self.app_handle, label, url)
                 .title("Curry Overlay")
-                .transparent(true)
                 .decorations(false)
                 .always_on_top(true)
                 .skip_taskbar(true)
                 .visible(false)
-                .shadow(false)
-                .build()
-                .ok()
+                .shadow(false);
+
+            #[cfg(any(not(target_os = "macos"), feature = "macos-private-api"))]
+            let builder = builder.transparent(true);
+
+            builder.build().ok()
         }
     }
 

@@ -7,9 +7,13 @@
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
-    "frontendDist": "../build"
+    "frontendDist": "../build",
+    "windows": {
+      "staticVCRuntime": true
+    }
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "label": "main",
