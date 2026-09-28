@@ -77,3 +77,5 @@ profiles.json
 
 # Internal Development & Scratch Files
 scratch/
+release_artifacts/
+*.app/
