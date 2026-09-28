@@ -1,0 +1,131 @@
+name: Release Curry
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-mac:
+    name: Build macOS Apple Silicon (arm64)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Tauri macOS Apple Silicon App & DMG
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          npx tauri build --target aarch64-apple-darwin
+
+      - name: Stage and Package macOS Artifacts
+        run: |
+          mkdir -p dist_release
+          VERSION=${GITHUB_REF_NAME#v}
+          # Rename and package DMG
+          if compgen -G "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg" > /dev/null; then
+            cp src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg dist_release/Curry_${VERSION}_macos-arm64.dmg
+          fi
+          # Package .app bundle into zip
+          if [ -d "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app" ]; then
+            cd src-tauri/target/aarch64-apple-darwin/release/bundle/macos
+            zip -r ../../../../../dist_release/Curry_${VERSION}_macos-arm64.app.zip Curry.app
+            cd -
+          fi
+
+      - name: Upload macOS Release Assets
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist_release/Curry_*_macos-arm64.dmg
+            dist_release/Curry_*_macos-arm64.app.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-windows:
+    name: Build Windows x64
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Tauri Windows Binary
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          npx tauri build
+
+      - name: Stage and Package Windows Artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist_release -Force | Out-Null
+          $ver = $env:GITHUB_REF_NAME.TrimStart('v')
+          if ([string]::IsNullOrEmpty($ver)) { $ver = "1.4" }
+          
+          # Copy standalone exe
+          Copy-Item "src-tauri\target\release\curry.exe" "dist_release\Curry_${ver}_win-x64.exe"
+          
+          # Zip packaging
+          $stage = "dist_release\staging"
+          New-Item -ItemType Directory -Path $stage -Force | Out-Null
+          Copy-Item "src-tauri\target\release\curry.exe" "$stage\Curry.exe"
+          Compress-Archive -Path "$stage\*" -DestinationPath "dist_release\Curry_${ver}_win-x64.zip" -Force
+          Remove-Item -Recurse -Force $stage
+
+      - name: Upload Windows Release Assets
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist_release/Curry_*_win-x64.exe
+            dist_release/Curry_*_win-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

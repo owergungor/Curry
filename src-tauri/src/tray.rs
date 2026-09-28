@@ -81,6 +81,7 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     let tray = TrayIconBuilder::with_id("curry-tray")
         .icon(icon)
+        .icon_as_template(true)
         .menu(&menu)
         .tooltip("Curry")
         .show_menu_on_left_click(false)

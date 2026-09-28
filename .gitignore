@@ -7,6 +7,7 @@ node_modules/
 .svelte-kit/
 build/
 dist/
+dist_release/
 package/
 coverage/
 .nyc_output/
