@@ -209,6 +209,28 @@ impl NotificationStorage {
         }
     }
 
+    /// Marks all stored notifications as read in a single pass. Returns the number of notifications updated.
+    pub fn mark_all_as_read(&self) -> usize {
+        let mut list = match self.notifications.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+
+        let mut updated = 0;
+        for item in list.iter_mut() {
+            if !item.read {
+                item.read = true;
+                updated += 1;
+            }
+        }
+
+        if updated > 0 {
+            self.persist(&list);
+        }
+
+        updated
+    }
+
     /// Clears all stored notifications from memory and disk.
     pub fn clear(&self) {
         let mut list = match self.notifications.lock() {

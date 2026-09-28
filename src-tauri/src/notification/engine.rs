@@ -261,6 +261,11 @@ impl NotificationEngine {
         self.storage.clear();
     }
 
+    /// Marks all stored notifications as read. Returns the number of notifications updated.
+    pub fn mark_all_as_read(&self) -> usize {
+        self.storage.mark_all_as_read()
+    }
+
     /// Starts the underlying platform notification provider on its dedicated worker.
     pub fn start_listening(self: &Arc<Self>) -> Result<(), NotificationError> {
         let engine_clone = Arc::clone(self);
