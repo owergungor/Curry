@@ -1,5 +1,10 @@
 fn main() {
-    let windows_attrs = tauri_build::WindowsAttributes::new().static_vc_runtime(true);
-    let attrs = tauri_build::Attributes::new().windows_attributes(windows_attrs);
-    tauri_build::try_build(attrs).expect("failed to run build script");
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    if target_os == "windows" {
+        let windows_attrs = tauri_build::WindowsAttributes::new().static_vc_runtime(true);
+        let attrs = tauri_build::Attributes::new().windows_attributes(windows_attrs);
+        tauri_build::try_build(attrs).expect("failed to run build script");
+    } else {
+        tauri_build::build();
+    }
 }

@@ -45,6 +45,18 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            unset APPLE_CERTIFICATE
+            unset APPLE_CERTIFICATE_PASSWORD
+            unset APPLE_SIGNING_IDENTITY
+            unset APPLE_ID
+            unset APPLE_PASSWORD
+            unset APPLE_TEAM_ID
+          fi
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            unset TAURI_SIGNING_PRIVATE_KEY
+            unset TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+          fi
           npx tauri build --target aarch64-apple-darwin
 
       - name: Stage and Package macOS Artifacts
@@ -61,7 +73,7 @@ jobs:
           # Verify architecture and package .app bundle into zip
           if [ -d "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app" ]; then
             cd src-tauri/target/aarch64-apple-darwin/release/bundle/macos
-            file Curry.app/Contents/MacOS/Curry
+            file Curry.app/Contents/MacOS/*
             zip -r ../../../../../dist_release/Curry_${TAG_NAME}_mac-arm64.app.zip Curry.app
             cd -
           fi
