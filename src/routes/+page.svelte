@@ -3,6 +3,11 @@
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { THEMES, DEFAULT_THEME, type ThemeId, getThemeGlowPalette } from "$lib/themes";
+  import Dropdown, { type DropdownItem } from "$lib/Dropdown.svelte";
+  import Skeleton from "$lib/Skeleton.svelte";
+  import AppearanceTabs, { type Appearance } from "$lib/AppearanceTabs.svelte";
+  import ColorPicker from "$lib/ColorPicker.svelte";
+  import { check as checkUpdate } from "@tauri-apps/plugin-updater";
 
   interface ConnectionInfo {
     connected: boolean;
@@ -71,6 +76,7 @@
     sound_enabled: boolean;
     glow: GlowSettings;
     theme?: ThemeId;
+    appearance?: Appearance;
     applications?: ApplicationProfile[];
     oled_mode?: boolean;
     fullscreen_behavior?: "always_show" | "suppress_in_fullscreen" | "suppress_gaming";
@@ -90,6 +96,26 @@
     captured_count: number;
     is_enabled: boolean;
   }
+
+  const GLOW_ANIMATION_OPTIONS: DropdownItem[] = [
+    { value: "pulse", label: "Pulse", description: "Periodic rhythmic pulse" },
+    { value: "sweep", label: "Sweep", description: "Dynamic continuous perimeter travel" },
+    { value: "ambient", label: "Ambient", description: "Harmonic low-frequency border glow" },
+    { value: "comet", label: "Comet", description: "High-intensity orbiting segment with fading tail" },
+    { value: "ripple", label: "Ripple", description: "Expanding wave radiating outward" },
+  ];
+
+  const MONITOR_TARGET_OPTIONS: DropdownItem[] = [
+    { value: "primary", label: "Primary Display", description: "Target primary desktop screen" },
+    { value: "active", label: "Active Window Display", description: "Target monitor with current cursor/active window" },
+    { value: "all", label: "All Displays", description: "Simultaneous ambient glow across all monitors" },
+  ];
+
+  const FULLSCREEN_BEHAVIOR_OPTIONS: DropdownItem[] = [
+    { value: "always_show", label: "Always Show", description: "Display overlay even during fullscreen" },
+    { value: "suppress_in_fullscreen", label: "Suppress in Fullscreen", description: "Hide overlay during fullscreen windows" },
+    { value: "suppress_gaming", label: "Suppress Gaming", description: "Automatically suppress during gaming & fullscreen" },
+  ];
 
   function getAppInitial(name: string | undefined): string {
     if (!name || !name.trim()) return "N";
@@ -112,6 +138,39 @@
   let selectedTheme = $state<ThemeId>(DEFAULT_THEME);
   let currentGlowPalette = $derived(getThemeGlowPalette(selectedTheme));
 
+  // Appearance Management (System / Light / Dark)
+  let appearance = $state<Appearance>("system");
+  let osPrefersDark = $state(true);
+
+  let effectiveAppearance = $derived(
+    appearance === "system" ? (osPrefersDark ? "dark" : "light") : appearance
+  );
+
+  $effect(() => {
+    if (typeof window !== "undefined") {
+      const mql = window.matchMedia("(prefers-color-scheme: dark)");
+      osPrefersDark = mql.matches;
+      const handler = (e: MediaQueryListEvent) => {
+        osPrefersDark = e.matches;
+      };
+      mql.addEventListener("change", handler);
+      return () => mql.removeEventListener("change", handler);
+    }
+  });
+
+  $effect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-appearance", effectiveAppearance);
+      document.body.setAttribute("data-appearance", effectiveAppearance);
+    }
+  });
+
+  function handleAppearanceChange(newVal: Appearance) {
+    appearance = newVal;
+    appSettings.appearance = newVal;
+    saveAppSettings();
+  }
+
   function selectTheme(themeId: ThemeId) {
     selectedTheme = themeId;
     appSettings.theme = themeId;
@@ -129,6 +188,97 @@
       document.body.setAttribute("data-theme", selectedTheme);
     }
   });
+
+  // Software Update Management
+  let isCheckingUpdate = $state(false);
+  let isInstallingUpdate = $state(false);
+  let updateStatusMessage = $state<string | null>(null);
+  let updateAvailable = $state(false);
+  let pendingUpdateObj = $state<any>(null);
+
+  async function checkForUpdatesManually() {
+    if (isCheckingUpdate || isInstallingUpdate) return;
+    isCheckingUpdate = true;
+    updateStatusMessage = null;
+    updateAvailable = false;
+    try {
+      const update = await checkUpdate();
+      if (update && update.available) {
+        pendingUpdateObj = update;
+        updateAvailable = true;
+        updateStatusMessage = `Curry v${update.version} is available!`;
+      } else {
+        updateStatusMessage = "Curry v1.4 is up to date.";
+      }
+    } catch (err: unknown) {
+      updateStatusMessage = "Unable to reach update server (offline or rate-limited).";
+    } finally {
+      isCheckingUpdate = false;
+    }
+  }
+
+  async function installUpdate() {
+    if (!pendingUpdateObj || isInstallingUpdate) return;
+    isInstallingUpdate = true;
+    try {
+      updateStatusMessage = "Downloading and installing update...";
+      await pendingUpdateObj.downloadAndInstall();
+      updateStatusMessage = "Update installed! Restarting Curry...";
+    } catch (err: unknown) {
+      updateStatusMessage = "Update installation failed: " + (err instanceof Error ? err.message : String(err));
+    } finally {
+      isInstallingUpdate = false;
+    }
+  }
+
+  // Mark all notifications as read
+  let isMarkingAllRead = $state(false);
+  async function markAllNotificationsAsRead() {
+    if (isMarkingAllRead || unreadCount === 0) return;
+    isMarkingAllRead = true;
+    try {
+      notifications = notifications.map((n) => ({ ...n, read: true }));
+      await invoke("mark_all_notifications_as_read");
+    } catch (err) {
+      console.error("Failed to mark all notifications as read:", err);
+      await fetchNotifications();
+    } finally {
+      isMarkingAllRead = false;
+    }
+  }
+
+  const ANIMATION_OPTIONS: DropdownItem[] = [
+    { value: "pulse", label: "Pulse", description: "Periodic rhythmic pulse" },
+    { value: "sweep", label: "Sweep", description: "Dynamic continuous perimeter travel" },
+    { value: "ambient", label: "Ambient", description: "Harmonic low-frequency border glow" },
+    { value: "comet", label: "Comet", description: "High-intensity moving segment with fading tail" },
+    { value: "ripple", label: "Ripple", description: "Expanding wave radiating outward" },
+  ];
+
+  const MONITOR_OPTIONS: DropdownItem[] = [
+    { value: "primary", label: "Primary Display", description: "Render on primary monitor only" },
+    { value: "active", label: "Active Window Display", description: "Follow foreground window monitor" },
+    { value: "all", label: "All Displays", description: "Simultaneous illumination on all displays" },
+  ];
+
+  const FULLSCREEN_OPTIONS: DropdownItem[] = [
+    { value: "always_show", label: "Always Show", description: "Display overlay even during fullscreen" },
+    { value: "suppress_in_fullscreen", label: "Suppress in Fullscreen", description: "Hide overlay during fullscreen windows" },
+    { value: "suppress_gaming", label: "Suppress Gaming", description: "Automatically suppress during gaming & fullscreen" },
+  ];
+
+  // Loading and skeleton state
+  let showNotificationsSkeleton = $state(false);
+
+  // Throttled pipeline status fetch during bursts
+  let pipelineThrottleTimer: ReturnType<typeof setTimeout> | null = null;
+  function schedulePipelineStatusFetch() {
+    if (pipelineThrottleTimer) return;
+    pipelineThrottleTimer = setTimeout(() => {
+      pipelineThrottleTimer = null;
+      fetchPipelineStatus();
+    }, 400);
+  }
 
   type TabKey = "dashboard" | "notifications" | "applications" | "glow" | "settings";
 
@@ -724,6 +874,13 @@
   }
 
   async function fetchNotifications() {
+    isNotificationsLoading = true;
+    const skeletonTimer = setTimeout(() => {
+      if (isNotificationsLoading) {
+        showNotificationsSkeleton = true;
+      }
+    }, 120);
+
     try {
       const list = await invoke<Notification[]>("get_notifications");
       if (
@@ -735,7 +892,9 @@
     } catch (err) {
       console.error("Failed to fetch stored notifications:", err);
     } finally {
+      clearTimeout(skeletonTimer);
       isNotificationsLoading = false;
+      showNotificationsSkeleton = false;
     }
   }
 
@@ -954,7 +1113,7 @@
   }}
 />
 
-<div class="shell" data-theme={selectedTheme}>
+<div class="shell" data-theme={selectedTheme} data-appearance={effectiveAppearance}>
   <div class="ambient-glow-mesh" aria-hidden="true"></div>
 
   <!-- Windows 11 Desktop Top Header (Brand + Top Nav Tabs + Authoritative Listening Status) -->
@@ -971,7 +1130,7 @@
       </div>
     </div>
 
-    <!-- Center Top Navigation Tabs -->
+    <!-- Center Top Navigation Tabs (Glow Menu Style - Static Text Only) -->
     <nav class="header-center-tabs" aria-label="Main Navigation">
       <button
         id="tab-dashboard-btn"
@@ -980,13 +1139,14 @@
         onkeydown={(e) => handleTabKeyDown(e, "dashboard")}
         aria-current={activeTab === 'dashboard' ? 'page' : undefined}
       >
+        <span class="nav-tab-glow" aria-hidden="true"></span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
           <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
           <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
           <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
           <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
         </svg>
-        <span>Dashboard</span>
+        <span class="nav-label">Dashboard</span>
       </button>
 
       <button
@@ -996,11 +1156,15 @@
         onkeydown={(e) => handleTabKeyDown(e, "notifications")}
         aria-current={activeTab === 'notifications' ? 'page' : undefined}
       >
+        <span class="nav-tab-glow" aria-hidden="true"></span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
         </svg>
-        <span>Notifications</span>
+        <span class="nav-label">Notifications</span>
+        {#if unreadCount > 0}
+          <span class="nav-badge">{unreadCount}</span>
+        {/if}
       </button>
 
       <button
@@ -1012,12 +1176,13 @@
         aria-label="Apps"
         title="Apps"
       >
+        <span class="nav-tab-glow" aria-hidden="true"></span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
           <rect x="2" y="3" width="20" height="14" rx="2"></rect>
           <line x1="8" y1="21" x2="16" y2="21"></line>
           <line x1="12" y1="17" x2="12" y2="21"></line>
         </svg>
-        <span>Apps</span>
+        <span class="nav-label">Apps</span>
       </button>
 
       <button
@@ -1027,10 +1192,11 @@
         onkeydown={(e) => handleTabKeyDown(e, "glow")}
         aria-current={activeTab === 'glow' ? 'page' : undefined}
       >
+        <span class="nav-tab-glow" aria-hidden="true"></span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
         </svg>
-        <span>Glow</span>
+        <span class="nav-label">Glow</span>
       </button>
 
       <button
@@ -1040,11 +1206,12 @@
         onkeydown={(e) => handleTabKeyDown(e, "settings")}
         aria-current={activeTab === 'settings' ? 'page' : undefined}
       >
+        <span class="nav-tab-glow" aria-hidden="true"></span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
           <circle cx="12" cy="12" r="3"></circle>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
-        <span>Settings</span>
+        <span class="nav-label">Settings</span>
       </button>
     </nav>
 
@@ -1353,6 +1520,21 @@
                   </button>
                 </div>
 
+                <!-- Mark All as Read Button -->
+                <button
+                  id="mark-all-read-btn"
+                  class="secondary-btn"
+                  onclick={markAllNotificationsAsRead}
+                  disabled={unreadCount === 0 || isMarkingAllRead}
+                  aria-label="Mark all notifications as read"
+                  title="Mark all notifications as read"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span>{isMarkingAllRead ? "Marking..." : "Mark All as Read"}</span>
+                </button>
+
                 <!-- Clear All Button -->
                 <button
                   id="clear-all-btn"
@@ -1379,15 +1561,21 @@
 
             <!-- Notification Cards List -->
             <div class="notification-feed-list" role="feed" aria-label="Notification list">
-              {#if isNotificationsLoading}
-                <div class="empty-state-panel">
-                  <div class="empty-icon-ring spin">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <circle cx="12" cy="12" r="9" stroke-dasharray="14 14"></circle>
-                    </svg>
-                  </div>
-                  <h4 class="empty-heading">Loading local history...</h4>
-                  <p class="empty-paragraph">Retrieving persisted records from disk.</p>
+              {#if showNotificationsSkeleton}
+                <div class="cards-stack">
+                  {#each [1, 2, 3] as _sId}
+                    <div class="notification-card-skeleton">
+                      <Skeleton width="40px" height="40px" borderRadius="10px" />
+                      <div class="skeleton-content-col">
+                        <div class="skeleton-row-top">
+                          <Skeleton width="110px" height="13px" borderRadius="4px" />
+                          <Skeleton width="60px" height="13px" borderRadius="4px" />
+                        </div>
+                        <Skeleton width="60%" height="16px" borderRadius="4px" />
+                        <Skeleton width="88%" height="13px" borderRadius="4px" />
+                      </div>
+                    </div>
+                  {/each}
                 </div>
               {:else if filteredNotifications.length === 0}
                 <div class="empty-state-panel">
@@ -1735,17 +1923,16 @@
                       <span class="control-title">Animation Dynamic</span>
                       <span class="control-sub">Wave dynamic used during notification display</span>
                     </div>
-                    <select
-                      bind:value={appSettings.glow.animation_style}
-                      onchange={saveAppSettings}
-                      class="native-select"
-                    >
-                      <option value="pulse">Pulse (Periodic rhythmic pulse)</option>
-                      <option value="sweep">Sweep (Dynamic continuous perimeter travel)</option>
-                      <option value="ambient">Ambient (Harmonic low-frequency border glow)</option>
-                      <option value="comet">Comet (High-intensity moving segment with fading tail)</option>
-                      <option value="ripple">Ripple (Expanding wave radiating outward)</option>
-                    </select>
+                    <div class="dropdown-control-wrapper">
+                      <Dropdown
+                        items={ANIMATION_OPTIONS}
+                        value={appSettings.glow.animation_style}
+                        onSelect={(val: string) => {
+                          appSettings.glow.animation_style = val as any;
+                          saveAppSettings();
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </section>
@@ -1893,15 +2080,16 @@
                       <span class="control-title">Monitor Target</span>
                       <span class="control-sub">Display monitor where the glow overlay is rendered</span>
                     </div>
-                    <select
-                      bind:value={appSettings.glow.monitor_target}
-                      onchange={saveAppSettings}
-                      class="native-select"
-                    >
-                      <option value="primary">Primary Display</option>
-                      <option value="active">Active Window Display</option>
-                      <option value="all">All Displays (Multi-Monitor)</option>
-                    </select>
+                    <div class="dropdown-control-wrapper">
+                      <Dropdown
+                        items={MONITOR_OPTIONS}
+                        value={appSettings.glow.monitor_target}
+                        onSelect={(val: string) => {
+                          appSettings.glow.monitor_target = val;
+                          saveAppSettings();
+                        }}
+                      />
+                    </div>
                   </div>
 
                   <div class="control-item">
@@ -1909,42 +2097,13 @@
                       <span class="control-title">Default Glow Color</span>
                       <span class="control-sub">Standard hue (Urgency overrides: Critical = Red, High = Amber)</span>
                     </div>
-                    <div class="color-palette-wrap">
-                      {#each currentGlowPalette as col}
-                        <button
-                          class="color-dot {appSettings.glow.color.toLowerCase() === col.toLowerCase() ? 'selected' : ''}"
-                          style:background-color={col}
-                          onclick={() => {
-                            appSettings.glow.color = col;
-                            saveAppSettings();
-                          }}
-                          title="Select preset {col}"
-                          aria-label="Select preset color {col}"
-                        ></button>
-                      {/each}
-
-                      <div class="color-divider" aria-hidden="true"></div>
-
-                      <div class="custom-color-control" title="Choose custom HEX color">
-                        <label class="custom-color-picker-label" aria-label="Open color palette picker">
-                          <svg class="palette-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
-                            <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
-                            <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
-                            <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
-                            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 9.5 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.24-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.5-4.5-10-10-10z"></path>
-                          </svg>
-                          <input
-                            type="color"
-                            bind:value={appSettings.glow.color}
-                            onchange={saveAppSettings}
-                            class="custom-color-input-hidden"
-                            aria-label="Choose custom hex color"
-                          />
-                        </label>
-                        <span class="custom-color-hex-tag">{appSettings.glow.color.toUpperCase()}</span>
-                      </div>
-                    </div>
+                    <ColorPicker
+                      color={appSettings.glow.color}
+                      onChange={(newCol: string) => {
+                        appSettings.glow.color = newCol;
+                        saveAppSettings();
+                      }}
+                    />
                   </div>
                 </div>
               </section>
@@ -1973,15 +2132,16 @@
                       <span class="control-title">Fullscreen Behavior</span>
                       <span class="control-sub">Overlay display behavior when games or fullscreen apps are active</span>
                     </div>
-                    <select
-                      bind:value={appSettings.fullscreen_behavior}
-                      onchange={saveAppSettings}
-                      class="native-select"
-                    >
-                      <option value="always_show">Always Show (Display overlay even during fullscreen)</option>
-                      <option value="suppress_in_fullscreen">Suppress in Fullscreen (Hide overlay during fullscreen windows)</option>
-                      <option value="suppress_gaming">Suppress Gaming (Automatically suppress during gaming & fullscreen)</option>
-                    </select>
+                    <div class="dropdown-control-wrapper">
+                      <Dropdown
+                        items={FULLSCREEN_OPTIONS}
+                        value={appSettings.fullscreen_behavior ?? "suppress_in_fullscreen"}
+                        onSelect={(val: string) => {
+                          appSettings.fullscreen_behavior = val as any;
+                          saveAppSettings();
+                        }}
+                      />
+                    </div>
                   </div>
 
                   <div class="control-item">
@@ -2026,6 +2186,38 @@
             {/if}
 
             <div class="settings-sections-stack">
+              <!-- Appearance Mode (System / Light / Dark) -->
+              <section class="card panel-card appearance-card">
+                <div class="panel-header">
+                  <div class="panel-title-wrap">
+                    <div class="panel-icon-circle">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 class="panel-title">Appearance Mode</h3>
+                      <p class="panel-desc">Choose between System theme detection, Light, or Dark mode</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="appearance-tabs-container">
+                  <AppearanceTabs
+                    selected={appearance}
+                    onChange={(mode) => handleAppearanceChange(mode)}
+                  />
+                </div>
+              </section>
+
               <!-- Appearance & 7 Themes -->
               <section class="card panel-card">
                 <div class="panel-header">
@@ -2265,6 +2457,65 @@
                   </div>
                 </div>
               </section>
+
+              <!-- Software Updates (Production Auto-Updater) -->
+              <section class="card panel-card updater-card">
+                <div class="panel-header">
+                  <div class="panel-title-wrap">
+                    <div class="panel-icon-circle">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 class="panel-title">Software Updates</h3>
+                      <p class="panel-desc">Check for signed official releases and auto-install updates</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="controls-list">
+                  <div class="control-item updater-row">
+                    <div class="control-label-group">
+                      <span class="control-title">Curry v1.4</span>
+                      <span class="control-sub">
+                        {#if updateStatusMessage}
+                          {updateStatusMessage}
+                        {:else}
+                          Curry v1.4 is up to date.
+                        {/if}
+                      </span>
+                    </div>
+                    <div class="updater-actions">
+                      {#if updateAvailable}
+                        <button
+                          class="primary-btn update-btn"
+                          onclick={installUpdate}
+                          disabled={isInstallingUpdate}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                          </svg>
+                          <span>{isInstallingUpdate ? "Installing..." : "Install & Restart"}</span>
+                        </button>
+                      {:else}
+                        <button
+                          class="secondary-btn"
+                          onclick={checkForUpdatesManually}
+                          disabled={isCheckingUpdate}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon {isCheckingUpdate ? 'spin' : ''}">
+                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                          </svg>
+                          <span>{isCheckingUpdate ? "Checking..." : "Check for Updates"}</span>
+                        </button>
+                      {/if}
+                    </div>
+                  </div>
+                </div>
+              </section>
             </div>
           </div>
         {/if}
@@ -2459,51 +2710,26 @@
           <!-- Glow Color -->
           <div class="form-row">
             <span class="form-label">Glow Color</span>
-            <div class="color-palette-wrap">
-              {#each currentGlowPalette as col}
-                <button
-                  type="button"
-                  class="color-dot {editingProfile.color?.toLowerCase() === col.toLowerCase() ? 'selected' : ''}"
-                  style:background-color={col}
-                  onclick={() => {
-                    if (editingProfile) editingProfile.color = col;
-                  }}
-                  title="Preset {col}"
-                  aria-label="Select preset color {col}"
-                ></button>
-              {/each}
-              <div class="color-divider" aria-hidden="true"></div>
-              <div class="custom-color-control">
-                <label class="custom-color-picker-label" aria-label="Open custom color picker">
-                  <svg class="palette-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
-                    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
-                    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
-                    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
-                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 9.5 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.24-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.5-4.5-10-10-10z"></path>
-                  </svg>
-                  <input
-                    type="color"
-                    bind:value={editingProfile.color}
-                    class="custom-color-input-hidden"
-                    aria-label="Custom color picker"
-                  />
-                </label>
-                <span class="custom-color-hex-tag">{editingProfile.color || appSettings.glow.color}</span>
-              </div>
-            </div>
+            <ColorPicker
+              color={editingProfile.color || appSettings.glow.color}
+              onChange={(newCol: string) => {
+                if (editingProfile) editingProfile.color = newCol;
+              }}
+            />
           </div>
 
           <!-- Animation -->
           <div class="form-row">
-            <label class="form-label" for="prof-animation">Animation Dynamic</label>
-            <select id="prof-animation" bind:value={editingProfile.animation} class="native-select">
-              <option value="pulse">Pulse (Periodic rhythmic pulse)</option>
-              <option value="sweep">Sweep (Dynamic continuous perimeter travel)</option>
-              <option value="ambient">Ambient (Harmonic low-frequency border glow)</option>
-              <option value="comet">Comet (High-intensity moving segment with fading tail)</option>
-              <option value="ripple">Ripple (Expanding wave radiating outward)</option>
-            </select>
+            <span class="form-label">Animation Dynamic</span>
+            <div class="dropdown-control-wrapper">
+              <Dropdown
+                items={ANIMATION_OPTIONS}
+                value={editingProfile.animation || "pulse"}
+                onSelect={(val: string) => {
+                  if (editingProfile) editingProfile.animation = val as any;
+                }}
+              />
+            </div>
           </div>
 
           <!-- Intensity Slider -->
@@ -2586,12 +2812,16 @@
 
           <!-- Monitor Target -->
           <div class="form-row">
-            <label class="form-label" for="prof-monitor">Monitor Target</label>
-            <select id="prof-monitor" bind:value={editingProfile.monitorTarget} class="native-select">
-              <option value="primary">Primary Display</option>
-              <option value="active">Active Window Display</option>
-              <option value="all">All Displays (Multi-Monitor)</option>
-            </select>
+            <span class="form-label">Monitor Target</span>
+            <div class="dropdown-control-wrapper">
+              <Dropdown
+                items={MONITOR_OPTIONS}
+                value={editingProfile.monitorTarget || "primary"}
+                onSelect={(val: string) => {
+                  if (editingProfile) editingProfile.monitorTarget = val;
+                }}
+              />
+            </div>
           </div>
 
           <!-- Suppress in Fullscreen -->
@@ -2934,6 +3164,24 @@
   }
 
   /* ------------------------------------------------------------------------- */
+  /* APPEARANCE: LIGHT MODE SYSTEM OVERRIDES                                   */
+  /* Note: glow.color is strictly independent and unaffected by this           */
+  /* ------------------------------------------------------------------------- */
+  .shell[data-appearance="light"] {
+    --bg: #f8fafc;
+    --bg-secondary: #f1f5f9;
+    --surface: #ffffff;
+    --surface-elevated: #f8fafc;
+    --surface-hover: #e2e8f0;
+    --border: rgba(15, 23, 42, 0.12);
+    --border-strong: rgba(99, 102, 241, 0.4);
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --header-glow: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(56, 189, 248, 0.05) 50%, transparent 70%);
+  }
+
+  /* ------------------------------------------------------------------------- */
   /* SHELL LAYOUT                                                              */
   /* ------------------------------------------------------------------------- */
   .shell {
@@ -3026,30 +3274,46 @@
     font-family: monospace;
   }
 
-  /* Top Tabs (Center) */
+  /* Top Tabs (Center - Glow Menu Design with Static Text) */
   .header-center-tabs {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 4px;
     background: var(--surface-elevated);
-    padding: 3px;
-    border-radius: 8px;
+    padding: 3px 4px;
+    border-radius: 10px;
     border: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
   .nav-tab {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    padding: 6px 14px;
-    border-radius: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
     font-size: 12px;
     font-weight: 500;
     color: var(--text-muted);
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    overflow: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .nav-tab-glow {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at 50% 50%, var(--glow-surface) 0%, transparent 80%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    transform: scale(0.85);
   }
 
   .nav-tab:hover {
@@ -3057,12 +3321,22 @@
     background: var(--surface-hover);
   }
 
+  .nav-tab:hover .nav-tab-glow {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+
   .nav-tab.active {
     background: var(--surface);
     color: var(--accent);
-    border-color: var(--border);
+    border-color: var(--border-strong);
     font-weight: 600;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 0 16px -2px var(--glow-surface), 0 1px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .nav-tab.active .nav-tab-glow {
+    opacity: 1;
+    transform: scale(1.05);
   }
 
   .nav-tab:focus-visible {
@@ -3071,18 +3345,85 @@
   }
 
   .nav-icon {
+    position: relative;
+    z-index: 1;
     width: 14px;
     height: 14px;
+    flex-shrink: 0;
   }
 
+  .nav-label {
+    position: relative;
+    z-index: 1;
+    letter-spacing: -0.01em;
+  }
+
+  .nav-badge,
   .nav-badge-pill {
+    position: relative;
+    z-index: 1;
     background: var(--accent);
     color: var(--accent-fg);
     font-size: 10px;
     font-weight: 700;
-    padding: 1px 5px;
+    padding: 1px 6px;
     border-radius: 10px;
     line-height: 1.2;
+    box-shadow: 0 0 8px var(--glow-surface);
+  }
+
+  /* Dropdown & Helper Wrappers */
+  .dropdown-control-wrapper {
+    min-width: 240px;
+    max-width: 320px;
+  }
+
+  /* Skeleton Loading for Notifications Feed */
+  .notification-card-skeleton {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+
+  .skeleton-content-col {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    flex: 1;
+  }
+
+  .skeleton-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Appearance Selector in Settings */
+  .appearance-tabs-container {
+    padding: 6px 0 12px;
+  }
+
+  /* Updater Card in Settings */
+  .updater-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .updater-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .update-btn {
+    background: var(--accent-gradient);
+    color: var(--accent-fg);
   }
 
   /* Right: Interactive Listening Status Button & Header Glow Button */

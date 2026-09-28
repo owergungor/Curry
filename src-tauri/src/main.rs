@@ -1986,4 +1986,82 @@ mod tests {
         let parsed_invalid: GlowAnimationStyle = serde_json::from_str("\"invalid_anim\"").unwrap();
         assert_eq!(parsed_invalid, GlowAnimationStyle::Pulse);
     }
+
+    #[test]
+    fn test_storage_mark_all_as_read() {
+        let storage = NotificationStorage::new(10);
+
+        for i in 1..=4 {
+            let mut n = Notification::new_test("App", &format!("Title {}", i), "Body");
+            n.id = format!("notif-{}", i);
+            n.read = i == 2; // only one is already read
+            storage.add(n);
+        }
+
+        // 3 unread, 1 read
+        assert_eq!(storage.len(), 4);
+        let all_before = storage.get_all();
+        let unread_count_before = all_before.iter().filter(|n| !n.read).count();
+        assert_eq!(unread_count_before, 3);
+
+        // Mark all as read
+        let updated = storage.mark_all_as_read();
+        assert_eq!(updated, 3);
+
+        // History still preserved! Length is still 4
+        assert_eq!(storage.len(), 4);
+        let all_after = storage.get_all();
+        assert_eq!(all_after.len(), 4);
+        let unread_count_after = all_after.iter().filter(|n| !n.read).count();
+        assert_eq!(unread_count_after, 0);
+        for item in all_after {
+            assert!(item.read);
+        }
+    }
+
+    #[test]
+    fn test_appearance_mode_serialization_and_isolation() {
+        use curry_lib::settings::model::{AppearanceMode, AppSettings};
+
+        // Default should be System
+        let settings = AppSettings::default();
+        assert_eq!(settings.appearance, AppearanceMode::System);
+
+        // Serialization
+        let json = serde_json::to_string(&settings).unwrap();
+        assert!(json.contains("\"appearance\":\"system\""));
+
+        // Deserialization of explicit light and dark
+        let light_json = json.replace("\"appearance\":\"system\"", "\"appearance\":\"light\"");
+        let deserialized_light: AppSettings = serde_json::from_str(&light_json).unwrap();
+        assert_eq!(deserialized_light.appearance, AppearanceMode::Light);
+        assert_eq!(deserialized_light.glow.color, settings.glow.color);
+
+        let dark_json = json.replace("\"appearance\":\"system\"", "\"appearance\":\"dark\"");
+        let deserialized_dark: AppSettings = serde_json::from_str(&dark_json).unwrap();
+        assert_eq!(deserialized_dark.appearance, AppearanceMode::Dark);
+        assert_eq!(deserialized_dark.glow.color, settings.glow.color);
+
+        // Legacy settings JSON without appearance field defaults gracefully to System
+        let legacy_json = r##"{
+            "enabled": true,
+            "startup_enabled": false,
+            "show_notifications": true,
+            "history_limit": 100,
+            "sound_enabled": false,
+            "glow": {
+                "enabled": true,
+                "duration_ms": 2500,
+                "intensity": 0.8,
+                "thickness": 8,
+                "corner_radius": 24,
+                "animation_style": "pulse",
+                "monitor_target": "primary",
+                "color": "#FF00FF"
+            }
+        }"##;
+        let legacy: AppSettings = serde_json::from_str(legacy_json).unwrap();
+        assert_eq!(legacy.appearance, AppearanceMode::System);
+        assert_eq!(legacy.glow.color, "#FF00FF");
+    }
 }
