@@ -61,22 +61,31 @@ jobs:
 
       - name: Stage and Package macOS Artifacts
         run: |
-          mkdir -p dist_release
-          TAG_NAME=${GITHUB_REF_NAME:-v1.4}
+          mkdir -p "$GITHUB_WORKSPACE/dist_release"
+          TAG_NAME="${GITHUB_REF_NAME:-v1.4}"
+          if [ "$TAG_NAME" = "main" ] || [ -z "$TAG_NAME" ]; then
+            TAG_NAME="v1.4"
+          fi
           if [[ ! "$TAG_NAME" =~ ^v ]]; then
             TAG_NAME="v$TAG_NAME"
           fi
           # Rename and package DMG
           if compgen -G "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg" > /dev/null; then
-            cp src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg dist_release/Curry_${TAG_NAME}_mac-arm64.dmg
+            cp src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg "$GITHUB_WORKSPACE/dist_release/Curry_${TAG_NAME}_mac-arm64.dmg"
           fi
           # Verify architecture and package .app bundle into zip
           if [ -d "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app" ]; then
             cd src-tauri/target/aarch64-apple-darwin/release/bundle/macos
             file Curry.app/Contents/MacOS/*
-            zip -r ../../../../../dist_release/Curry_${TAG_NAME}_mac-arm64.app.zip Curry.app
+            zip -r "$GITHUB_WORKSPACE/dist_release/Curry_${TAG_NAME}_mac-arm64.app.zip" Curry.app
             cd -
           fi
+
+      - name: Upload macOS Artifacts to Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64-artifacts
+          path: dist_release/*
 
       - name: Upload macOS Release Assets
         uses: softprops/action-gh-release@v2
@@ -136,6 +145,12 @@ jobs:
           Copy-Item "src-tauri\target\release\curry.exe" "$stage\Curry.exe"
           Compress-Archive -Path "$stage\*" -DestinationPath "dist_release\Curry_${tag}_win-x64.zip" -Force
           Remove-Item -Recurse -Force $stage
+
+      - name: Upload Windows Artifacts to Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-artifacts
+          path: dist_release/*
 
       - name: Upload Windows Release Assets
         uses: softprops/action-gh-release@v2
