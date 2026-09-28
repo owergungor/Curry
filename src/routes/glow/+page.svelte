@@ -13,6 +13,7 @@
   }
 
   let isGlowing = $state(false);
+  let animationKey = $state(0);
   let payload = $state<GlowPayload>({
     color: "#6366f1",
     duration_ms: 2500,
@@ -32,6 +33,7 @@
 
     const unlistenPromise = listen<GlowPayload>("trigger-glow", (event) => {
       payload = event.payload;
+      animationKey += 1;
       isGlowing = true;
 
       if (timer) clearTimeout(timer);
@@ -51,17 +53,19 @@
   });
 </script>
 
-<div
-  class="glow-viewport {isGlowing ? 'active' : ''} {payload.animation_style} {payload.oled_mode ? 'oled' : ''}"
-  style:--glow-color={payload.color}
-  style:--glow-thickness="{payload.thickness}px"
-  style:--glow-radius="{payload.corner_radius}px"
-  style:--glow-intensity={payload.intensity}
-  style:--glow-duration="{payload.duration_ms}ms"
->
-  <div class="glow-edge-inner"></div>
-  <div class="glow-edge-accent"></div>
-</div>
+{#key animationKey}
+  <div
+    class="glow-viewport {isGlowing ? 'active' : ''} {payload.animation_style} {payload.oled_mode ? 'oled' : ''}"
+    style:--glow-color={payload.color}
+    style:--glow-thickness="{payload.thickness}px"
+    style:--glow-radius="{payload.corner_radius}px"
+    style:--glow-intensity={payload.intensity}
+    style:--glow-duration="{payload.duration_ms}ms"
+  >
+    <div class="glow-edge-inner"></div>
+    <div class="glow-edge-accent"></div>
+  </div>
+{/key}
 
 <style>
   :global(html.glow-window, body.glow-window) {
@@ -233,34 +237,62 @@
      4. Comet Animation: High-intensity traveling segment with a fading tail
      ========================================================================= */
   .glow-viewport.comet.active .glow-edge-inner {
-    animation: comet-fade 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+    opacity: calc(var(--glow-intensity) * 0.25);
+    border-color: var(--glow-color);
+    animation: comet-ambient-pulse 1.6s ease-in-out infinite;
   }
   .glow-viewport.comet.active .glow-edge-accent {
-    opacity: 1;
-    border: calc(var(--glow-thickness) * 0.6) solid transparent;
-    border-top-color: var(--glow-color);
-    border-right-color: var(--glow-color);
-    animation: comet-spin 1.5s linear infinite;
-    filter: drop-shadow(0 0 calc(var(--glow-thickness) * 2) var(--glow-color));
+    opacity: var(--glow-intensity);
+    border: calc(var(--glow-thickness) * 0.85) solid transparent;
+    border-radius: var(--glow-radius);
+    animation: comet-orbit 1.6s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+    filter: drop-shadow(0 0 calc(var(--glow-thickness) * 2.5) var(--glow-color));
   }
 
-  @keyframes comet-fade {
+  @keyframes comet-ambient-pulse {
     0%, 100% {
-      opacity: calc(var(--glow-intensity) * 0.3);
-      filter: brightness(0.85);
+      opacity: calc(var(--glow-intensity) * 0.2);
     }
     50% {
-      opacity: calc(var(--glow-intensity) * 0.7);
-      filter: brightness(1.2);
+      opacity: calc(var(--glow-intensity) * 0.4);
     }
   }
 
-  @keyframes comet-spin {
+  @keyframes comet-orbit {
     0% {
-      transform: rotate(0deg);
+      border-top-color: var(--glow-color);
+      border-right-color: transparent;
+      border-bottom-color: transparent;
+      border-left-color: color-mix(in srgb, var(--glow-color) 40%, transparent);
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
+    }
+    25% {
+      border-top-color: color-mix(in srgb, var(--glow-color) 40%, transparent);
+      border-right-color: var(--glow-color);
+      border-bottom-color: transparent;
+      border-left-color: transparent;
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
+    }
+    50% {
+      border-top-color: transparent;
+      border-right-color: color-mix(in srgb, var(--glow-color) 40%, transparent);
+      border-bottom-color: var(--glow-color);
+      border-left-color: transparent;
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
+    }
+    75% {
+      border-top-color: transparent;
+      border-right-color: transparent;
+      border-bottom-color: color-mix(in srgb, var(--glow-color) 40%, transparent);
+      border-left-color: var(--glow-color);
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
     }
     100% {
-      transform: rotate(360deg);
+      border-top-color: var(--glow-color);
+      border-right-color: transparent;
+      border-bottom-color: transparent;
+      border-left-color: color-mix(in srgb, var(--glow-color) 40%, transparent);
+      box-shadow: 0 0 calc(var(--glow-thickness) * 2) var(--glow-color);
     }
   }
 

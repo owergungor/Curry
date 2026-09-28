@@ -230,14 +230,10 @@ impl GlowManager {
                 }
             }
             MonitorTarget::All => {
-                let overlay_w = self.get_or_create_overlay("glow-overlay");
-                let monitors = overlay_w
-                    .as_ref()
-                    .and_then(|w| w.available_monitors().ok())
-                    .unwrap_or_default();
+                let monitors = self.app_handle.available_monitors().ok().unwrap_or_default();
 
                 if monitors.is_empty() {
-                    if let Some(w) = overlay_w {
+                    if let Some(w) = self.get_or_create_overlay("glow-overlay") {
                         self.present_overlay(&w, payload, payload.duration_ms, gen);
                     }
                 } else {
@@ -249,11 +245,33 @@ impl GlowManager {
                         };
 
                         if let Some(w) = self.get_or_create_overlay(&win_label) {
+                            let _ = w.set_ignore_cursor_events(true);
+                            let _ = w.set_always_on_top(true);
                             let _ = w.set_position(*mon.position());
                             let _ = w.set_size(*mon.size());
                             self.present_overlay(&w, payload, payload.duration_ms, gen);
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /// Pre-creates and warms overlay windows for all available monitors so they are loaded and ready.
+    pub fn warm_overlays(&self) {
+        if let Ok(monitors) = self.app_handle.available_monitors() {
+            for (idx, mon) in monitors.into_iter().enumerate() {
+                let win_label = if idx == 0 {
+                    "glow-overlay".to_string()
+                } else {
+                    format!("glow-overlay-{}", idx)
+                };
+
+                if let Some(w) = self.get_or_create_overlay(&win_label) {
+                    let _ = w.set_ignore_cursor_events(true);
+                    let _ = w.set_always_on_top(true);
+                    let _ = w.set_position(*mon.position());
+                    let _ = w.set_size(*mon.size());
                 }
             }
         }
@@ -286,6 +304,7 @@ impl GlowManager {
         reinforce_windows_overlay(window);
 
         let _ = window.emit("trigger-glow", payload);
+        let _ = self.app_handle.emit_to(window.label(), "trigger-glow", payload);
         let _ = window.show();
 
         let gen_arc = Arc::clone(&self.active_generation);
