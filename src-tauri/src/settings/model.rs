@@ -49,6 +49,21 @@ impl<'de> Deserialize<'de> for AppTheme {
 use crate::settings::fullscreen::FullscreenBehavior;
 use crate::settings::profiles::ApplicationProfile;
 
+/// Overall UI appearance mode (system auto-detection, explicit light, or explicit dark).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AppearanceMode {
+    System,
+    Light,
+    Dark,
+}
+
+impl Default for AppearanceMode {
+    fn default() -> Self {
+        Self::System
+    }
+}
+
 /// Centralized user-configurable application settings for Curry.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppSettings {
@@ -67,6 +82,9 @@ pub struct AppSettings {
     /// Selected visual theme (defaults to Perpetuity, resilient to invalid values).
     #[serde(default)]
     pub theme: AppTheme,
+    /// UI appearance mode (System, Light, Dark).
+    #[serde(default)]
+    pub appearance: AppearanceMode,
     /// Per-application custom glow configurations.
     #[serde(default)]
     pub applications: Vec<ApplicationProfile>,
@@ -88,6 +106,7 @@ impl Default for AppSettings {
             sound_enabled: false,
             glow: GlowSettings::default(),
             theme: AppTheme::default(),
+            appearance: AppearanceMode::default(),
             applications: Vec::new(),
             oled_mode: false,
             fullscreen_behavior: FullscreenBehavior::default(),
