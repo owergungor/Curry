@@ -18,7 +18,11 @@ pub mod platform {
 
     #[link(name = "kernel32")]
     extern "system" {
-        fn CreateMutexW(lpMutexAttributes: *mut c_void, bInitialOwner: BOOL, lpName: LPCWSTR) -> HANDLE;
+        fn CreateMutexW(
+            lpMutexAttributes: *mut c_void,
+            bInitialOwner: BOOL,
+            lpName: LPCWSTR,
+        ) -> HANDLE;
         fn GetLastError() -> DWORD;
         fn SetLastError(dwErrCode: DWORD);
         fn CloseHandle(hObject: HANDLE) -> BOOL;
@@ -56,7 +60,10 @@ pub mod platform {
             let mut hwnd = FindWindowW(std::ptr::null(), wide_curry.as_ptr());
             if hwnd.is_null() {
                 // [LEGACY / BACKWARDS COMPATIBILITY] Window title fallback to locate running legacy process
-                let wide_notiglow: Vec<u16> = "NotiGlow".encode_utf16().chain(std::iter::once(0)).collect();
+                let wide_notiglow: Vec<u16> = "NotiGlow"
+                    .encode_utf16()
+                    .chain(std::iter::once(0))
+                    .collect();
                 hwnd = FindWindowW(std::ptr::null(), wide_notiglow.as_ptr());
             }
             if !hwnd.is_null() {
@@ -104,7 +111,10 @@ pub mod platform {
 
     /// Attempts to acquire the single-instance lock for Curry, while also checking/locking
     /// [LEGACY / BACKWARDS COMPATIBILITY] any legacy NotiGlow mutex so an old process and Curry cannot run concurrently.
-    pub fn acquire_with_legacy(name: &str, legacy_name: Option<&str>) -> Option<SingleInstanceGuard> {
+    pub fn acquire_with_legacy(
+        name: &str,
+        legacy_name: Option<&str>,
+    ) -> Option<SingleInstanceGuard> {
         let mut handles = Vec::new();
 
         // 1. Try to acquire primary mutex (e.g. Global\Curry)
@@ -145,7 +155,10 @@ pub mod platform {
         Some(SingleInstanceGuard)
     }
 
-    pub fn acquire_with_legacy(_name: &str, _legacy_name: Option<&str>) -> Option<SingleInstanceGuard> {
+    pub fn acquire_with_legacy(
+        _name: &str,
+        _legacy_name: Option<&str>,
+    ) -> Option<SingleInstanceGuard> {
         Some(SingleInstanceGuard)
     }
 }

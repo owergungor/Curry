@@ -85,31 +85,29 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         .menu(&menu)
         .tooltip("Curry")
         .show_menu_on_left_click(false)
-        .on_menu_event(move |app, event| {
-            match event.id.as_ref() {
-                "open" => {
-                    restore_main_window(app);
-                }
-                "toggle_enabled" => {
-                    let state = app.state::<AppState>();
-                    let next_state = state.toggle_enabled();
-                    let _ = toggle_item.set_checked(next_state);
-                    let _ = app.emit("app-state-changed", next_state);
-                }
-                "settings" => {
-                    restore_main_window(app);
-                    let _ = app.emit("open-settings-tab", ());
-                }
-                "quit" => {
-                    if let Some(state) = app.try_state::<crate::state::AppState>() {
-                        if let Some(engine) = state.notification_engine() {
-                            let _ = engine.stop_listening();
-                        }
-                    }
-                    app.exit(0);
-                }
-                _ => {}
+        .on_menu_event(move |app, event| match event.id.as_ref() {
+            "open" => {
+                restore_main_window(app);
             }
+            "toggle_enabled" => {
+                let state = app.state::<AppState>();
+                let next_state = state.toggle_enabled();
+                let _ = toggle_item.set_checked(next_state);
+                let _ = app.emit("app-state-changed", next_state);
+            }
+            "settings" => {
+                restore_main_window(app);
+                let _ = app.emit("open-settings-tab", ());
+            }
+            "quit" => {
+                if let Some(state) = app.try_state::<crate::state::AppState>() {
+                    if let Some(engine) = state.notification_engine() {
+                        let _ = engine.stop_listening();
+                    }
+                }
+                app.exit(0);
+            }
+            _ => {}
         })
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {

@@ -68,7 +68,11 @@ pub struct ApplicationProfile {
     pub corner_rounding: Option<u32>,
 
     /// Optional per-app monitor target override. If None, uses global monitor target.
-    #[serde(default, skip_serializing_if = "Option::is_none", alias = "monitor_target")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "monitor_target"
+    )]
     pub monitor_target: Option<MonitorTarget>,
 
     /// Optional per-app fullscreen suppression override.
@@ -231,19 +235,13 @@ impl ApplicationProfile {
     /// Comparison is case-insensitive and trims trailing `.exe` for flexible matching.
     pub fn matches(&self, identifier: &str) -> bool {
         let trimmed_query = identifier.trim().to_lowercase();
-        let stripped_query = trimmed_query
-            .strip_suffix(".exe")
-            .unwrap_or(&trimmed_query);
+        let stripped_query = trimmed_query.strip_suffix(".exe").unwrap_or(&trimmed_query);
 
         let app_name_norm = self.application_name.trim().to_lowercase();
-        let app_name_stripped = app_name_norm
-            .strip_suffix(".exe")
-            .unwrap_or(&app_name_norm);
+        let app_name_stripped = app_name_norm.strip_suffix(".exe").unwrap_or(&app_name_norm);
 
         let exe_name_norm = self.executable_name.trim().to_lowercase();
-        let exe_name_stripped = exe_name_norm
-            .strip_suffix(".exe")
-            .unwrap_or(&exe_name_norm);
+        let exe_name_stripped = exe_name_norm.strip_suffix(".exe").unwrap_or(&exe_name_norm);
 
         let path_matches = if let Some(ref path) = self.executable_path {
             let path_norm = path.trim().to_lowercase();
@@ -291,8 +289,14 @@ pub fn resolve_glow_params(
                 animation_style: global.animation_style.canonical(),
                 intensity: 0.0,
                 duration_ms: 0,
-                thickness: prof.border_thickness.unwrap_or(global.thickness).clamp(2, 32),
-                corner_radius: prof.corner_rounding.unwrap_or(global.corner_radius).clamp(0, 48),
+                thickness: prof
+                    .border_thickness
+                    .unwrap_or(global.thickness)
+                    .clamp(2, 32),
+                corner_radius: prof
+                    .corner_rounding
+                    .unwrap_or(global.corner_radius)
+                    .clamp(0, 48),
                 monitor_target: global.monitor_target.clone(),
                 suppress_in_fullscreen: true,
                 oled_mode,

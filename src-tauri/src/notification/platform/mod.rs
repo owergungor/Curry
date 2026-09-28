@@ -2,9 +2,9 @@ pub mod linux;
 pub mod macos;
 pub mod windows;
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::sync::{Arc, Mutex};
-use serde::{Deserialize, Serialize};
 
 use crate::notification::model::Notification;
 
@@ -101,7 +101,13 @@ impl Deduplicator {
 
     /// Computes a stable fingerprint string from notification content when an ID is absent.
     pub fn fingerprint(source: &str, title: &str, body: &str, timestamp: i64) -> String {
-        format!("{}:{}:{}:{}", source.trim(), title.trim(), body.trim(), timestamp)
+        format!(
+            "{}:{}:{}:{}",
+            source.trim(),
+            title.trim(),
+            body.trim(),
+            timestamp
+        )
     }
 
     /// Records an identifier. Returns `true` if newly recorded, `false` if it was already present and unexpired.
@@ -155,7 +161,11 @@ impl Deduplicator {
     }
 
     /// Prunes entries older than the specified duration relative to the given reference instant.
-    pub fn prune_older_than(&self, cutoff: std::time::Duration, relative_to: std::time::Instant) -> usize {
+    pub fn prune_older_than(
+        &self,
+        cutoff: std::time::Duration,
+        relative_to: std::time::Instant,
+    ) -> usize {
         let mut map = match self.seen.lock() {
             Ok(guard) => guard,
             Err(poisoned) => poisoned.into_inner(),

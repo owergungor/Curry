@@ -60,7 +60,10 @@ impl NotificationStorage {
                         }
                     },
                     Err(err) => {
-                        eprintln!("[NotificationStorage] Failed to read notifications.json: {}", err);
+                        eprintln!(
+                            "[NotificationStorage] Failed to read notifications.json: {}",
+                            err
+                        );
                         VecDeque::new()
                     }
                 }

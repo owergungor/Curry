@@ -103,7 +103,10 @@ impl SettingsStorage {
         // Apply startup configuration if changed
         if sanitized.startup_enabled != current.startup_enabled {
             if let Err(err) = StartupManager::set_enabled(sanitized.startup_enabled) {
-                eprintln!("[SettingsStorage] Failed to update startup configuration: {}", err);
+                eprintln!(
+                    "[SettingsStorage] Failed to update startup configuration: {}",
+                    err
+                );
             }
         }
 

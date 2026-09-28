@@ -1,7 +1,7 @@
+use serde::Serialize;
 use std::collections::{HashSet, VecDeque};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::notification::model::Notification;
@@ -129,7 +129,10 @@ impl NotificationEngine {
     ///
     /// Respects enabled status, dismissed ID suppression, duplicate checks,
     /// feed visibility preferences, and glow triggering.
-    pub fn process_notification(&self, notification: Notification) -> Result<(), NotificationError> {
+    pub fn process_notification(
+        &self,
+        notification: Notification,
+    ) -> Result<(), NotificationError> {
         let settings = self.settings_storage.get().map(|s| s.get_arc());
         let is_active = self.is_enabled() && settings.as_ref().map(|s| s.enabled).unwrap_or(true);
 
@@ -164,7 +167,10 @@ impl NotificationEngine {
             return Ok(());
         }
 
-        let show_notifications = settings.as_ref().map(|s| s.show_notifications).unwrap_or(true);
+        let show_notifications = settings
+            .as_ref()
+            .map(|s| s.show_notifications)
+            .unwrap_or(true);
         if show_notifications {
             self.storage.add(notification.clone());
             self.captured_count.fetch_add(1, Ordering::SeqCst);
@@ -185,7 +191,10 @@ impl NotificationEngine {
     }
 
     /// Adds and processes a notification through the standard pipeline.
-    pub fn add_notification(&self, notification: Notification) -> Result<Notification, NotificationError> {
+    pub fn add_notification(
+        &self,
+        notification: Notification,
+    ) -> Result<Notification, NotificationError> {
         self.process_notification(notification.clone())?;
         Ok(notification)
     }
@@ -221,7 +230,11 @@ impl NotificationEngine {
     /// Returns whether a notification ID is currently recorded as dismissed.
     pub fn is_id_dismissed(&self, id: &str) -> bool {
         if let Ok(set) = self.dismissed_ids.lock() {
-            set.contains(id) || id.strip_prefix("win-").map(|s| set.contains(s)).unwrap_or(false)
+            set.contains(id)
+                || id
+                    .strip_prefix("win-")
+                    .map(|s| set.contains(s))
+                    .unwrap_or(false)
         } else {
             false
         }
@@ -273,20 +286,18 @@ impl NotificationEngine {
             let _ = engine_clone.process_notification(notification);
         });
 
-        let mut provider = self
-            .provider
-            .lock()
-            .map_err(|_| NotificationError::ProviderError("Failed to acquire provider lock".to_string()))?;
+        let mut provider = self.provider.lock().map_err(|_| {
+            NotificationError::ProviderError("Failed to acquire provider lock".to_string())
+        })?;
 
         provider.start(callback)
     }
 
     /// Stops the underlying platform notification provider.
     pub fn stop_listening(&self) -> Result<(), NotificationError> {
-        let mut provider = self
-            .provider
-            .lock()
-            .map_err(|_| NotificationError::ProviderError("Failed to acquire provider lock".to_string()))?;
+        let mut provider = self.provider.lock().map_err(|_| {
+            NotificationError::ProviderError("Failed to acquire provider lock".to_string())
+        })?;
 
         provider.stop()
     }

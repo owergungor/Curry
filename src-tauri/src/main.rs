@@ -51,11 +51,8 @@ mod tests {
 
     #[test]
     fn test_notification_new_test() {
-        let test_notif = Notification::new_test(
-            "Curry",
-            "Pipeline Test",
-            "Checking normalized structure.",
-        );
+        let test_notif =
+            Notification::new_test("Curry", "Pipeline Test", "Checking normalized structure.");
 
         assert!(test_notif.id.starts_with("test-"));
         assert_eq!(test_notif.app_name, "Curry");
@@ -192,7 +189,8 @@ mod tests {
         // Test pruning
         deduplicator.record_at("old-1", t0);
         deduplicator.record_at("recent-1", t0 + Duration::from_secs(50));
-        let pruned = deduplicator.prune_older_than(Duration::from_secs(30), t0 + Duration::from_secs(60));
+        let pruned =
+            deduplicator.prune_older_than(Duration::from_secs(30), t0 + Duration::from_secs(60));
         assert!(pruned >= 1);
     }
 
@@ -248,7 +246,8 @@ mod tests {
         assert_eq!(default_settings.monitor_target, MonitorTarget::Primary);
         assert_eq!(default_settings.color, "#6366f1");
 
-        let json = serde_json::to_string(&default_settings).expect("Failed to serialize GlowSettings");
+        let json =
+            serde_json::to_string(&default_settings).expect("Failed to serialize GlowSettings");
         assert!(json.contains("\"duration_ms\":2500"));
         assert!(json.contains("\"animation_style\":\"pulse\""));
         assert!(json.contains("\"monitor_target\":\"primary\""));
@@ -274,7 +273,8 @@ mod tests {
             assert!(!notif.read);
 
             let json = serde_json::to_string(&notif).expect("Serialization failed");
-            let deserialized: Notification = serde_json::from_str(&json).expect("Deserialization failed");
+            let deserialized: Notification =
+                serde_json::from_str(&json).expect("Deserialization failed");
             assert_eq!(deserialized.urgency, Some(urgency));
             assert!(!deserialized.read);
 
@@ -316,7 +316,13 @@ mod tests {
     #[test]
     fn test_storage_persistence_save_and_load() {
         let temp_dir = std::env::temp_dir();
-        let file_path = temp_dir.join(format!("curry_test_storage_{}.json", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        let file_path = temp_dir.join(format!(
+            "curry_test_storage_{}.json",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
 
         // Scope 1: Add notifications and mutate state
         {
@@ -380,7 +386,13 @@ mod tests {
     #[test]
     fn test_storage_bounded_persistence() {
         let temp_dir = std::env::temp_dir();
-        let file_path = temp_dir.join(format!("curry_test_bounded_{}.json", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        let file_path = temp_dir.join(format!(
+            "curry_test_bounded_{}.json",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
 
         {
             let storage = NotificationStorage::new_with_persistence(3, Some(file_path.clone()));
@@ -437,7 +449,8 @@ mod tests {
         assert!(json.contains("\"duration_ms\":3500"));
         assert!(json.contains("\"#10b981\""));
 
-        let deserialized: AppSettings = serde_json::from_str(&json).expect("Deserialization failed");
+        let deserialized: AppSettings =
+            serde_json::from_str(&json).expect("Deserialization failed");
         assert_eq!(settings, deserialized);
     }
 
@@ -488,7 +501,8 @@ mod tests {
         ));
 
         // Write invalid JSON
-        std::fs::write(&file_path, "{ \"broken\": [true, null").expect("Failed to write corrupt file");
+        std::fs::write(&file_path, "{ \"broken\": [true, null")
+            .expect("Failed to write corrupt file");
 
         // Storage initialization must safely fall back to defaults and recover
         let storage = SettingsStorage::new_with_path(Some(file_path.clone()));
@@ -627,7 +641,8 @@ mod tests {
         let json = serde_json::to_string(&settings).expect("Serialization failed");
         assert!(json.contains("\"startup_enabled\":true"));
 
-        let deserialized: AppSettings = serde_json::from_str(&json).expect("Deserialization failed");
+        let deserialized: AppSettings =
+            serde_json::from_str(&json).expect("Deserialization failed");
         assert!(deserialized.startup_enabled);
     }
 
@@ -723,7 +738,8 @@ mod tests {
         ));
 
         // Write intentionally corrupted/truncated data
-        std::fs::write(&file_path, "{ broken json: [ unfinished").expect("Failed to write corrupt test file");
+        std::fs::write(&file_path, "{ broken json: [ unfinished")
+            .expect("Failed to write corrupt test file");
 
         // Loading corrupted storage must NOT panic and should initialize an empty list
         let storage = NotificationStorage::new_with_persistence(50, Some(file_path.clone()));
@@ -737,7 +753,10 @@ mod tests {
     fn test_startup_command_formatting() {
         let exe_with_spaces = r"C:\Program Files\Curry App\Curry.exe";
         let formatted = format!("\"{}\" --autostart", exe_with_spaces);
-        assert_eq!(formatted, r#""C:\Program Files\Curry App\Curry.exe" --autostart"#);
+        assert_eq!(
+            formatted,
+            r#""C:\Program Files\Curry App\Curry.exe" --autostart"#
+        );
         assert!(formatted.starts_with('"'));
         assert!(formatted.ends_with("--autostart"));
     }
@@ -767,13 +786,19 @@ mod tests {
 
         let test_mutex_name = format!("Curry_Test_Acquire_{}", std::process::id());
         let first = single_instance::acquire(&test_mutex_name);
-        assert!(first.is_some(), "First instance must successfully acquire the mutex");
+        assert!(
+            first.is_some(),
+            "First instance must successfully acquire the mutex"
+        );
 
         // Dropping first releases the mutex cleanly
         drop(first);
 
         let second = single_instance::acquire(&test_mutex_name);
-        assert!(second.is_some(), "After dropping first instance, mutex can be re-acquired");
+        assert!(
+            second.is_some(),
+            "After dropping first instance, mutex can be re-acquired"
+        );
     }
 
     #[test]
@@ -782,12 +807,18 @@ mod tests {
 
         let test_mutex_name = format!("Curry_Test_Conflict_{}", std::process::id());
         let first = single_instance::acquire(&test_mutex_name);
-        assert!(first.is_some(), "First instance must successfully acquire the mutex");
+        assert!(
+            first.is_some(),
+            "First instance must successfully acquire the mutex"
+        );
 
         #[cfg(target_os = "windows")]
         {
             let second = single_instance::acquire(&test_mutex_name);
-            assert!(second.is_none(), "Second instance must detect running primary instance and return None");
+            assert!(
+                second.is_none(),
+                "Second instance must detect running primary instance and return None"
+            );
         }
 
         drop(first);
@@ -810,7 +841,11 @@ mod tests {
         let tmp_path = file_path.with_extension("tmp");
 
         // 1. Create .tmp
-        let notifs = vec![Notification::new_test("App", "Recovered Title", "Recovered Body")];
+        let notifs = vec![Notification::new_test(
+            "App",
+            "Recovered Title",
+            "Recovered Body",
+        )];
         let json = serde_json::to_string_pretty(&notifs).unwrap();
         std::fs::write(&tmp_path, json).unwrap();
 
@@ -825,14 +860,20 @@ mod tests {
         let storage = NotificationStorage::new_with_persistence(10, Some(file_path.clone()));
 
         // 4. Verify .tmp is recovered (primary exists)
-        assert!(file_path.exists(), "Primary file must be recovered from .tmp");
+        assert!(
+            file_path.exists(),
+            "Primary file must be recovered from .tmp"
+        );
 
         // 5. Verify notification data is available
         assert_eq!(storage.len(), 1);
         assert_eq!(storage.get_all()[0].title, "Recovered Title");
 
         // 6. Verify stale .tmp no longer remains
-        assert!(!tmp_path.exists(), "Temporary file must be removed after recovery");
+        assert!(
+            !tmp_path.exists(),
+            "Temporary file must be removed after recovery"
+        );
 
         let _ = std::fs::remove_file(file_path);
     }
@@ -862,7 +903,11 @@ mod tests {
         std::fs::write(&file_path, primary_json).unwrap();
 
         // 2. Create stale .tmp
-        let stale_notifs = vec![Notification::new_test("StaleApp", "Stale Title", "Stale Body")];
+        let stale_notifs = vec![Notification::new_test(
+            "StaleApp",
+            "Stale Title",
+            "Stale Body",
+        )];
         let stale_json = serde_json::to_string_pretty(&stale_notifs).unwrap();
         std::fs::write(&tmp_path, stale_json).unwrap();
 
@@ -877,7 +922,10 @@ mod tests {
         assert_eq!(storage.get_all()[0].title, "Primary Title 1");
 
         // 5. Verify stale .tmp is removed
-        assert!(!tmp_path.exists(), "Stale .tmp file must be cleaned up when primary file exists");
+        assert!(
+            !tmp_path.exists(),
+            "Stale .tmp file must be cleaned up when primary file exists"
+        );
 
         let _ = std::fs::remove_file(file_path);
     }
@@ -915,14 +963,20 @@ mod tests {
         let storage = SettingsStorage::new_with_path(Some(file_path.clone()));
 
         // 4. Verify .tmp is recovered (primary exists)
-        assert!(file_path.exists(), "Primary settings file must be recovered from .tmp");
+        assert!(
+            file_path.exists(),
+            "Primary settings file must be recovered from .tmp"
+        );
 
         // 5. Verify settings data is available
         assert_eq!(storage.get().history_limit, 42);
         assert_eq!(storage.get().glow.duration_ms, 4500);
 
         // 6. Verify stale .tmp is removed
-        assert!(!tmp_path.exists(), "Temporary file must be removed after recovery");
+        assert!(
+            !tmp_path.exists(),
+            "Temporary file must be removed after recovery"
+        );
 
         let _ = std::fs::remove_file(file_path);
     }
@@ -961,7 +1015,10 @@ mod tests {
         assert_eq!(storage.get().history_limit, 77);
 
         // 5. Verify stale .tmp is removed
-        assert!(!tmp_path.exists(), "Stale .tmp file must be removed when valid primary settings exists");
+        assert!(
+            !tmp_path.exists(),
+            "Stale .tmp file must be removed when valid primary settings exists"
+        );
 
         let _ = std::fs::remove_file(file_path);
     }
@@ -999,10 +1056,22 @@ mod tests {
             use curry_lib::notification::model::NotificationUrgency;
             use curry_lib::notification::platform::windows::infer_urgency;
 
-            assert_eq!(infer_urgency("Critical Error", "The hard disk failed"), NotificationUrgency::Critical);
-            assert_eq!(infer_urgency("System Warning", "Battery level is low"), NotificationUrgency::High);
-            assert_eq!(infer_urgency("Update", "Informational note"), NotificationUrgency::Low);
-            assert_eq!(infer_urgency("Message from Alice", "Let's meet tomorrow"), NotificationUrgency::Normal);
+            assert_eq!(
+                infer_urgency("Critical Error", "The hard disk failed"),
+                NotificationUrgency::Critical
+            );
+            assert_eq!(
+                infer_urgency("System Warning", "Battery level is low"),
+                NotificationUrgency::High
+            );
+            assert_eq!(
+                infer_urgency("Update", "Informational note"),
+                NotificationUrgency::Low
+            );
+            assert_eq!(
+                infer_urgency("Message from Alice", "Let's meet tomorrow"),
+                NotificationUrgency::Normal
+            );
         }
     }
 
@@ -1039,14 +1108,38 @@ mod tests {
     fn test_valid_theme_ids() {
         use curry_lib::settings::AppTheme;
 
-        assert_eq!(serde_json::from_str::<AppTheme>("\"catppuccin\"").unwrap(), AppTheme::Catppuccin);
-        assert_eq!(serde_json::from_str::<AppTheme>("\"vintage-paper\"").unwrap(), AppTheme::VintagePaper);
-        assert_eq!(serde_json::from_str::<AppTheme>("\"amethyst-haze\"").unwrap(), AppTheme::AmethystHaze);
-        assert_eq!(serde_json::from_str::<AppTheme>("\"sage-mist\"").unwrap(), AppTheme::SageMist);
-        assert_eq!(serde_json::from_str::<AppTheme>("\"bubblegum\"").unwrap(), AppTheme::Bubblegum);
-        assert_eq!(serde_json::from_str::<AppTheme>("\"perpetuity\"").unwrap(), AppTheme::Perpetuity);
-        assert_eq!(serde_json::from_str::<AppTheme>("\"amberstate\"").unwrap(), AppTheme::Amberstate);
-        assert_eq!(serde_json::from_str::<AppTheme>("\"amber-slate\"").unwrap(), AppTheme::Amberstate);
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"catppuccin\"").unwrap(),
+            AppTheme::Catppuccin
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"vintage-paper\"").unwrap(),
+            AppTheme::VintagePaper
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"amethyst-haze\"").unwrap(),
+            AppTheme::AmethystHaze
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"sage-mist\"").unwrap(),
+            AppTheme::SageMist
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"bubblegum\"").unwrap(),
+            AppTheme::Bubblegum
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"perpetuity\"").unwrap(),
+            AppTheme::Perpetuity
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"amberstate\"").unwrap(),
+            AppTheme::Amberstate
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"amber-slate\"").unwrap(),
+            AppTheme::Amberstate
+        );
     }
 
     #[test]
@@ -1054,9 +1147,18 @@ mod tests {
         use curry_lib::settings::{AppSettings, AppTheme};
 
         // Unknown theme string falls back to Perpetuity (canonical default)
-        assert_eq!(serde_json::from_str::<AppTheme>("\"super-neon\"").unwrap(), AppTheme::Perpetuity);
-        assert_eq!(serde_json::from_str::<AppTheme>("\"random-invalid\"").unwrap(), AppTheme::Perpetuity);
-        assert_eq!(serde_json::from_str::<AppTheme>("\"\"").unwrap(), AppTheme::Perpetuity);
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"super-neon\"").unwrap(),
+            AppTheme::Perpetuity
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"random-invalid\"").unwrap(),
+            AppTheme::Perpetuity
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"\"").unwrap(),
+            AppTheme::Perpetuity
+        );
 
         // In full settings JSON, an unknown theme does NOT reset or fail other fields
         let json = r##"{
@@ -1078,7 +1180,8 @@ mod tests {
             "theme": "unrecognized_theme_from_future"
         }"##;
 
-        let s: AppSettings = serde_json::from_str(json).expect("Deserialization of unknown theme should succeed");
+        let s: AppSettings =
+            serde_json::from_str(json).expect("Deserialization of unknown theme should succeed");
         assert_eq!(s.theme, AppTheme::Perpetuity);
         assert!(!s.enabled);
         assert!(s.startup_enabled);
@@ -1126,7 +1229,8 @@ mod tests {
         let json = serde_json::to_string(&settings).expect("Serialization failed");
         assert!(json.contains("\"theme\":\"vintage-paper\""));
 
-        let deserialized: AppSettings = serde_json::from_str(&json).expect("Deserialization failed");
+        let deserialized: AppSettings =
+            serde_json::from_str(&json).expect("Deserialization failed");
         assert_eq!(deserialized.theme, AppTheme::VintagePaper);
         assert_eq!(settings, deserialized);
     }
@@ -1185,19 +1289,37 @@ mod tests {
 
         // Normal mode: profile overrides global
         let resolved = resolve_glow_params(Some(&profile), &global, false, false);
-        assert_eq!(resolved.thickness, 18, "Border thickness must come from profile override");
-        assert_eq!(resolved.corner_radius, 30, "Corner rounding must come from profile override");
+        assert_eq!(
+            resolved.thickness, 18,
+            "Border thickness must come from profile override"
+        );
+        assert_eq!(
+            resolved.corner_radius, 30,
+            "Corner rounding must come from profile override"
+        );
 
         // OLED mode: profile thickness halved (18 / 2 = 9), corner radius unchanged
         let resolved_oled = resolve_glow_params(Some(&profile), &global, true, false);
-        assert_eq!(resolved_oled.thickness, 9, "OLED mode should halve profile border thickness");
-        assert_eq!(resolved_oled.corner_radius, 30, "Corner rounding should be preserved in OLED mode");
+        assert_eq!(
+            resolved_oled.thickness, 9,
+            "OLED mode should halve profile border thickness"
+        );
+        assert_eq!(
+            resolved_oled.corner_radius, 30,
+            "Corner rounding should be preserved in OLED mode"
+        );
 
         // Fallback to global when profile does not specify
         let empty_profile = ApplicationProfile::new("DefaultApp", "app.exe");
         let resolved_fallback = resolve_glow_params(Some(&empty_profile), &global, false, false);
-        assert_eq!(resolved_fallback.thickness, 8, "Should fallback to global border thickness");
-        assert_eq!(resolved_fallback.corner_radius, 12, "Should fallback to global corner radius");
+        assert_eq!(
+            resolved_fallback.thickness, 8,
+            "Should fallback to global border thickness"
+        );
+        assert_eq!(
+            resolved_fallback.corner_radius, 12,
+            "Should fallback to global corner radius"
+        );
     }
 
     #[test]
@@ -1212,9 +1334,16 @@ mod tests {
             "enabled": true
         }"##;
 
-        let profile: ApplicationProfile = serde_json::from_str(legacy_json).expect("Legacy profile must deserialize");
-        assert_eq!(profile.border_thickness, None, "Legacy profiles without thickness must be None");
-        assert_eq!(profile.corner_rounding, None, "Legacy profiles without rounding must be None");
+        let profile: ApplicationProfile =
+            serde_json::from_str(legacy_json).expect("Legacy profile must deserialize");
+        assert_eq!(
+            profile.border_thickness, None,
+            "Legacy profiles without thickness must be None"
+        );
+        assert_eq!(
+            profile.corner_rounding, None,
+            "Legacy profiles without rounding must be None"
+        );
 
         // New profile JSON with camelCase fields
         let new_json = r##"{
@@ -1226,7 +1355,8 @@ mod tests {
             "cornerRounding": 25
         }"##;
 
-        let new_profile: ApplicationProfile = serde_json::from_str(new_json).expect("New profile must deserialize");
+        let new_profile: ApplicationProfile =
+            serde_json::from_str(new_json).expect("New profile must deserialize");
         assert_eq!(new_profile.border_thickness, Some(15));
         assert_eq!(new_profile.corner_rounding, Some(25));
     }
@@ -1248,7 +1378,8 @@ mod tests {
             "suppressInFullscreen": true
         }"##;
 
-        let profile: ApplicationProfile = serde_json::from_str(json).expect("Failed to deserialize profile");
+        let profile: ApplicationProfile =
+            serde_json::from_str(json).expect("Failed to deserialize profile");
         assert_eq!(profile.id, "prof-spotify");
         assert_eq!(profile.application_name, "Spotify");
         assert_eq!(profile.executable_name, "Spotify.exe");
@@ -1291,7 +1422,10 @@ mod tests {
         let global = GlowSettings::default();
         let resolved = resolve_glow_params(Some(&profile), &global, false, true);
 
-        assert!(!resolved.should_glow, "Disabled profile should suppress glow effect");
+        assert!(
+            !resolved.should_glow,
+            "Disabled profile should suppress glow effect"
+        );
     }
 
     #[test]
@@ -1314,9 +1448,19 @@ mod tests {
 
         let resolved = resolve_glow_params(Some(&profile), &global, false, false);
         assert_eq!(resolved.color, "#5865F2", "Color should come from profile");
-        assert_eq!(resolved.animation_style, GlowAnimationStyle::Sweep, "Animation should fallback to global");
-        assert_eq!(resolved.intensity, 0.75, "Intensity should fallback to global");
-        assert_eq!(resolved.duration_ms, 3000, "Duration should fallback to global");
+        assert_eq!(
+            resolved.animation_style,
+            GlowAnimationStyle::Sweep,
+            "Animation should fallback to global"
+        );
+        assert_eq!(
+            resolved.intensity, 0.75,
+            "Intensity should fallback to global"
+        );
+        assert_eq!(
+            resolved.duration_ms, 3000,
+            "Duration should fallback to global"
+        );
     }
 
     #[test]
@@ -1406,26 +1550,36 @@ mod tests {
 
     #[test]
     fn test_fullscreen_suppression() {
-        use curry_lib::settings::{should_suppress_for_fullscreen, FullscreenBehavior, FullscreenState};
+        use curry_lib::settings::{
+            should_suppress_for_fullscreen, FullscreenBehavior, FullscreenState,
+        };
 
         let suppressed = should_suppress_for_fullscreen(
             FullscreenBehavior::SuppressInFullscreen,
             None,
             FullscreenState::Fullscreen,
         );
-        assert!(suppressed, "Should suppress when fullscreen state is Fullscreen");
+        assert!(
+            suppressed,
+            "Should suppress when fullscreen state is Fullscreen"
+        );
 
         let gaming_suppressed = should_suppress_for_fullscreen(
             FullscreenBehavior::SuppressGaming,
             None,
             FullscreenState::Fullscreen,
         );
-        assert!(gaming_suppressed, "Gaming suppression policy should suppress during fullscreen");
+        assert!(
+            gaming_suppressed,
+            "Gaming suppression policy should suppress during fullscreen"
+        );
     }
 
     #[test]
     fn test_fullscreen_allowed() {
-        use curry_lib::settings::{should_suppress_for_fullscreen, FullscreenBehavior, FullscreenState};
+        use curry_lib::settings::{
+            should_suppress_for_fullscreen, FullscreenBehavior, FullscreenState,
+        };
 
         // AlwaysShow should allow glow even in Fullscreen
         let allowed_always = should_suppress_for_fullscreen(
@@ -1433,7 +1587,10 @@ mod tests {
             None,
             FullscreenState::Fullscreen,
         );
-        assert!(!allowed_always, "AlwaysShow policy should allow glow in fullscreen");
+        assert!(
+            !allowed_always,
+            "AlwaysShow policy should allow glow in fullscreen"
+        );
 
         // Profile override Some(false) should allow glow even if global policy is suppress
         let allowed_override = should_suppress_for_fullscreen(
@@ -1441,7 +1598,10 @@ mod tests {
             Some(false),
             FullscreenState::Fullscreen,
         );
-        assert!(!allowed_override, "Profile override false should allow glow in fullscreen");
+        assert!(
+            !allowed_override,
+            "Profile override false should allow glow in fullscreen"
+        );
 
         // When not fullscreen, should never suppress
         let not_fs = should_suppress_for_fullscreen(
@@ -1454,7 +1614,9 @@ mod tests {
 
     #[test]
     fn test_unknown_fullscreen_behavior() {
-        use curry_lib::settings::{should_suppress_for_fullscreen, FullscreenBehavior, FullscreenState};
+        use curry_lib::settings::{
+            should_suppress_for_fullscreen, FullscreenBehavior, FullscreenState,
+        };
 
         // Unknown fullscreen state should safely default to not suppressed
         let unknown = should_suppress_for_fullscreen(
@@ -1541,9 +1703,18 @@ mod tests {
 
         let resolved = resolve_glow_params(None, &global, true, false);
         assert!(resolved.oled_mode);
-        assert!(resolved.intensity <= 0.60, "OLED mode should cap intensity to 0.60");
-        assert!(resolved.duration_ms <= 2000, "OLED mode should cap duration to 2000ms");
-        assert!(resolved.thickness <= 8, "OLED mode should reduce border thickness");
+        assert!(
+            resolved.intensity <= 0.60,
+            "OLED mode should cap intensity to 0.60"
+        );
+        assert!(
+            resolved.duration_ms <= 2000,
+            "OLED mode should cap duration to 2000ms"
+        );
+        assert!(
+            resolved.thickness <= 8,
+            "OLED mode should reduce border thickness"
+        );
     }
 
     #[test]
@@ -1598,16 +1769,24 @@ mod tests {
         use curry_lib::settings::parse_executable_info;
 
         // Windows absolute path with backslashes
-        let res1 = parse_executable_info(r"C:\Program Files\Discord\Discord.exe").expect("Should parse");
+        let res1 =
+            parse_executable_info(r"C:\Program Files\Discord\Discord.exe").expect("Should parse");
         assert_eq!(res1.executable_name, "Discord.exe");
         assert_eq!(res1.display_name, "Discord");
-        assert_eq!(res1.executable_path, Some(r"C:\Program Files\Discord\Discord.exe".to_string()));
+        assert_eq!(
+            res1.executable_path,
+            Some(r"C:\Program Files\Discord\Discord.exe".to_string())
+        );
 
         // Path with lowercase exe and spaces
-        let res2 = parse_executable_info(r"C:\Users\user\AppData\Local\Spotify\Spotify.exe").expect("Should parse");
+        let res2 = parse_executable_info(r"C:\Users\user\AppData\Local\Spotify\Spotify.exe")
+            .expect("Should parse");
         assert_eq!(res2.executable_name, "Spotify.exe");
         assert_eq!(res2.display_name, "Spotify");
-        assert_eq!(res2.executable_path, Some(r"C:\Users\user\AppData\Local\Spotify\Spotify.exe".to_string()));
+        assert_eq!(
+            res2.executable_path,
+            Some(r"C:\Users\user\AppData\Local\Spotify\Spotify.exe".to_string())
+        );
 
         // Relative or standalone filename
         let res3 = parse_executable_info("notepad.exe").expect("Should parse");
@@ -1619,7 +1798,10 @@ mod tests {
         let res4 = parse_executable_info("D:/Games/Steam/steam.exe").expect("Should parse");
         assert_eq!(res4.executable_name, "steam.exe");
         assert_eq!(res4.display_name, "Steam");
-        assert_eq!(res4.executable_path, Some("D:/Games/Steam/steam.exe".to_string()));
+        assert_eq!(
+            res4.executable_path,
+            Some("D:/Games/Steam/steam.exe".to_string())
+        );
     }
 
     #[test]
@@ -1687,8 +1869,16 @@ mod tests {
         assert!(!is_duplicate_profile(&profiles, "notepad.exe", None));
 
         // When editing existing profile, excluding its own ID allows saving same executable
-        assert!(!is_duplicate_profile(&profiles, "Discord.exe", Some(&prof1.id)));
-        assert!(!is_duplicate_profile(&profiles, "discord.exe", Some(&prof1.id)));
+        assert!(!is_duplicate_profile(
+            &profiles,
+            "Discord.exe",
+            Some(&prof1.id)
+        ));
+        assert!(!is_duplicate_profile(
+            &profiles,
+            "discord.exe",
+            Some(&prof1.id)
+        ));
     }
 
     #[test]
@@ -1760,7 +1950,8 @@ mod tests {
             .with_executable_path(r"C:\Program Files (x86)\Steam\steam.exe");
 
         let serialized = serde_json::to_string(&original).expect("Serialization failed");
-        assert!(serialized.contains("\"executablePath\":\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\""));
+        assert!(serialized
+            .contains("\"executablePath\":\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\""));
 
         let deserialized: ApplicationProfile =
             serde_json::from_str(&serialized).expect("Deserialization failed");
@@ -1776,14 +1967,25 @@ mod tests {
     fn test_default_animation_is_pulse() {
         use curry_lib::glow::model::{GlowAnimationStyle, GlowSettings};
         assert_eq!(GlowAnimationStyle::default(), GlowAnimationStyle::Pulse);
-        assert_eq!(GlowSettings::default().animation_style, GlowAnimationStyle::Pulse);
+        assert_eq!(
+            GlowSettings::default().animation_style,
+            GlowAnimationStyle::Pulse
+        );
     }
 
     #[test]
     fn test_all_five_animations_and_legacy_compatibility() {
         use curry_lib::glow::model::GlowAnimationStyle;
 
-        let styles = ["pulse", "sweep", "ambient", "comet", "ripple", "breathing", "solid"];
+        let styles = [
+            "pulse",
+            "sweep",
+            "ambient",
+            "comet",
+            "ripple",
+            "breathing",
+            "solid",
+        ];
         let expected = [
             GlowAnimationStyle::Pulse,
             GlowAnimationStyle::Sweep,
@@ -1796,18 +1998,40 @@ mod tests {
 
         for (str_val, exp) in styles.iter().zip(expected.iter()) {
             let json = format!("\"{}\"", str_val);
-            let parsed: GlowAnimationStyle = serde_json::from_str(&json).expect("Deserialization failed");
+            let parsed: GlowAnimationStyle =
+                serde_json::from_str(&json).expect("Deserialization failed");
             assert_eq!(&parsed, exp);
         }
 
         // Canonical mapping tests: legacy breathing/solid maps to ambient, active styles preserved
-        assert_eq!(GlowAnimationStyle::Breathing.canonical(), GlowAnimationStyle::Ambient);
-        assert_eq!(GlowAnimationStyle::Solid.canonical(), GlowAnimationStyle::Ambient);
-        assert_eq!(GlowAnimationStyle::Pulse.canonical(), GlowAnimationStyle::Pulse);
-        assert_eq!(GlowAnimationStyle::Sweep.canonical(), GlowAnimationStyle::Sweep);
-        assert_eq!(GlowAnimationStyle::Ambient.canonical(), GlowAnimationStyle::Ambient);
-        assert_eq!(GlowAnimationStyle::Comet.canonical(), GlowAnimationStyle::Comet);
-        assert_eq!(GlowAnimationStyle::Ripple.canonical(), GlowAnimationStyle::Ripple);
+        assert_eq!(
+            GlowAnimationStyle::Breathing.canonical(),
+            GlowAnimationStyle::Ambient
+        );
+        assert_eq!(
+            GlowAnimationStyle::Solid.canonical(),
+            GlowAnimationStyle::Ambient
+        );
+        assert_eq!(
+            GlowAnimationStyle::Pulse.canonical(),
+            GlowAnimationStyle::Pulse
+        );
+        assert_eq!(
+            GlowAnimationStyle::Sweep.canonical(),
+            GlowAnimationStyle::Sweep
+        );
+        assert_eq!(
+            GlowAnimationStyle::Ambient.canonical(),
+            GlowAnimationStyle::Ambient
+        );
+        assert_eq!(
+            GlowAnimationStyle::Comet.canonical(),
+            GlowAnimationStyle::Comet
+        );
+        assert_eq!(
+            GlowAnimationStyle::Ripple.canonical(),
+            GlowAnimationStyle::Ripple
+        );
     }
 
     #[test]
@@ -1906,9 +2130,16 @@ mod tests {
             }
         }"##;
 
-        let settings: AppSettings = serde_json::from_str(custom_json).expect("Failed to deserialize existing settings");
-        assert_eq!(settings.glow.animation_style, curry_lib::glow::model::GlowAnimationStyle::Sweep);
-        assert_eq!(settings.glow.monitor_target, curry_lib::glow::model::MonitorTarget::All);
+        let settings: AppSettings =
+            serde_json::from_str(custom_json).expect("Failed to deserialize existing settings");
+        assert_eq!(
+            settings.glow.animation_style,
+            curry_lib::glow::model::GlowAnimationStyle::Sweep
+        );
+        assert_eq!(
+            settings.glow.monitor_target,
+            curry_lib::glow::model::MonitorTarget::All
+        );
         assert_eq!(settings.glow.color, "#ff0077");
     }
 
@@ -1924,9 +2155,15 @@ mod tests {
         assert_eq!(normalize_animation("Ambient"), GlowAnimationStyle::Ambient);
         assert_eq!(normalize_animation("Comet"), GlowAnimationStyle::Comet);
         assert_eq!(normalize_animation("Ripple"), GlowAnimationStyle::Ripple);
-        assert_eq!(normalize_animation("Breathing"), GlowAnimationStyle::Breathing);
+        assert_eq!(
+            normalize_animation("Breathing"),
+            GlowAnimationStyle::Breathing
+        );
         assert_eq!(normalize_animation("Solid"), GlowAnimationStyle::Solid);
-        assert_eq!(normalize_animation("unknown_style"), GlowAnimationStyle::Pulse);
+        assert_eq!(
+            normalize_animation("unknown_style"),
+            GlowAnimationStyle::Pulse
+        );
         assert_eq!(normalize_animation(""), GlowAnimationStyle::Pulse);
     }
 
@@ -2021,7 +2258,7 @@ mod tests {
 
     #[test]
     fn test_appearance_mode_serialization_and_isolation() {
-        use curry_lib::settings::model::{AppearanceMode, AppSettings};
+        use curry_lib::settings::model::{AppSettings, AppearanceMode};
 
         // Default should be System
         let settings = AppSettings::default();

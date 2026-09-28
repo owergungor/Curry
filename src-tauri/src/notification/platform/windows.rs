@@ -2,7 +2,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 
-use super::{Deduplicator, NotificationCallback, NotificationError, NotificationProvider, ProviderStatus};
+use super::{
+    Deduplicator, NotificationCallback, NotificationError, NotificationProvider, ProviderStatus,
+};
 use crate::notification::model::{Notification, NotificationUrgency};
 
 /// Native Windows Notification Provider using WinRT `UserNotificationListener`.
@@ -60,7 +62,9 @@ impl NotificationProvider for WindowsNotificationProvider {
             .spawn(move || {
                 run_windows_listener(is_running, status, stop_signal, callback);
             })
-            .map_err(|err| NotificationError::ProviderError(format!("Failed to spawn worker thread: {}", err)))?;
+            .map_err(|err| {
+                NotificationError::ProviderError(format!("Failed to spawn worker thread: {}", err))
+            })?;
 
         self.worker_handle = Some(handle);
         Ok(())
@@ -157,7 +161,9 @@ fn run_windows_listener(
             }
         }
         UserNotificationListenerAccessStatus::Denied => {
-            eprintln!("[WindowsNotificationProvider] UserNotificationListener access was denied by user.");
+            eprintln!(
+                "[WindowsNotificationProvider] UserNotificationListener access was denied by user."
+            );
             if let Ok(mut st) = status.lock() {
                 *st = ProviderStatus::PermissionDenied;
             }

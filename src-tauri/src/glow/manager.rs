@@ -141,8 +141,7 @@ impl GlowManager {
             profile,
             glow_settings,
             app_settings.oled_mode,
-            app_settings.fullscreen_behavior
-                != crate::settings::FullscreenBehavior::AlwaysShow,
+            app_settings.fullscreen_behavior != crate::settings::FullscreenBehavior::AlwaysShow,
         );
 
         if !resolved.should_glow {
@@ -230,7 +229,11 @@ impl GlowManager {
                 }
             }
             MonitorTarget::All => {
-                let monitors = self.app_handle.available_monitors().ok().unwrap_or_default();
+                let monitors = self
+                    .app_handle
+                    .available_monitors()
+                    .ok()
+                    .unwrap_or_default();
 
                 if monitors.is_empty() {
                     if let Some(w) = self.get_or_create_overlay("glow-overlay") {
@@ -296,7 +299,13 @@ impl GlowManager {
         }
     }
 
-    fn present_overlay(&self, window: &WebviewWindow, payload: &GlowPayload, duration_ms: u64, gen: u64) {
+    fn present_overlay(
+        &self,
+        window: &WebviewWindow,
+        payload: &GlowPayload,
+        duration_ms: u64,
+        gen: u64,
+    ) {
         let _ = window.set_ignore_cursor_events(true);
         let _ = window.set_always_on_top(true);
 
@@ -304,7 +313,9 @@ impl GlowManager {
         reinforce_windows_overlay(window);
 
         let _ = window.emit("trigger-glow", payload);
-        let _ = self.app_handle.emit_to(window.label(), "trigger-glow", payload);
+        let _ = self
+            .app_handle
+            .emit_to(window.label(), "trigger-glow", payload);
         let _ = window.show();
 
         let gen_arc = Arc::clone(&self.active_generation);
@@ -353,7 +364,11 @@ fn find_active_monitor(window: &WebviewWindow) -> Option<tauri::Monitor> {
 
 #[cfg(not(target_os = "windows"))]
 fn find_active_monitor(window: &WebviewWindow) -> Option<tauri::Monitor> {
-    window.current_monitor().ok().flatten().or_else(|| window.primary_monitor().ok().flatten())
+    window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| window.primary_monitor().ok().flatten())
 }
 
 #[cfg(target_os = "windows")]
@@ -387,7 +402,8 @@ fn reinforce_windows_overlay(window: &WebviewWindow) {
             const SWP_SHOWWINDOW: u32 = 0x0040;
 
             let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-            let new_style = ex_style | WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW;
+            let new_style =
+                ex_style | WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW;
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_style);
 
             SetWindowPos(

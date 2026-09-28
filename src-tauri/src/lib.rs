@@ -7,8 +7,8 @@ pub mod single_instance;
 pub mod state;
 pub mod tray;
 
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 
 use crate::glow::{GlowManager, GlowSettings};
@@ -216,7 +216,11 @@ fn clear_notifications(app: AppHandle, state: State<'_, AppState>) -> Result<(),
 }
 
 #[tauri::command]
-fn remove_notification(app: AppHandle, state: State<'_, AppState>, id: String) -> Result<bool, String> {
+fn remove_notification(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<bool, String> {
     let engine = state
         .notification_engine()
         .ok_or_else(|| "Notification engine is not initialized".to_string())?;
@@ -229,12 +233,20 @@ fn remove_notification(app: AppHandle, state: State<'_, AppState>, id: String) -
 }
 
 #[tauri::command]
-fn dismiss_notification(app: AppHandle, state: State<'_, AppState>, id: String) -> Result<bool, String> {
+fn dismiss_notification(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<bool, String> {
     remove_notification(app, state, id)
 }
 
 #[tauri::command]
-fn mark_notification_as_read(app: AppHandle, state: State<'_, AppState>, id: String) -> Result<bool, String> {
+fn mark_notification_as_read(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<bool, String> {
     let engine = state
         .notification_engine()
         .ok_or_else(|| "Notification engine is not initialized".to_string())?;
@@ -248,7 +260,10 @@ fn mark_notification_as_read(app: AppHandle, state: State<'_, AppState>, id: Str
 }
 
 #[tauri::command]
-fn mark_all_notifications_as_read(app: AppHandle, state: State<'_, AppState>) -> Result<usize, String> {
+fn mark_all_notifications_as_read(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<usize, String> {
     let engine = state
         .notification_engine()
         .ok_or_else(|| "Notification engine is not initialized".to_string())?;
@@ -259,7 +274,11 @@ fn mark_all_notifications_as_read(app: AppHandle, state: State<'_, AppState>) ->
 }
 
 #[tauri::command]
-fn mark_notification_as_unread(app: AppHandle, state: State<'_, AppState>, id: String) -> Result<bool, String> {
+fn mark_notification_as_unread(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<bool, String> {
     let engine = state
         .notification_engine()
         .ok_or_else(|| "Notification engine is not initialized".to_string())?;
@@ -273,7 +292,11 @@ fn mark_notification_as_unread(app: AppHandle, state: State<'_, AppState>, id: S
 }
 
 #[tauri::command]
-fn toggle_notification_read(app: AppHandle, state: State<'_, AppState>, id: String) -> Result<bool, String> {
+fn toggle_notification_read(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<bool, String> {
     let engine = state
         .notification_engine()
         .ok_or_else(|| "Notification engine is not initialized".to_string())?;
@@ -366,7 +389,13 @@ pub struct GlowPreviewConfig {
     pub duration_ms: Option<u64>,
     #[serde(default, alias = "border_thickness", alias = "borderThickness")]
     pub border_thickness: Option<u32>,
-    #[serde(default, alias = "corner_rounding", alias = "cornerRounding", alias = "corner_radius", alias = "cornerRadius")]
+    #[serde(
+        default,
+        alias = "corner_rounding",
+        alias = "cornerRounding",
+        alias = "corner_radius",
+        alias = "cornerRadius"
+    )]
     pub corner_rounding: Option<u32>,
     #[serde(default, alias = "monitor_target", alias = "monitorTarget")]
     pub monitor_target: Option<crate::glow::model::MonitorTarget>,
@@ -394,7 +423,10 @@ pub fn execute_preview(state: &AppState, config: GlowPreviewConfig) -> Result<()
         _ => settings.animation_style,
     };
 
-    let mut final_intensity = config.intensity.unwrap_or(settings.intensity).clamp(0.1, 1.0);
+    let mut final_intensity = config
+        .intensity
+        .unwrap_or(settings.intensity)
+        .clamp(0.1, 1.0);
     let mut final_thickness = config
         .border_thickness
         .unwrap_or(settings.thickness)
@@ -547,18 +579,19 @@ fn save_application_profile(
     let mut settings = storage.get();
 
     // Check for duplicate profile by executable name (case-insensitive)
-    if crate::settings::is_duplicate_profile(
-        &settings.applications,
-        trimmed_exe,
-        Some(&profile.id),
-    ) {
+    if crate::settings::is_duplicate_profile(&settings.applications, trimmed_exe, Some(&profile.id))
+    {
         return Err(format!(
             "An application profile for {} already exists.",
             trimmed_exe
         ));
     }
 
-    if let Some(idx) = settings.applications.iter().position(|p| p.id == profile.id) {
+    if let Some(idx) = settings
+        .applications
+        .iter()
+        .position(|p| p.id == profile.id)
+    {
         settings.applications[idx] = profile.clone();
     } else {
         settings.applications.push(profile.clone());
@@ -639,7 +672,6 @@ fn get_fullscreen_state() -> crate::settings::FullscreenState {
     crate::settings::detect_fullscreen_state()
 }
 
-
 /// [LEGACY / BACKWARDS COMPATIBILITY] Migrates settings, notifications, and glow configuration
 /// from legacy NotiGlow/Curry directories to Curry's com.curry.app storage directory.
 fn migrate_legacy_notiglow_data(app: &AppHandle) {
@@ -655,7 +687,8 @@ fn migrate_legacy_notiglow_data(app: &AppHandle) {
             for legacy_dir in &legacy_dirs {
                 if legacy_dir.exists() && legacy_dir.is_dir() {
                     let _ = std::fs::create_dir_all(&new_dir);
-                    for file_name in &["settings.json", "notifications.json", "glow_settings.json"] {
+                    for file_name in &["settings.json", "notifications.json", "glow_settings.json"]
+                    {
                         let old_file = legacy_dir.join(file_name);
                         let new_file = new_dir.join(file_name);
                         if old_file.exists() && !new_file.exists() {
@@ -688,13 +721,14 @@ fn migrate_legacy_notiglow_data(app: &AppHandle) {
 pub fn run() {
     // Single-instance protection: ensure only one Curry process runs at a time,
     // and [LEGACY / BACKWARDS COMPATIBILITY] prevent concurrent execution with any lingering legacy NotiGlow process.
-    let _instance_guard = match single_instance::acquire_with_legacy("Global\\Curry", Some("Global\\NotiGlow")) {
-        Some(guard) => guard,
-        None => {
-            // Secondary launch: existing instance was focused, exit cleanly
-            return;
-        }
-    };
+    let _instance_guard =
+        match single_instance::acquire_with_legacy("Global\\Curry", Some("Global\\NotiGlow")) {
+            Some(guard) => guard,
+            None => {
+                // Secondary launch: existing instance was focused, exit cleanly
+                return;
+            }
+        };
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -720,7 +754,10 @@ pub fn run() {
             state.set_glow_manager(Arc::clone(&glow));
 
             // Initialize NotificationEngine and wire up GlowManager and SettingsStorage
-            let engine = Arc::new(NotificationEngine::new(app.handle().clone(), state.enabled_flag()));
+            let engine = Arc::new(NotificationEngine::new(
+                app.handle().clone(),
+                state.enabled_flag(),
+            ));
             engine.set_glow_manager(Arc::clone(&glow));
             engine.set_settings_storage(Arc::clone(&settings_storage));
             engine.set_history_limit(initial_settings.history_limit);
