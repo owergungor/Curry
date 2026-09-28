@@ -248,6 +248,17 @@ fn mark_notification_as_read(app: AppHandle, state: State<'_, AppState>, id: Str
 }
 
 #[tauri::command]
+fn mark_all_notifications_as_read(app: AppHandle, state: State<'_, AppState>) -> Result<usize, String> {
+    let engine = state
+        .notification_engine()
+        .ok_or_else(|| "Notification engine is not initialized".to_string())?;
+
+    let count = engine.mark_all_as_read();
+    let _ = app.emit("notifications-all-read", ());
+    Ok(count)
+}
+
+#[tauri::command]
 fn mark_notification_as_unread(app: AppHandle, state: State<'_, AppState>, id: String) -> Result<bool, String> {
     let engine = state
         .notification_engine()
@@ -687,6 +698,7 @@ pub fn run() {
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState::new())
         .setup(|app| {
             // Safely migrate any existing user data from NotiGlow to Curry
@@ -719,17 +731,27 @@ pub fn run() {
                 eprintln!("[Curry] Failed to start notification provider: {}", err);
             }
 
+            // Warm and pre-position overlay windows for all available displays
+            glow.warm_overlays();
+
             // Ensure transparent glow-overlay ignores cursor events immediately on creation
             if let Some(overlay) = app.get_webview_window("glow-overlay") {
                 let _ = overlay.set_ignore_cursor_events(true);
             }
 
+            // 1. Guaranteed tray icon creation
             tray::setup_tray(app.handle())?;
 
-            // Autostart handling: if launched with --autostart, start hidden in system tray
-            if std::env::args().any(|arg| arg == "--autostart") {
-                if let Some(main_window) = app.get_webview_window("main") {
+            // 2. Main window lifecycle
+            let is_autostart = std::env::args().any(|arg| arg == "--autostart");
+            if let Some(main_window) = app.get_webview_window("main") {
+                if is_autostart {
                     let _ = main_window.hide();
+                    let _ = main_window.emit("window-hidden-to-tray", ());
+                } else {
+                    let _ = main_window.show();
+                    let _ = main_window.unminimize();
+                    let _ = main_window.set_focus();
                 }
             }
 
@@ -761,6 +783,7 @@ pub fn run() {
             remove_notification,
             dismiss_notification,
             mark_notification_as_read,
+            mark_all_notifications_as_read,
             mark_notification_as_unread,
             toggle_notification_read,
             restore_main_window,
