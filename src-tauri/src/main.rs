@@ -2301,4 +2301,66 @@ mod tests {
         assert_eq!(legacy.appearance, AppearanceMode::System);
         assert_eq!(legacy.glow.color, "#FF00FF");
     }
+
+    #[test]
+    fn test_auto_update_frequency_serialization_and_defaults() {
+        use curry_lib::settings::{AppSettings, AutoUpdateFrequency};
+
+        // Default AppSettings has auto_update_enabled = true and frequency = Daily
+        let default_settings = AppSettings::default();
+        assert!(default_settings.auto_update_enabled);
+        assert_eq!(
+            default_settings.auto_update_frequency,
+            AutoUpdateFrequency::Daily
+        );
+        assert_eq!(default_settings.last_update_check, None);
+
+        // Serialize and deserialize all frequencies
+        for (freq, json_val) in [
+            (AutoUpdateFrequency::Startup, "\"startup\""),
+            (AutoUpdateFrequency::Daily, "\"daily\""),
+            (AutoUpdateFrequency::Weekly, "\"weekly\""),
+            (AutoUpdateFrequency::Monthly, "\"monthly\""),
+        ] {
+            let serialized = serde_json::to_string(&freq).unwrap();
+            assert_eq!(serialized, json_val);
+            let deserialized: AutoUpdateFrequency = serde_json::from_str(json_val).unwrap();
+            assert_eq!(deserialized, freq);
+        }
+
+        // Full AppSettings round-trip with auto update configurations
+        let mut settings = AppSettings::default();
+        settings.auto_update_enabled = true;
+        settings.auto_update_frequency = AutoUpdateFrequency::Weekly;
+        settings.last_update_check = Some(1740000000);
+
+        let json = serde_json::to_string(&settings).unwrap();
+        let loaded: AppSettings = serde_json::from_str(&json).unwrap();
+        assert!(loaded.auto_update_enabled);
+        assert_eq!(loaded.auto_update_frequency, AutoUpdateFrequency::Weekly);
+        assert_eq!(loaded.last_update_check, Some(1740000000));
+
+        // Legacy settings JSON without auto update fields defaults safely
+        let legacy_json = r##"{
+            "enabled": true,
+            "startup_enabled": false,
+            "show_notifications": true,
+            "history_limit": 100,
+            "sound_enabled": false,
+            "glow": {
+                "enabled": true,
+                "duration_ms": 2500,
+                "intensity": 0.8,
+                "thickness": 8,
+                "corner_radius": 24,
+                "animation_style": "pulse",
+                "monitor_target": "primary",
+                "color": "#6366F1"
+            }
+        }"##;
+        let legacy: AppSettings = serde_json::from_str(legacy_json).unwrap();
+        assert!(legacy.auto_update_enabled);
+        assert_eq!(legacy.auto_update_frequency, AutoUpdateFrequency::Daily);
+        assert_eq!(legacy.last_update_check, None);
+    }
 }

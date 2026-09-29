@@ -192,24 +192,27 @@ impl GlowManager {
     /// Dispatches the overlay presentation to the appropriate monitor target.
     pub fn dispatch_overlay(&self, payload: &GlowPayload, target: &MonitorTarget) {
         let gen = self.active_generation.fetch_add(1, Ordering::SeqCst) + 1;
+        let mut active_windows: Vec<WebviewWindow> = Vec::new();
 
         match target {
             MonitorTarget::Primary => {
                 if let Some(w) = self.get_or_create_overlay("glow-overlay") {
                     if let Ok(Some(mon)) = w.primary_monitor() {
-                        let _ = w.set_position(*mon.position());
-                        let _ = w.set_size(*mon.size());
+                        let _ = w.set_position(tauri::Position::Physical(*mon.position()));
+                        let _ = w.set_size(tauri::Size::Physical(*mon.size()));
                     }
-                    self.present_overlay(&w, payload, payload.duration_ms, gen);
+                    self.show_single_overlay(&w, payload);
+                    active_windows.push(w);
                 }
             }
             MonitorTarget::Active => {
                 if let Some(w) = self.get_or_create_overlay("glow-overlay") {
                     if let Some(mon) = find_active_monitor(&w) {
-                        let _ = w.set_position(*mon.position());
-                        let _ = w.set_size(*mon.size());
+                        let _ = w.set_position(tauri::Position::Physical(*mon.position()));
+                        let _ = w.set_size(tauri::Size::Physical(*mon.size()));
                     }
-                    self.present_overlay(&w, payload, payload.duration_ms, gen);
+                    self.show_single_overlay(&w, payload);
+                    active_windows.push(w);
                 }
             }
             MonitorTarget::Specific(target_name) => {
@@ -222,10 +225,11 @@ impl GlowManager {
                         })
                     });
                     if let Some(mon) = matched.or_else(|| w.primary_monitor().ok().flatten()) {
-                        let _ = w.set_position(*mon.position());
-                        let _ = w.set_size(*mon.size());
+                        let _ = w.set_position(tauri::Position::Physical(*mon.position()));
+                        let _ = w.set_size(tauri::Size::Physical(*mon.size()));
                     }
-                    self.present_overlay(&w, payload, payload.duration_ms, gen);
+                    self.show_single_overlay(&w, payload);
+                    active_windows.push(w);
                 }
             }
             MonitorTarget::All => {
@@ -237,7 +241,8 @@ impl GlowManager {
 
                 if monitors.is_empty() {
                     if let Some(w) = self.get_or_create_overlay("glow-overlay") {
-                        self.present_overlay(&w, payload, payload.duration_ms, gen);
+                        self.show_single_overlay(&w, payload);
+                        active_windows.push(w);
                     }
                 } else {
                     for (idx, mon) in monitors.into_iter().enumerate() {
@@ -250,14 +255,30 @@ impl GlowManager {
                         if let Some(w) = self.get_or_create_overlay(&win_label) {
                             let _ = w.set_ignore_cursor_events(true);
                             let _ = w.set_always_on_top(true);
-                            let _ = w.set_position(*mon.position());
-                            let _ = w.set_size(*mon.size());
-                            self.present_overlay(&w, payload, payload.duration_ms, gen);
+                            let _ = w.set_position(tauri::Position::Physical(*mon.position()));
+                            let _ = w.set_size(tauri::Size::Physical(*mon.size()));
+                            self.show_single_overlay(&w, payload);
+                            active_windows.push(w);
                         }
                     }
                 }
             }
         }
+
+        // Spawn a single coordinated timer for this animation generation
+        let gen_arc = Arc::clone(&self.active_generation);
+        let app_handle_clone = self.app_handle.clone();
+        let total_duration = std::time::Duration::from_millis(payload.duration_ms + 400);
+
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(total_duration).await;
+            if gen_arc.load(Ordering::SeqCst) == gen {
+                for win in active_windows {
+                    let _ = win.hide();
+                }
+                let _ = app_handle_clone.emit("glow-finished", ());
+            }
+        });
     }
 
     /// Pre-creates and warms overlay windows for all available monitors so they are loaded and ready.
@@ -273,8 +294,8 @@ impl GlowManager {
                 if let Some(w) = self.get_or_create_overlay(&win_label) {
                     let _ = w.set_ignore_cursor_events(true);
                     let _ = w.set_always_on_top(true);
-                    let _ = w.set_position(*mon.position());
-                    let _ = w.set_size(*mon.size());
+                    let _ = w.set_position(tauri::Position::Physical(*mon.position()));
+                    let _ = w.set_size(tauri::Size::Physical(*mon.size()));
                 }
             }
         }
@@ -301,13 +322,7 @@ impl GlowManager {
         }
     }
 
-    fn present_overlay(
-        &self,
-        window: &WebviewWindow,
-        payload: &GlowPayload,
-        duration_ms: u64,
-        gen: u64,
-    ) {
+    fn show_single_overlay(&self, window: &WebviewWindow, payload: &GlowPayload) {
         let _ = window.set_ignore_cursor_events(true);
         let _ = window.set_always_on_top(true);
 
@@ -319,17 +334,6 @@ impl GlowManager {
             .app_handle
             .emit_to(window.label(), "trigger-glow", payload);
         let _ = window.show();
-
-        let gen_arc = Arc::clone(&self.active_generation);
-        let window_clone = window.clone();
-        let total_duration = std::time::Duration::from_millis(duration_ms + 400);
-
-        tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(total_duration).await;
-            if gen_arc.load(Ordering::SeqCst) == gen {
-                let _ = window_clone.hide();
-            }
-        });
     }
 }
 

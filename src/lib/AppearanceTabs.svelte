@@ -21,6 +21,8 @@
     { id: "dark", label: "Dark", icon: "moon" },
   ];
 
+  let activeIndex = $derived(options.findIndex((o) => o.id === activeValue));
+
   function selectTab(id: Appearance) {
     if (activeValue === id) return;
     value = id;
@@ -44,6 +46,13 @@
 </script>
 
 <div class="appearance-tabs-wrap" role="tablist" aria-label="Appearance Mode">
+  <!-- Magic UI Inspired Animated Sliding Active Background Indicator -->
+  <div
+    class="animated-indicator"
+    style:transform="translateX({(activeIndex >= 0 ? activeIndex : 0) * 100}%)"
+    aria-hidden="true"
+  ></div>
+
   {#each options as opt, idx}
     <button
       type="button"
@@ -62,7 +71,7 @@
           <line x1="12" y1="17" x2="12" y2="21"></line>
         </svg>
       {:else if opt.icon === "sun"}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tab-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tab-icon sun-icon">
           <circle cx="12" cy="12" r="5"></circle>
           <line x1="12" y1="1" x2="12" y2="3"></line>
           <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -74,7 +83,7 @@
           <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
         </svg>
       {:else if opt.icon === "moon"}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tab-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tab-icon moon-icon">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
         </svg>
       {/if}
@@ -85,21 +94,42 @@
 
 <style>
   .appearance-tabs-wrap {
-    display: inline-flex;
+    position: relative;
+    display: inline-grid;
+    grid-template-columns: repeat(3, 1fr);
     align-items: center;
     background: var(--surface, rgba(255, 255, 255, 0.04));
     border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
     border-radius: 12px;
     padding: 3px;
-    gap: 2px;
     user-select: none;
     box-sizing: border-box;
+    backdrop-filter: blur(12px);
+  }
+
+  .animated-indicator {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc((100% - 6px) / 3);
+    background: var(--surface-elevated, rgba(255, 255, 255, 0.14));
+    border-radius: 9px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25),
+                0 0 0 1px var(--border-strong, rgba(255, 255, 255, 0.15)),
+                0 0 16px -2px var(--glow-surface, rgba(99, 102, 241, 0.25));
+    pointer-events: none;
+    transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1;
   }
 
   .appearance-tab {
+    position: relative;
+    z-index: 2;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    gap: 7px;
     padding: 7px 16px;
     border-radius: 9px;
     background: transparent;
@@ -109,19 +139,16 @@
     font-weight: 500;
     font-family: inherit;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: color 0.18s ease;
   }
 
   .appearance-tab:hover:not(.active) {
-    color: var(--text, #f8fafc);
-    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary, #f8fafc);
   }
 
   .appearance-tab.active {
-    background: var(--surface-elevated, rgba(255, 255, 255, 0.12));
-    color: var(--text, #f8fafc);
+    color: var(--text-primary, #f8fafc);
     font-weight: 600;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 
   .appearance-tab:focus-visible {
@@ -133,6 +160,17 @@
     width: 15px;
     height: 15px;
     flex-shrink: 0;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .appearance-tab.active .sun-icon {
+    transform: rotate(20deg) scale(1.08);
+    color: #f59e0b;
+  }
+
+  .appearance-tab.active .moon-icon {
+    transform: rotate(-10deg) scale(1.08);
+    color: #818cf8;
   }
 
   .tab-label {
@@ -140,8 +178,11 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .animated-indicator,
+    .tab-icon,
     .appearance-tab {
       transition: none !important;
+      transform: none !important;
     }
   }
 </style>

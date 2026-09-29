@@ -1,0 +1,19 @@
+{
+  "entries": [
+    {
+      "path": "plugins/tauri-desktop-toolkit"
+    },
+    {
+      "path": "plugins/desktop-test-runner"
+    },
+    {
+      "path": "plugins/git-release-workflow"
+    },
+    {
+      "path": "plugins/browser-ui-inspector"
+    },
+    {
+      "path": "plugins/desktop-security-guard"
+    }
+  ]
+}

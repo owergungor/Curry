@@ -1,0 +1,5 @@
+{
+  "name": "desktop-test-runner",
+  "description": "Comprehensive test orchestration and verification gating for Rust and Svelte",
+  "version": "1.0.0"
+}

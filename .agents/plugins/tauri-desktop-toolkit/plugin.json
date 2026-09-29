@@ -1,0 +1,5 @@
+{
+  "name": "tauri-desktop-toolkit",
+  "description": "Specialized tooling, rules, and workflows for Tauri v2 native desktop development in Rust and Svelte 5",
+  "version": "1.0.0"
+}

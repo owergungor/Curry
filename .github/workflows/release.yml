@@ -62,9 +62,9 @@ jobs:
       - name: Stage and Package macOS Artifacts
         run: |
           mkdir -p "$GITHUB_WORKSPACE/dist_release"
-          TAG_NAME="${GITHUB_REF_NAME:-v1.4}"
+          TAG_NAME="${GITHUB_REF_NAME:-v1.5}"
           if [ "$TAG_NAME" = "main" ] || [ -z "$TAG_NAME" ]; then
-            TAG_NAME="v1.4"
+            TAG_NAME="v1.5"
           fi
           if [[ ! "$TAG_NAME" =~ ^v ]]; then
             TAG_NAME="v$TAG_NAME"
@@ -133,7 +133,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path dist_release -Force | Out-Null
           $tag = $env:GITHUB_REF_NAME
-          if ([string]::IsNullOrEmpty($tag) -or $tag -eq "main") { $tag = "v1.4" }
+          if ([string]::IsNullOrEmpty($tag) -or $tag -eq "main") { $tag = "v1.5" }
           if (-not $tag.StartsWith("v")) { $tag = "v$tag" }
           
           # Copy standalone exe as Curry.exe

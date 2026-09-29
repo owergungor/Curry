@@ -1,0 +1,5 @@
+{
+  "name": "git-release-workflow",
+  "description": "Standardized GitHub release automation, tag preservation, and asset verification",
+  "version": "1.0.0"
+}

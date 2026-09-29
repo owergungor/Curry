@@ -64,6 +64,26 @@ impl Default for AppearanceMode {
     }
 }
 
+/// Frequency for automated software update checks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AutoUpdateFrequency {
+    Startup,
+    Daily,
+    Weekly,
+    Monthly,
+}
+
+impl Default for AutoUpdateFrequency {
+    fn default() -> Self {
+        Self::Daily
+    }
+}
+
+fn default_true() -> bool {
+    true
+}
+
 /// Centralized user-configurable application settings for Curry.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppSettings {
@@ -94,6 +114,15 @@ pub struct AppSettings {
     /// Fullscreen / gaming overlay suppression policy.
     #[serde(default, alias = "fullscreenBehavior")]
     pub fullscreen_behavior: FullscreenBehavior,
+    /// Whether automatic update checking is enabled.
+    #[serde(default = "default_true", alias = "autoUpdateEnabled")]
+    pub auto_update_enabled: bool,
+    /// Frequency for automated update checks.
+    #[serde(default, alias = "autoUpdateFrequency")]
+    pub auto_update_frequency: AutoUpdateFrequency,
+    /// Unix timestamp of last update check in seconds.
+    #[serde(default, alias = "lastUpdateCheck")]
+    pub last_update_check: Option<u64>,
 }
 
 impl Default for AppSettings {
@@ -110,6 +139,9 @@ impl Default for AppSettings {
             applications: Vec::new(),
             oled_mode: false,
             fullscreen_behavior: FullscreenBehavior::default(),
+            auto_update_enabled: true,
+            auto_update_frequency: AutoUpdateFrequency::default(),
+            last_update_check: None,
         }
     }
 }

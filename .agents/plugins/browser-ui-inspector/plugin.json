@@ -1,0 +1,5 @@
+{
+  "name": "browser-ui-inspector",
+  "description": "Browser automation and UI visual inspection for Svelte components and Tauri views",
+  "version": "1.0.0"
+}

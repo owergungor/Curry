@@ -80,6 +80,9 @@
     applications?: ApplicationProfile[];
     oled_mode?: boolean;
     fullscreen_behavior?: "always_show" | "suppress_in_fullscreen" | "suppress_gaming";
+    auto_update_enabled?: boolean;
+    auto_update_frequency?: "startup" | "daily" | "weekly" | "monthly";
+    last_update_check?: number | null;
   }
 
   type ProviderStatus =
@@ -189,7 +192,14 @@
     }
   });
 
-  // Software Update Management
+  // Software Update Management (v1.5)
+  const AUTO_UPDATE_FREQUENCY_OPTIONS: DropdownItem[] = [
+    { value: "startup", label: "Açılışta (Startup)", description: "Check every time Curry opens" },
+    { value: "daily", label: "Günlük (Daily)", description: "Check automatically every 24 hours" },
+    { value: "weekly", label: "Haftalık (Weekly)", description: "Check automatically every 7 days" },
+    { value: "monthly", label: "Aylık (Monthly)", description: "Check automatically every 30 days" },
+  ];
+
   let isCheckingUpdate = $state(false);
   let isInstallingUpdate = $state(false);
   let updateStatusMessage = $state<string | null>(null);
@@ -203,15 +213,54 @@
     updateAvailable = false;
     try {
       const update = await checkUpdate();
+      appSettings.last_update_check = Math.floor(Date.now() / 1000);
+      saveAppSettings();
       if (update && update.available) {
         pendingUpdateObj = update;
         updateAvailable = true;
         updateStatusMessage = `Curry v${update.version} is available!`;
       } else {
-        updateStatusMessage = "Curry v1.4 is up to date.";
+        updateStatusMessage = `Curry v${connectionInfo?.version ?? '1.5'} is up to date.`;
       }
     } catch (err: unknown) {
       updateStatusMessage = "Unable to reach update server (offline or rate-limited).";
+    } finally {
+      isCheckingUpdate = false;
+    }
+  }
+
+  async function checkAutoUpdateIfDue() {
+    if (appSettings.auto_update_enabled === false) return;
+    const now = Math.floor(Date.now() / 1000);
+    const freq = appSettings.auto_update_frequency || "daily";
+    const last = appSettings.last_update_check || 0;
+
+    let isDue = false;
+    if (freq === "startup") {
+      isDue = true;
+    } else if (freq === "daily" && now - last >= 86400) {
+      isDue = true;
+    } else if (freq === "weekly" && now - last >= 604800) {
+      isDue = true;
+    } else if (freq === "monthly" && now - last >= 2592000) {
+      isDue = true;
+    }
+
+    if (!isDue) return;
+
+    if (isCheckingUpdate || isInstallingUpdate) return;
+    isCheckingUpdate = true;
+    try {
+      const update = await checkUpdate();
+      appSettings.last_update_check = now;
+      saveAppSettings();
+      if (update && update.available) {
+        pendingUpdateObj = update;
+        updateAvailable = true;
+        updateStatusMessage = `Curry v${update.version} is available!`;
+      }
+    } catch {
+      // Background silent check; fail gracefully without interrupting user
     } finally {
       isCheckingUpdate = false;
     }
@@ -637,8 +686,10 @@
     return "pulse";
   }
 
+  let profileGlowTimeout: ReturnType<typeof setTimeout> | null = null;
+
   async function previewProfileGlow(p: ApplicationProfile | null) {
-    if (!p) return;
+    if (!p || isPreviewingProfile) return;
     isPreviewingProfile = true;
     try {
       let previewed = false;
@@ -666,11 +717,15 @@
       }
     } catch (err) {
       console.error("Failed to trigger profile preview:", err);
-    } finally {
-      setTimeout(() => {
-        isPreviewingProfile = false;
-      }, 1000);
+      isPreviewingProfile = false;
+      return;
     }
+    if (profileGlowTimeout) clearTimeout(profileGlowTimeout);
+    const durSec = p.duration ?? (appSettings.glow.duration_ms / 1000);
+    const fallbackMs = Math.round(durSec * 1000) + 1200;
+    profileGlowTimeout = setTimeout(() => {
+      isPreviewingProfile = false;
+    }, fallbackMs);
   }
 
   // Notification Storage State
@@ -898,17 +953,23 @@
     }
   }
 
+  let glowTimeout: ReturnType<typeof setTimeout> | null = null;
+
   async function previewDefaultGlow() {
+    if (isPreviewingGlow) return;
     isPreviewingGlow = true;
     try {
       await invoke("preview_global_glow");
     } catch (err) {
       console.error("Failed to trigger glow preview:", err);
-    } finally {
-      setTimeout(() => {
-        isPreviewingGlow = false;
-      }, 1000);
+      isPreviewingGlow = false;
+      return;
     }
+    if (glowTimeout) clearTimeout(glowTimeout);
+    const fallbackMs = (appSettings.glow.duration_ms || 2500) + 1200;
+    glowTimeout = setTimeout(() => {
+      isPreviewingGlow = false;
+    }, fallbackMs);
   }
 
   const previewGlow = previewDefaultGlow;
@@ -1059,6 +1120,23 @@
       notifications = notifications.map((n) => (n.id === statusId ? { ...n, read: isRead } : n));
     });
 
+    const unlistenGlowFinishedPromise = listen<void>("glow-finished", () => {
+      isPreviewingGlow = false;
+      isPreviewingProfile = false;
+      if (glowTimeout) {
+        clearTimeout(glowTimeout);
+        glowTimeout = null;
+      }
+      if (profileGlowTimeout) {
+        clearTimeout(profileGlowTimeout);
+        profileGlowTimeout = null;
+      }
+    });
+
+    const updateCheckTimeout = setTimeout(() => {
+      checkAutoUpdateIfDue();
+    }, 2500);
+
     const interval = setInterval(() => {
       if (isWindowHiddenInTray || (typeof document !== "undefined" && document.hidden)) return;
       fetchPipelineStatus();
@@ -1075,6 +1153,7 @@
     }
 
     return () => {
+      clearTimeout(updateCheckTimeout);
       clearInterval(interval);
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -1088,6 +1167,7 @@
       unlistenClearedPromise.then((unlisten) => unlisten());
       unlistenRemovedPromise.then((unlisten) => unlisten());
       unlistenReadPromise.then((unlisten) => unlisten());
+      unlistenGlowFinishedPromise.then((unlisten) => unlisten());
       unlistenUnreadPromise.then((unlisten) => unlisten());
       unlistenReadStatusPromise.then((unlisten) => unlisten());
     };
@@ -1125,95 +1205,97 @@
       <div class="brand-text">
         <div class="brand-row">
           <h1 class="brand-title">Curry</h1>
-          <span class="brand-version-pill">v{connectionInfo?.version ?? '1.0.0'}</span>
+          <span class="brand-version-pill">v{connectionInfo?.version ?? '1.5'}</span>
         </div>
       </div>
     </div>
 
-    <!-- Center Top Navigation Tabs (Glow Menu Style - Static Text Only) -->
-    <nav class="header-center-tabs" aria-label="Main Navigation">
-      <button
-        id="tab-dashboard-btn"
-        class="nav-tab {activeTab === 'dashboard' ? 'active' : ''}"
-        onclick={() => navigateToTab("dashboard")}
-        onkeydown={(e) => handleTabKeyDown(e, "dashboard")}
-        aria-current={activeTab === 'dashboard' ? 'page' : undefined}
-      >
-        <span class="nav-tab-glow" aria-hidden="true"></span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
-          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
-          <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
-          <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
-          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
-        </svg>
-        <span class="nav-label">Dashboard</span>
-      </button>
+    <!-- Center Top Navigation Tabs (Resizable Glass Navbar) -->
+    <div class="header-center-wrap">
+      <nav class="header-center-tabs" aria-label="Main Navigation">
+        <button
+          id="tab-dashboard-btn"
+          class="nav-tab {activeTab === 'dashboard' ? 'active' : ''}"
+          onclick={() => navigateToTab("dashboard")}
+          onkeydown={(e) => handleTabKeyDown(e, "dashboard")}
+          aria-current={activeTab === 'dashboard' ? 'page' : undefined}
+        >
+          <span class="nav-tab-glow" aria-hidden="true"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+            <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+          </svg>
+          <span class="nav-label">Dashboard</span>
+        </button>
 
-      <button
-        id="tab-notifications-btn"
-        class="nav-tab {activeTab === 'notifications' ? 'active' : ''}"
-        onclick={() => navigateToTab("notifications")}
-        onkeydown={(e) => handleTabKeyDown(e, "notifications")}
-        aria-current={activeTab === 'notifications' ? 'page' : undefined}
-      >
-        <span class="nav-tab-glow" aria-hidden="true"></span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-        </svg>
-        <span class="nav-label">Notifications</span>
-        {#if unreadCount > 0}
-          <span class="nav-badge">{unreadCount}</span>
-        {/if}
-      </button>
+        <button
+          id="tab-notifications-btn"
+          class="nav-tab {activeTab === 'notifications' ? 'active' : ''}"
+          onclick={() => navigateToTab("notifications")}
+          onkeydown={(e) => handleTabKeyDown(e, "notifications")}
+          aria-current={activeTab === 'notifications' ? 'page' : undefined}
+        >
+          <span class="nav-tab-glow" aria-hidden="true"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span class="nav-label">Notifications</span>
+          {#if unreadCount > 0}
+            <span class="nav-badge">{unreadCount}</span>
+          {/if}
+        </button>
 
-      <button
-        id="tab-applications-btn"
-        class="nav-tab {activeTab === 'applications' ? 'active' : ''}"
-        onclick={() => navigateToTab("applications")}
-        onkeydown={(e) => handleTabKeyDown(e, "applications")}
-        aria-current={activeTab === 'applications' ? 'page' : undefined}
-        aria-label="Apps"
-        title="Apps"
-      >
-        <span class="nav-tab-glow" aria-hidden="true"></span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
-          <rect x="2" y="3" width="20" height="14" rx="2"></rect>
-          <line x1="8" y1="21" x2="16" y2="21"></line>
-          <line x1="12" y1="17" x2="12" y2="21"></line>
-        </svg>
-        <span class="nav-label">Apps</span>
-      </button>
+        <button
+          id="tab-applications-btn"
+          class="nav-tab {activeTab === 'applications' ? 'active' : ''}"
+          onclick={() => navigateToTab("applications")}
+          onkeydown={(e) => handleTabKeyDown(e, "applications")}
+          aria-current={activeTab === 'applications' ? 'page' : undefined}
+          aria-label="Apps"
+          title="Apps"
+        >
+          <span class="nav-tab-glow" aria-hidden="true"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
+            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span class="nav-label">Apps</span>
+        </button>
 
-      <button
-        id="tab-glow-btn"
-        class="nav-tab {activeTab === 'glow' ? 'active' : ''}"
-        onclick={() => navigateToTab("glow")}
-        onkeydown={(e) => handleTabKeyDown(e, "glow")}
-        aria-current={activeTab === 'glow' ? 'page' : undefined}
-      >
-        <span class="nav-tab-glow" aria-hidden="true"></span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-        </svg>
-        <span class="nav-label">Glow</span>
-      </button>
+        <button
+          id="tab-glow-btn"
+          class="nav-tab {activeTab === 'glow' ? 'active' : ''}"
+          onclick={() => navigateToTab("glow")}
+          onkeydown={(e) => handleTabKeyDown(e, "glow")}
+          aria-current={activeTab === 'glow' ? 'page' : undefined}
+        >
+          <span class="nav-tab-glow" aria-hidden="true"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+          <span class="nav-label">Glow</span>
+        </button>
 
-      <button
-        id="tab-settings-btn"
-        class="nav-tab {activeTab === 'settings' ? 'active' : ''}"
-        onclick={() => navigateToTab("settings")}
-        onkeydown={(e) => handleTabKeyDown(e, "settings")}
-        aria-current={activeTab === 'settings' ? 'page' : undefined}
-      >
-        <span class="nav-tab-glow" aria-hidden="true"></span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-        <span class="nav-label">Settings</span>
-      </button>
-    </nav>
+        <button
+          id="tab-settings-btn"
+          class="nav-tab {activeTab === 'settings' ? 'active' : ''}"
+          onclick={() => navigateToTab("settings")}
+          onkeydown={(e) => handleTabKeyDown(e, "settings")}
+          aria-current={activeTab === 'settings' ? 'page' : undefined}
+        >
+          <span class="nav-tab-glow" aria-hidden="true"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span class="nav-label">Settings</span>
+        </button>
+      </nav>
+    </div>
 
     <!-- Right: Interactive Listening Status Button & Header Glow Button -->
     <div class="header-right">
@@ -2475,14 +2557,55 @@
                 </div>
 
                 <div class="controls-list">
+                  <!-- Auto Update Enable / Disable Toggle -->
+                  <div class="control-item">
+                    <div class="control-label-group">
+                      <span class="control-title">Automatic Updates</span>
+                      <span class="control-sub">Periodically check for official signed updates in the background</span>
+                    </div>
+                    <label class="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={appSettings.auto_update_enabled ?? true}
+                        onchange={(e) => {
+                          appSettings.auto_update_enabled = (e.target as HTMLInputElement).checked;
+                          saveAppSettings();
+                        }}
+                      />
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+
+                  <!-- Update Frequency Dropdown -->
+                  <div class="control-item">
+                    <div class="control-label-group">
+                      <span class="control-title">Check Frequency</span>
+                      <span class="control-sub">How often Curry automatically queries GitHub releases</span>
+                    </div>
+                    <div class="dropdown-control-wrapper">
+                      <Dropdown
+                        id="update-frequency-dropdown"
+                        items={AUTO_UPDATE_FREQUENCY_OPTIONS}
+                        value={appSettings.auto_update_frequency ?? "daily"}
+                        disabled={!(appSettings.auto_update_enabled ?? true)}
+                        ariaLabel="Software update frequency"
+                        onchange={(val) => {
+                          appSettings.auto_update_frequency = val as any;
+                          saveAppSettings();
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Current Version & Action Row -->
                   <div class="control-item updater-row">
                     <div class="control-label-group">
-                      <span class="control-title">Curry v1.4</span>
+                      <span class="control-title">Curry v1.5</span>
                       <span class="control-sub">
                         {#if updateStatusMessage}
                           {updateStatusMessage}
                         {:else}
-                          Curry v1.4 is up to date.
+                          Curry v1.5 is up to date.
                         {/if}
                       </span>
                     </div>
@@ -2509,7 +2632,7 @@
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon {isCheckingUpdate ? 'spin' : ''}">
                             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                           </svg>
-                          <span>{isCheckingUpdate ? "Checking..." : "Check for Updates"}</span>
+                          <span>{isCheckingUpdate ? "Checking..." : "Check Now"}</span>
                         </button>
                       {/if}
                     </div>
@@ -3193,6 +3316,7 @@
     overflow: hidden;
     background-color: var(--bg);
     color: var(--text-primary);
+    scrollbar-gutter: stable;
   }
 
   .ambient-glow-mesh {
@@ -3213,8 +3337,8 @@
   .app-header {
     position: relative;
     z-index: 20;
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     padding: 10px 20px;
     background: var(--surface);
@@ -3226,6 +3350,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    justify-self: start;
     flex-shrink: 0;
   }
 
@@ -3274,18 +3399,26 @@
     font-family: monospace;
   }
 
-  /* Top Tabs (Center - Glow Menu Design with Static Text) */
+  .header-center-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    justify-self: center;
+  }
+
+  /* 21st.dev Inspired Resizable Glass Navbar */
   .header-center-tabs {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 4px;
-    background: var(--surface-elevated);
-    padding: 3px 4px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    backdrop-filter: blur(8px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    gap: 3px;
+    background: var(--surface-elevated, rgba(30, 41, 59, 0.7));
+    padding: 4px;
+    border-radius: 12px;
+    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.15));
+    backdrop-filter: blur(16px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--border, rgba(255, 255, 255, 0.05));
+    transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), padding 0.2s ease;
   }
 
   .nav-tab {
@@ -3431,6 +3564,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    justify-self: end;
     flex-shrink: 0;
   }
 
@@ -3487,6 +3621,9 @@
   .listening-toggle-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    min-width: 96px;
+    box-sizing: border-box;
     gap: 7px;
     padding: 5px 12px;
     border-radius: 20px;

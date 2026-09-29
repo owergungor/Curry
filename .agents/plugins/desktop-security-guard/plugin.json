@@ -1,0 +1,5 @@
+{
+  "name": "desktop-security-guard",
+  "description": "Security audit rules and workflows for Tauri IPC commands, filesystem access, and CSP",
+  "version": "1.0.0"
+}
