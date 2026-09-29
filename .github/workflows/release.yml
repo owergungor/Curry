@@ -12,7 +12,7 @@ permissions:
 jobs:
   release-mac:
     name: Build macOS Apple Silicon (arm64)
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
