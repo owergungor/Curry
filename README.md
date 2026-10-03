@@ -86,20 +86,20 @@ Windows notifications frequently slip into the Action Center unnoticed while you
 <div align="center">
 
 ### 📊 Dashboard
-> < />
+> < New images will be added in the next update />
 
 
 ### 🔔 Notification History
-> < />
+> < New images will be added in the next update />
 
 
 ### ✨ Ambient Glow & Application Profiles
-> < />
+> < New images will be added in the next update />
 
 
 
 ### 🎨 Themes
-> < />
+> < New images will be added in the next update />
 
 
 
