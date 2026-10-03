@@ -6,6 +6,7 @@ pub mod settings;
 pub mod single_instance;
 pub mod state;
 pub mod tray;
+pub mod window_theme;
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -14,7 +15,9 @@ use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 use crate::glow::{GlowManager, GlowSettings};
 use crate::notification::model::Notification;
 use crate::notification::{NotificationEngine, PipelineStatus};
-use crate::settings::{AppSettings, SettingsStorage, SoundManager, StartupManager};
+use crate::settings::{
+    AppSettings, AppTheme, AppearanceMode, SettingsStorage, SoundManager, StartupManager,
+};
 use crate::state::AppState;
 
 #[derive(Debug, Serialize)]
@@ -94,6 +97,11 @@ fn update_app_settings(
     }
     let _ = app.emit("app-state-changed", updated.enabled);
     let _ = app.emit("app-settings-updated", &updated);
+
+    // Synchronize window chrome with updated theme and appearance
+    if let Some(main_window) = app.get_webview_window("main") {
+        window_theme::sync_window_chrome(&main_window, updated.appearance, updated.theme);
+    }
 
     Ok(updated)
 }
@@ -672,6 +680,57 @@ fn get_fullscreen_state() -> crate::settings::FullscreenState {
     crate::settings::detect_fullscreen_state()
 }
 
+#[tauri::command]
+fn sync_window_chrome(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    appearance: Option<String>,
+    theme: Option<String>,
+    is_dark: Option<bool>,
+) -> Result<(), String> {
+    if let Some(main_window) = app.get_webview_window("main") {
+        let (app_appearance, app_theme) = if let Some(storage) = state.settings_storage() {
+            let s = storage.get();
+            (s.appearance, s.theme)
+        } else {
+            (AppearanceMode::default(), AppTheme::default())
+        };
+
+        let resolved_appearance = match appearance.as_deref() {
+            Some("light") => AppearanceMode::Light,
+            Some("dark") => AppearanceMode::Dark,
+            Some("system") => AppearanceMode::System,
+            _ => app_appearance,
+        };
+
+        let resolved_theme = match theme.as_deref() {
+            Some("catppuccin") => AppTheme::Catppuccin,
+            Some("vintage-paper") => AppTheme::VintagePaper,
+            Some("amethyst-haze") => AppTheme::AmethystHaze,
+            Some("sage-mist") => AppTheme::SageMist,
+            Some("bubblegum") => AppTheme::Bubblegum,
+            Some("perpetuity") => AppTheme::Perpetuity,
+            Some("amberstate") | Some("amber-slate") => AppTheme::Amberstate,
+            _ => app_theme,
+        };
+
+        if let Some(dark_flag) = is_dark {
+            let colors = window_theme::WindowChromeColors::resolve(resolved_theme, dark_flag);
+            let tauri_theme = if dark_flag {
+                Some(tauri::Theme::Dark)
+            } else {
+                Some(tauri::Theme::Light)
+            };
+            let _ = main_window.set_theme(tauri_theme);
+            #[cfg(target_os = "windows")]
+            window_theme::apply_windows_dwm_attributes(&main_window, colors);
+        } else {
+            window_theme::sync_window_chrome(&main_window, resolved_appearance, resolved_theme);
+        }
+    }
+    Ok(())
+}
+
 /// [LEGACY / BACKWARDS COMPATIBILITY] Migrates settings, notifications, and glow configuration
 /// from legacy NotiGlow/Curry directories to Curry's com.curry.app storage directory.
 fn migrate_legacy_notiglow_data(app: &AppHandle) {
@@ -783,6 +842,13 @@ pub fn run() {
             // 2. Main window lifecycle
             let is_autostart = std::env::args().any(|arg| arg == "--autostart");
             if let Some(main_window) = app.get_webview_window("main") {
+                // Apply theme before showing window
+                window_theme::sync_window_chrome(
+                    &main_window,
+                    initial_settings.appearance,
+                    initial_settings.theme,
+                );
+
                 if is_autostart {
                     let _ = main_window.hide();
                     let _ = main_window.emit("window-hidden-to-tray", ());
@@ -839,7 +905,8 @@ pub fn run() {
             trigger_profile_preview,
             get_fullscreen_state,
             pick_executable_file,
-            parse_executable_path
+            parse_executable_path,
+            sync_window_chrome
         ]);
 
     if let Err(err) = app.run(tauri::generate_context!()) {

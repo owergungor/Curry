@@ -62,9 +62,9 @@ jobs:
       - name: Stage and Package macOS Artifacts
         run: |
           mkdir -p "$GITHUB_WORKSPACE/dist_release"
-          TAG_NAME="${GITHUB_REF_NAME:-v1.5}"
+          TAG_NAME="${GITHUB_REF_NAME:-v1.6}"
           if [ "$TAG_NAME" = "main" ] || [ -z "$TAG_NAME" ]; then
-            TAG_NAME="v1.5"
+            TAG_NAME="v1.6"
           fi
           if [[ ! "$TAG_NAME" =~ ^v ]]; then
             TAG_NAME="v$TAG_NAME"
@@ -133,16 +133,26 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path dist_release -Force | Out-Null
           $tag = $env:GITHUB_REF_NAME
-          if ([string]::IsNullOrEmpty($tag) -or $tag -eq "main") { $tag = "v1.5" }
+          if ([string]::IsNullOrEmpty($tag) -or $tag -eq "main") { $tag = "v1.6" }
           if (-not $tag.StartsWith("v")) { $tag = "v$tag" }
           
           # Copy standalone exe as Curry.exe
           Copy-Item "src-tauri\target\release\curry.exe" "dist_release\Curry.exe"
+
+          # Copy NSIS setup installer as Curry_vX.Y_win-x64-setup.exe and Curry_vX.Y_win-x64.exe
+          $nsisExe = Get-ChildItem -Path "src-tauri\target\release\bundle\nsis\*.exe" | Select-Object -First 1
+          if ($nsisExe) {
+            Copy-Item $nsisExe.FullName "dist_release\Curry_${tag}_win-x64-setup.exe"
+            Copy-Item $nsisExe.FullName "dist_release\Curry_${tag}_win-x64.exe"
+          }
           
           # Zip packaging
           $stage = "dist_release\staging"
           New-Item -ItemType Directory -Path $stage -Force | Out-Null
           Copy-Item "src-tauri\target\release\curry.exe" "$stage\Curry.exe"
+          if ($nsisExe) {
+            Copy-Item $nsisExe.FullName "$stage\Curry_${tag}_win-x64-setup.exe"
+          }
           Compress-Archive -Path "$stage\*" -DestinationPath "dist_release\Curry_${tag}_win-x64.zip" -Force
           Remove-Item -Recurse -Force $stage
 
@@ -159,5 +169,6 @@ jobs:
           files: |
             dist_release/Curry.exe
             dist_release/Curry_*_win-x64.zip
+            dist_release/Curry_*_win-x64*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

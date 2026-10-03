@@ -2363,4 +2363,84 @@ mod tests {
         assert_eq!(legacy.auto_update_frequency, AutoUpdateFrequency::Daily);
         assert_eq!(legacy.last_update_check, None);
     }
+
+    #[test]
+    fn test_window_theme_hex_to_colorref() {
+        use curry_lib::window_theme::hex_to_colorref;
+
+        // Valid 6-character hex colors (RRGGBB -> 0x00BBGGRR)
+        // Perpetuity surface: #121826 -> R: 0x12, G: 0x18, B: 0x26 -> 0x00261812
+        assert_eq!(hex_to_colorref("#121826"), Some(0x00261812));
+        assert_eq!(hex_to_colorref("121826"), Some(0x00261812));
+
+        // Vintage Paper surface: #f7f3ec -> R: 0xf7, G: 0xf3, B: 0xec -> 0x00ECF3F7
+        assert_eq!(hex_to_colorref("#f7f3ec"), Some(0x00ECF3F7));
+
+        // Pure white: #ffffff -> 0x00FFFFFF
+        assert_eq!(hex_to_colorref("#ffffff"), Some(0x00FFFFFF));
+
+        // Pure black: #000000 -> 0x00000000
+        assert_eq!(hex_to_colorref("#000000"), Some(0x00000000));
+
+        // Invalid hex strings
+        assert_eq!(hex_to_colorref(""), None);
+        assert_eq!(hex_to_colorref("#12"), None);
+        assert_eq!(hex_to_colorref("invalid"), None);
+    }
+
+    #[test]
+    fn test_window_theme_color_resolution() {
+        use curry_lib::settings::AppTheme;
+        use curry_lib::window_theme::WindowChromeColors;
+
+        // Light mode resolution
+        let light_default = WindowChromeColors::resolve(AppTheme::Perpetuity, false);
+        assert!(!light_default.is_dark);
+        assert_eq!(light_default.caption_color, 0x00FCFAF8); // #f8fafc
+
+        let light_vintage = WindowChromeColors::resolve(AppTheme::VintagePaper, false);
+        assert!(!light_vintage.is_dark);
+        assert_eq!(light_vintage.caption_color, 0x00ECF3F7); // #f7f3ec
+
+        // Dark mode resolution
+        let dark_perpetuity = WindowChromeColors::resolve(AppTheme::Perpetuity, true);
+        assert!(dark_perpetuity.is_dark);
+        assert_eq!(dark_perpetuity.caption_color, 0x00261812); // #121826
+
+        let dark_catppuccin = WindowChromeColors::resolve(AppTheme::Catppuccin, true);
+        assert!(dark_catppuccin.is_dark);
+        assert_eq!(dark_catppuccin.caption_color, 0x002E1E1E); // #1e1e2e
+    }
+
+    #[test]
+    fn test_window_theme_effective_mode_determination() {
+        use curry_lib::settings::{AppTheme, AppearanceMode};
+        use curry_lib::window_theme::is_effective_dark_mode;
+
+        // Explicit Dark always returns true
+        assert!(is_effective_dark_mode(
+            AppearanceMode::Dark,
+            AppTheme::Perpetuity
+        ));
+        assert!(is_effective_dark_mode(
+            AppearanceMode::Dark,
+            AppTheme::VintagePaper
+        ));
+
+        // Explicit Light always returns false
+        assert!(!is_effective_dark_mode(
+            AppearanceMode::Light,
+            AppTheme::Perpetuity
+        ));
+        assert!(!is_effective_dark_mode(
+            AppearanceMode::Light,
+            AppTheme::VintagePaper
+        ));
+
+        // Vintage Paper in System mode resolves to Light (false)
+        assert!(!is_effective_dark_mode(
+            AppearanceMode::System,
+            AppTheme::VintagePaper
+        ));
+    }
 }

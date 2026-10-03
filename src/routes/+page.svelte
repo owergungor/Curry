@@ -192,7 +192,19 @@
     }
   });
 
-  // Software Update Management (v1.5)
+  // Synchronize native window chrome (caption bar & buttons) whenever theme or appearance changes
+  $effect(() => {
+    const isDark = effectiveAppearance === "dark";
+    invoke("sync_window_chrome", {
+      appearance,
+      theme: selectedTheme,
+      isDark,
+    }).catch((err) => {
+      console.warn("Failed to sync window chrome:", err);
+    });
+  });
+
+  // Software Update Management (v1.6)
   const AUTO_UPDATE_FREQUENCY_OPTIONS: DropdownItem[] = [
     { value: "startup", label: "Açılışta (Startup)", description: "Check every time Curry opens" },
     { value: "daily", label: "Günlük (Daily)", description: "Check automatically every 24 hours" },
@@ -220,7 +232,7 @@
         updateAvailable = true;
         updateStatusMessage = `Curry v${update.version} is available!`;
       } else {
-        updateStatusMessage = `Curry v${connectionInfo?.version ?? '1.5'} is up to date.`;
+        updateStatusMessage = `Curry v${connectionInfo?.version ?? '1.6'} is up to date.`;
       }
     } catch (err: unknown) {
       updateStatusMessage = "Unable to reach update server (offline or rate-limited).";
@@ -1205,7 +1217,7 @@
       <div class="brand-text">
         <div class="brand-row">
           <h1 class="brand-title">Curry</h1>
-          <span class="brand-version-pill">v{connectionInfo?.version ?? '1.5'}</span>
+          <span class="brand-version-pill">v{connectionInfo?.version ?? '1.6'}</span>
         </div>
       </div>
     </div>
@@ -2600,12 +2612,12 @@
                   <!-- Current Version & Action Row -->
                   <div class="control-item updater-row">
                     <div class="control-label-group">
-                      <span class="control-title">Curry v1.5</span>
+                      <span class="control-title">Curry v{connectionInfo?.version ?? '1.6'}</span>
                       <span class="control-sub">
                         {#if updateStatusMessage}
                           {updateStatusMessage}
                         {:else}
-                          Curry v1.5 is up to date.
+                          Curry v{connectionInfo?.version ?? '1.6'} is up to date.
                         {/if}
                       </span>
                     </div>
