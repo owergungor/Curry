@@ -5,25 +5,31 @@ use crate::glow::model::GlowSettings;
 /// User-selected visual theme for Curry inspired by 21st.dev Community Themes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum AppTheme {
+    #[serde(rename = "promotor-wow")]
+    PromotorWow,
+    #[serde(rename = "perpetuity")]
+    Perpetuity,
     #[serde(rename = "catppuccin")]
     Catppuccin,
-    #[serde(rename = "vintage-paper")]
-    VintagePaper,
+    #[serde(rename = "zen-linen")]
+    ZenLinen,
+    #[serde(rename = "matrix-green")]
+    MatrixGreen,
+    #[serde(rename = "neon-magenta")]
+    NeonMagenta,
     #[serde(rename = "amethyst-haze")]
     AmethystHaze,
     #[serde(rename = "sage-mist")]
     SageMist,
     #[serde(rename = "bubblegum")]
     Bubblegum,
-    #[serde(rename = "perpetuity")]
-    Perpetuity,
     #[serde(rename = "amberstate")]
     Amberstate,
 }
 
 impl Default for AppTheme {
     fn default() -> Self {
-        Self::Perpetuity
+        Self::PromotorWow
     }
 }
 
@@ -34,14 +40,19 @@ impl<'de> Deserialize<'de> for AppTheme {
     {
         let s = String::deserialize(deserializer)?;
         match s.to_lowercase().as_str() {
-            "catppuccin" => Ok(Self::Catppuccin),
-            "vintage-paper" => Ok(Self::VintagePaper),
-            "amethyst-haze" => Ok(Self::AmethystHaze),
-            "sage-mist" => Ok(Self::SageMist),
-            "bubblegum" => Ok(Self::Bubblegum),
+            "promotor-wow" | "promotor_wow" | "promotorwow" => Ok(Self::PromotorWow),
             "perpetuity" => Ok(Self::Perpetuity),
-            "amberstate" | "amber-slate" | "amberslate" => Ok(Self::Amberstate),
-            _ => Ok(Self::Perpetuity),
+            "catppuccin" => Ok(Self::Catppuccin),
+            "zen-linen" | "zen_linen" | "zenlinen" => Ok(Self::ZenLinen),
+            "matrix-green" | "matrix_green" | "matrixgreen" => Ok(Self::MatrixGreen),
+            "neon-magenta" | "neon_magenta" | "neonmagenta" => Ok(Self::NeonMagenta),
+            "amethyst-haze" | "amethyst_haze" | "amethyst" => Ok(Self::AmethystHaze),
+            "sage-mist" | "sage_mist" | "sagemist" => Ok(Self::SageMist),
+            "bubblegum" => Ok(Self::Bubblegum),
+            "amberstate" | "amber-slate" | "amberslate" | "amber_state" => Ok(Self::Amberstate),
+            // Migration: vintage-paper silently maps to default Promotor Wow without error
+            "vintage-paper" | "vintage_paper" | "vintagepaper" => Ok(Self::PromotorWow),
+            _ => Ok(Self::PromotorWow),
         }
     }
 }

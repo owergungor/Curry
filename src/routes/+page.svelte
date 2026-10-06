@@ -137,7 +137,7 @@
     return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
 
-  // Theme Management (Defaults to Perpetuity)
+  // Theme Management (Defaults to Promotor Wow)
   let selectedTheme = $state<ThemeId>(DEFAULT_THEME);
   let currentGlowPalette = $derived(getThemeGlowPalette(selectedTheme));
 
@@ -204,9 +204,9 @@
     });
   });
 
-  // Software Update Management (v1.7)
+  // Software Update Management (v1.8)
   function formatUserVersion(v: string | undefined | null): string {
-    if (!v) return "1.7";
+    if (!v) return "1.8";
     const clean = v.replace(/^v/, "");
     const parts = clean.split(".");
     if (parts.length >= 2) {
@@ -242,7 +242,7 @@
         updateAvailable = true;
         updateStatusMessage = `Curry v${formatUserVersion(update.version)} is available!`;
       } else {
-        updateStatusMessage = `Curry v${formatUserVersion(connectionInfo?.version ?? '1.7')} is up to date.`;
+        updateStatusMessage = `Curry v${formatUserVersion(connectionInfo?.version ?? '1.8')} is up to date.`;
       }
     } catch (err: unknown) {
       updateStatusMessage = "Unable to reach update server (offline or rate-limited).";
@@ -861,6 +861,8 @@
         isEnabled = s.enabled;
         if (s.theme && THEMES.some((t) => t.id === s.theme)) {
           selectedTheme = s.theme;
+        } else {
+          selectedTheme = DEFAULT_THEME;
         }
       }
     } catch (err) {
@@ -1063,11 +1065,14 @@
   onMount(() => {
     try {
       // [LEGACY / BACKWARDS COMPATIBILITY] Read curry_selected_theme with fallback to legacy notiglow_selected_theme
-      const savedTheme = (localStorage.getItem("curry_selected_theme") || localStorage.getItem("notiglow_selected_theme")) as ThemeId;
+      const savedTheme = (localStorage.getItem("curry_selected_theme") || localStorage.getItem("notiglow_selected_theme")) as string;
       if (savedTheme && THEMES.some((t) => t.id === savedTheme)) {
-        selectedTheme = savedTheme;
+        selectedTheme = savedTheme as ThemeId;
       } else {
         selectedTheme = DEFAULT_THEME;
+        try {
+          localStorage.setItem("curry_selected_theme", DEFAULT_THEME);
+        } catch {}
       }
     } catch {
       selectedTheme = DEFAULT_THEME;
@@ -1227,7 +1232,7 @@
       <div class="brand-text">
         <div class="brand-row">
           <h1 class="brand-title">Curry</h1>
-          <span class="brand-version-pill">v{formatUserVersion(connectionInfo?.version ?? '1.7')}</span>
+          <span class="brand-version-pill">v{formatUserVersion(connectionInfo?.version ?? '1.8')}</span>
         </div>
       </div>
     </div>
@@ -2322,7 +2327,7 @@
                 </div>
               </section>
 
-              <!-- Appearance & 7 Themes -->
+              <!-- Appearance & 10 Themes -->
               <section class="card panel-card">
                 <div class="panel-header">
                   <div class="panel-title-wrap">
@@ -2335,7 +2340,7 @@
                     </div>
                     <div>
                       <h3 class="panel-title">Appearance & Themes</h3>
-                      <p class="panel-desc">Select from 7 curated design systems (Default: Perpetuity)</p>
+                      <p class="panel-desc">Select from 10 curated design systems (Default: Promotor Wow)</p>
                     </div>
                   </div>
                 </div>
@@ -2374,11 +2379,11 @@
                       <!-- Mini UI Preview Box -->
                       <div
                         class="theme-mini-frame"
-                        style="background-color: {theme.colors.background}; border-color: {theme.colors.border};"
+                        style="background-color: {theme.colors.background}; border-color: {theme.colors.border}; box-shadow: 0 0 10px {theme.glowPalette[0]}33;"
                         aria-hidden="true"
                       >
                         <div class="mini-frame-header">
-                          <span class="mini-frame-accent-dot" style="background-color: {theme.colors.accent};"></span>
+                          <span class="mini-frame-accent-dot" style="background-color: {theme.colors.accent}; box-shadow: 0 0 6px {theme.colors.accent};"></span>
                           <span class="mini-frame-bar" style="background-color: {theme.colors.accent}; width: 45%;"></span>
                         </div>
                         <span class="mini-frame-bar secondary" style="background-color: {theme.colors.text}; width: 80%;"></span>
@@ -2622,12 +2627,12 @@
                   <!-- Current Version & Action Row -->
                   <div class="control-item updater-row">
                     <div class="control-label-group">
-                      <span class="control-title">Curry v{formatUserVersion(connectionInfo?.version ?? '1.7')}</span>
+                      <span class="control-title">Curry v{formatUserVersion(connectionInfo?.version ?? '1.8')}</span>
                       <span class="control-sub">
                         {#if updateStatusMessage}
                           {updateStatusMessage}
                         {:else}
-                          Curry v{formatUserVersion(connectionInfo?.version ?? '1.7')} is up to date.
+                          Curry v{formatUserVersion(connectionInfo?.version ?? '1.8')} is up to date.
                         {/if}
                       </span>
                     </div>
@@ -3054,18 +3059,56 @@
   }
 
   /* Root Base Themes */
+  :global(body[data-theme="promotor-wow"]) { background-color: #0c0e14; color: #f8fafc; }
   :global(body[data-theme="perpetuity"]) { background-color: #0b0f19; color: #f8fafc; }
   :global(body[data-theme="catppuccin"]) { background-color: #181825; color: #cdd6f4; }
-  :global(body[data-theme="vintage-paper"]) { background-color: #f4efe6; color: #241e17; }
+  :global(body[data-theme="zen-linen"]) { background-color: #f7f6f2; color: #1c1b18; }
+  :global(body[data-theme="matrix-green"]) { background-color: #050d08; color: #e6fcf0; }
+  :global(body[data-theme="neon-magenta"]) { background-color: #0f0814; color: #fdf2f8; }
   :global(body[data-theme="amethyst-haze"]) { background-color: #0e0b16; color: #f5f0ff; }
   :global(body[data-theme="sage-mist"]) { background-color: #0c1310; color: #ecfdf5; }
   :global(body[data-theme="bubblegum"]) { background-color: #140a14; color: #fdf2f8; }
   :global(body[data-theme="amberstate"]) { background-color: #0d1117; color: #f8fafc; }
 
   /* ------------------------------------------------------------------------- */
-  /* THEME 1: PERPETUITY (DEFAULT)                                             */
+  /* THEME 1: PROMOTOR WOW (DEFAULT)                                           */
   /* ------------------------------------------------------------------------- */
   .shell,
+  .shell[data-theme="promotor-wow"] {
+    --bg: #0c0e14;
+    --bg-secondary: #07080c;
+    --surface: #131722;
+    --surface-elevated: #1c2233;
+    --surface-hover: #262e45;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 92, 0, 0.45);
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --accent: #ff5c00;
+    --accent-hover: #e05200;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #ff5c00 0%, #ff8a00 100%);
+    --header-glow: radial-gradient(circle, rgba(255, 92, 0, 0.18) 0%, rgba(255, 138, 0, 0.08) 50%, transparent 70%);
+    --glow-surface: rgba(255, 92, 0, 0.22);
+    --ring: #ff5c00;
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.14);
+    --danger-border: rgba(239, 68, 68, 0.35);
+    --danger-text: #fca5a5;
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.14);
+    --warning-border: rgba(245, 158, 11, 0.35);
+    --warning-text: #fbbf24;
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.14);
+    --success-border: rgba(16, 185, 129, 0.35);
+    --success-text: #34d399;
+  }
+
+  /* ------------------------------------------------------------------------- */
+  /* THEME 2: PERPETUITY                                                       */
+  /* ------------------------------------------------------------------------- */
   .shell[data-theme="perpetuity"] {
     --bg: #0b0f19;
     --bg-secondary: #070a11;
@@ -3099,7 +3142,7 @@
   }
 
   /* ------------------------------------------------------------------------- */
-  /* THEME 2: CATPPUCCIN                                                       */
+  /* THEME 3: CATPPUCCIN                                                       */
   /* ------------------------------------------------------------------------- */
   .shell[data-theme="catppuccin"] {
     --bg: #181825;
@@ -3134,26 +3177,26 @@
   }
 
   /* ------------------------------------------------------------------------- */
-  /* THEME 3: VINTAGE PAPER                                                    */
+  /* THEME 4: ZEN LINEN                                                        */
   /* ------------------------------------------------------------------------- */
-  .shell[data-theme="vintage-paper"] {
-    --bg: #f4efe6;
-    --bg-secondary: #ebe4d8;
-    --surface: #faf6f0;
-    --surface-elevated: #ede5d8;
-    --surface-hover: #e4dbc9;
-    --border: rgba(168, 150, 130, 0.38);
-    --border-strong: rgba(139, 94, 52, 0.5);
-    --text-primary: #241e17;
-    --text-secondary: #4d4034;
-    --text-muted: #7a6a5b;
-    --accent: #8b5e34;
-    --accent-hover: #724b26;
+  .shell[data-theme="zen-linen"] {
+    --bg: #f7f6f2;
+    --bg-secondary: #efeee9;
+    --surface: #fcfbfa;
+    --surface-elevated: #e8e6df;
+    --surface-hover: #dedbd3;
+    --border: rgba(120, 115, 105, 0.22);
+    --border-strong: rgba(92, 103, 83, 0.45);
+    --text-primary: #1c1b18;
+    --text-secondary: #45433d;
+    --text-muted: #706d64;
+    --accent: #5c6753;
+    --accent-hover: #475040;
     --accent-fg: #ffffff;
-    --accent-gradient: linear-gradient(135deg, #8b5e34 0%, #b8860b 100%);
-    --header-glow: radial-gradient(circle, rgba(139, 94, 52, 0.12) 0%, rgba(184, 134, 11, 0.05) 50%, transparent 70%);
-    --glow-surface: rgba(139, 94, 52, 0.16);
-    --ring: #8b5e34;
+    --accent-gradient: linear-gradient(135deg, #5c6753 0%, #8a957f 100%);
+    --header-glow: radial-gradient(circle, rgba(92, 103, 83, 0.12) 0%, rgba(138, 149, 127, 0.05) 50%, transparent 70%);
+    --glow-surface: rgba(92, 103, 83, 0.16);
+    --ring: #5c6753;
     --danger: #b91c1c;
     --danger-bg: rgba(185, 28, 28, 0.1);
     --danger-border: rgba(185, 28, 28, 0.3);
@@ -3169,7 +3212,77 @@
   }
 
   /* ------------------------------------------------------------------------- */
-  /* THEME 4: AMETHYST HAZE                                                    */
+  /* THEME 5: MATRIX GREEN                                                     */
+  /* ------------------------------------------------------------------------- */
+  .shell[data-theme="matrix-green"] {
+    --bg: #050d08;
+    --bg-secondary: #020704;
+    --surface: #0a170f;
+    --surface-elevated: #112418;
+    --surface-hover: #183322;
+    --border: rgba(34, 197, 94, 0.22);
+    --border-strong: rgba(34, 197, 94, 0.5);
+    --text-primary: #e6fcf0;
+    --text-secondary: #bbf7d0;
+    --text-muted: #86efac;
+    --accent: #22c55e;
+    --accent-hover: #16a34a;
+    --accent-fg: #022c14;
+    --accent-gradient: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
+    --header-glow: radial-gradient(circle, rgba(34, 197, 94, 0.18) 0%, rgba(16, 185, 129, 0.08) 50%, transparent 70%);
+    --glow-surface: rgba(34, 197, 94, 0.22);
+    --ring: #22c55e;
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.14);
+    --danger-border: rgba(239, 68, 68, 0.35);
+    --danger-text: #fca5a5;
+    --warning: #eab308;
+    --warning-bg: rgba(234, 179, 8, 0.14);
+    --warning-border: rgba(234, 179, 8, 0.35);
+    --warning-text: #facc15;
+    --success: #22c55e;
+    --success-bg: rgba(34, 197, 94, 0.14);
+    --success-border: rgba(34, 197, 94, 0.35);
+    --success-text: #4ade80;
+  }
+
+  /* ------------------------------------------------------------------------- */
+  /* THEME 6: NEON MAGENTA                                                     */
+  /* ------------------------------------------------------------------------- */
+  .shell[data-theme="neon-magenta"] {
+    --bg: #0f0814;
+    --bg-secondary: #09040c;
+    --surface: #1a0e24;
+    --surface-elevated: #29163a;
+    --surface-hover: #3a2052;
+    --border: rgba(236, 72, 153, 0.22);
+    --border-strong: rgba(244, 63, 94, 0.5);
+    --text-primary: #fdf2f8;
+    --text-secondary: #fce7f3;
+    --text-muted: #f472b6;
+    --accent: #e11488;
+    --accent-hover: #c00e73;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #e11488 0%, #06b6d4 100%);
+    --header-glow: radial-gradient(circle, rgba(225, 20, 136, 0.2) 0%, rgba(6, 182, 212, 0.08) 50%, transparent 70%);
+    --glow-surface: rgba(225, 20, 136, 0.24);
+    --ring: #e11488;
+    --danger: #e11488;
+    --danger-bg: rgba(225, 20, 136, 0.14);
+    --danger-border: rgba(225, 20, 136, 0.35);
+    --danger-text: #f472b6;
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.14);
+    --warning-border: rgba(245, 158, 11, 0.35);
+    --warning-text: #fbbf24;
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.14);
+    --success-border: rgba(16, 185, 129, 0.35);
+    --success-text: #34d399;
+  }
+
+  /* ------------------------------------------------------------------------- */
+  /* THEME 7: AMETHYST HAZE                                                    */
   /* ------------------------------------------------------------------------- */
   .shell[data-theme="amethyst-haze"] {
     --bg: #0e0b16;
@@ -3204,7 +3317,7 @@
   }
 
   /* ------------------------------------------------------------------------- */
-  /* THEME 5: SAGE MIST                                                        */
+  /* THEME 8: SAGE MIST                                                        */
   /* ------------------------------------------------------------------------- */
   .shell[data-theme="sage-mist"] {
     --bg: #0c1310;
@@ -3239,7 +3352,7 @@
   }
 
   /* ------------------------------------------------------------------------- */
-  /* THEME 6: BUBBLEGUM                                                        */
+  /* THEME 9: BUBBLEGUM                                                        */
   /* ------------------------------------------------------------------------- */
   .shell[data-theme="bubblegum"] {
     --bg: #140a14;
@@ -3274,7 +3387,7 @@
   }
 
   /* ------------------------------------------------------------------------- */
-  /* THEME 7: AMBERSTATE                                                       */
+  /* THEME 10: AMBERSTATE                                                      */
   /* ------------------------------------------------------------------------- */
   .shell[data-theme="amberstate"] {
     --bg: #0d1117;

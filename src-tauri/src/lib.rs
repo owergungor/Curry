@@ -713,13 +713,25 @@ fn sync_window_chrome(
         };
 
         let resolved_theme = match theme.as_deref() {
-            Some("catppuccin") => AppTheme::Catppuccin,
-            Some("vintage-paper") => AppTheme::VintagePaper,
-            Some("amethyst-haze") => AppTheme::AmethystHaze,
-            Some("sage-mist") => AppTheme::SageMist,
-            Some("bubblegum") => AppTheme::Bubblegum,
+            Some("promotor-wow") | Some("promotor_wow") | Some("promotorwow") => {
+                AppTheme::PromotorWow
+            }
             Some("perpetuity") => AppTheme::Perpetuity,
-            Some("amberstate") | Some("amber-slate") => AppTheme::Amberstate,
+            Some("catppuccin") => AppTheme::Catppuccin,
+            Some("zen-linen") | Some("zen_linen") | Some("zenlinen") => AppTheme::ZenLinen,
+            Some("matrix-green") | Some("matrix_green") | Some("matrixgreen") => {
+                AppTheme::MatrixGreen
+            }
+            Some("neon-magenta") | Some("neon_magenta") | Some("neonmagenta") => {
+                AppTheme::NeonMagenta
+            }
+            Some("amethyst-haze") | Some("amethyst_haze") => AppTheme::AmethystHaze,
+            Some("sage-mist") | Some("sage_mist") => AppTheme::SageMist,
+            Some("bubblegum") => AppTheme::Bubblegum,
+            Some("amberstate") | Some("amber-slate") | Some("amberslate") => AppTheme::Amberstate,
+            Some("vintage-paper") | Some("vintage_paper") | Some("vintagepaper") => {
+                AppTheme::PromotorWow
+            }
             _ => app_theme,
         };
 

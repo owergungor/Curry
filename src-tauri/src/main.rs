@@ -433,7 +433,7 @@ mod tests {
         assert_eq!(settings.glow.thickness, 8);
         assert_eq!(settings.glow.corner_radius, 24);
         assert_eq!(settings.glow.color, "#6366f1");
-        assert_eq!(settings.theme, curry_lib::settings::AppTheme::Perpetuity);
+        assert_eq!(settings.theme, curry_lib::settings::AppTheme::PromotorWow);
     }
 
     #[test]
@@ -1109,12 +1109,28 @@ mod tests {
         use curry_lib::settings::AppTheme;
 
         assert_eq!(
+            serde_json::from_str::<AppTheme>("\"promotor-wow\"").unwrap(),
+            AppTheme::PromotorWow
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"perpetuity\"").unwrap(),
+            AppTheme::Perpetuity
+        );
+        assert_eq!(
             serde_json::from_str::<AppTheme>("\"catppuccin\"").unwrap(),
             AppTheme::Catppuccin
         );
         assert_eq!(
-            serde_json::from_str::<AppTheme>("\"vintage-paper\"").unwrap(),
-            AppTheme::VintagePaper
+            serde_json::from_str::<AppTheme>("\"zen-linen\"").unwrap(),
+            AppTheme::ZenLinen
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"matrix-green\"").unwrap(),
+            AppTheme::MatrixGreen
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"neon-magenta\"").unwrap(),
+            AppTheme::NeonMagenta
         );
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"amethyst-haze\"").unwrap(),
@@ -1129,10 +1145,6 @@ mod tests {
             AppTheme::Bubblegum
         );
         assert_eq!(
-            serde_json::from_str::<AppTheme>("\"perpetuity\"").unwrap(),
-            AppTheme::Perpetuity
-        );
-        assert_eq!(
             serde_json::from_str::<AppTheme>("\"amberstate\"").unwrap(),
             AppTheme::Amberstate
         );
@@ -1143,21 +1155,186 @@ mod tests {
     }
 
     #[test]
+    fn test_vintage_paper_silent_migration() {
+        use curry_lib::settings::{AppSettings, AppTheme};
+
+        // Vintage Paper in any casing or delimiter silently migrates to Promotor Wow
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"vintage-paper\"").unwrap(),
+            AppTheme::PromotorWow
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"vintage_paper\"").unwrap(),
+            AppTheme::PromotorWow
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"vintagepaper\"").unwrap(),
+            AppTheme::PromotorWow
+        );
+
+        let legacy_json = r##"{
+            "enabled": true,
+            "startup_enabled": false,
+            "show_notifications": true,
+            "history_limit": 100,
+            "sound_enabled": false,
+            "glow": {
+                "enabled": true,
+                "duration_ms": 2500,
+                "intensity": 0.8,
+                "thickness": 8,
+                "corner_radius": 24,
+                "animation_style": "pulse",
+                "monitor_target": "primary",
+                "color": "#ff5c00"
+            },
+            "theme": "vintage-paper"
+        }"##;
+
+        let s: AppSettings = serde_json::from_str(legacy_json)
+            .expect("Legacy vintage-paper settings JSON must deserialize silently");
+        assert_eq!(s.theme, AppTheme::PromotorWow);
+        assert!(s.enabled);
+    }
+
+    #[test]
+    fn test_prompt_section_11_all_seven_migration_scenarios() {
+        use curry_lib::settings::{AppSettings, AppTheme};
+
+        // CASE 1: No saved theme => promotor-wow
+        assert_eq!(AppTheme::default(), AppTheme::PromotorWow);
+
+        // CASE 2: Saved theme = zen-linen => zen-linen
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"zen-linen\"").unwrap(),
+            AppTheme::ZenLinen
+        );
+
+        // CASE 3: Saved theme = matrix-green => matrix-green
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"matrix-green\"").unwrap(),
+            AppTheme::MatrixGreen
+        );
+
+        // CASE 4: Saved theme = neon-magenta => neon-magenta
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"neon-magenta\"").unwrap(),
+            AppTheme::NeonMagenta
+        );
+
+        // CASE 5: Saved theme = vintage-paper => promotor-wow
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"vintage-paper\"").unwrap(),
+            AppTheme::PromotorWow
+        );
+
+        // CASE 6: Saved theme = unknown-theme => promotor-wow
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"unknown-theme\"").unwrap(),
+            AppTheme::PromotorWow
+        );
+
+        // CASE 7: Existing valid themes => unchanged
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"perpetuity\"").unwrap(),
+            AppTheme::Perpetuity
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"catppuccin\"").unwrap(),
+            AppTheme::Catppuccin
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"amberstate\"").unwrap(),
+            AppTheme::Amberstate
+        );
+
+        // Also verify within full AppSettings deserialization
+        let s_vp: AppSettings = serde_json::from_str(
+            r##"{
+                "enabled": true,
+                "startup_enabled": false,
+                "show_notifications": true,
+                "history_limit": 100,
+                "sound_enabled": false,
+                "glow": {
+                    "enabled": true,
+                    "duration_ms": 2500,
+                    "intensity": 0.8,
+                    "thickness": 8,
+                    "corner_radius": 24,
+                    "animation_style": "pulse",
+                    "monitor_target": "primary",
+                    "color": "#ff5c00"
+                },
+                "theme": "vintage-paper"
+            }"##,
+        )
+        .unwrap();
+        assert_eq!(s_vp.theme, AppTheme::PromotorWow);
+
+        let s_unknown: AppSettings = serde_json::from_str(
+            r##"{
+                "enabled": true,
+                "startup_enabled": false,
+                "show_notifications": true,
+                "history_limit": 100,
+                "sound_enabled": false,
+                "glow": {
+                    "enabled": true,
+                    "duration_ms": 2500,
+                    "intensity": 0.8,
+                    "thickness": 8,
+                    "corner_radius": 24,
+                    "animation_style": "pulse",
+                    "monitor_target": "primary",
+                    "color": "#ff5c00"
+                },
+                "theme": "unknown-theme"
+            }"##,
+        )
+        .unwrap();
+        assert_eq!(s_unknown.theme, AppTheme::PromotorWow);
+
+        let s_zen: AppSettings = serde_json::from_str(
+            r##"{
+                "enabled": true,
+                "startup_enabled": false,
+                "show_notifications": true,
+                "history_limit": 100,
+                "sound_enabled": false,
+                "glow": {
+                    "enabled": true,
+                    "duration_ms": 2500,
+                    "intensity": 0.8,
+                    "thickness": 8,
+                    "corner_radius": 24,
+                    "animation_style": "pulse",
+                    "monitor_target": "primary",
+                    "color": "#ff5c00"
+                },
+                "theme": "zen-linen"
+            }"##,
+        )
+        .unwrap();
+        assert_eq!(s_zen.theme, AppTheme::ZenLinen);
+    }
+
+    #[test]
     fn test_unknown_theme_fallback() {
         use curry_lib::settings::{AppSettings, AppTheme};
 
-        // Unknown theme string falls back to Perpetuity (canonical default)
+        // Unknown theme string falls back to Promotor Wow (canonical default)
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"super-neon\"").unwrap(),
-            AppTheme::Perpetuity
+            AppTheme::PromotorWow
         );
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"random-invalid\"").unwrap(),
-            AppTheme::Perpetuity
+            AppTheme::PromotorWow
         );
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"\"").unwrap(),
-            AppTheme::Perpetuity
+            AppTheme::PromotorWow
         );
 
         // In full settings JSON, an unknown theme does NOT reset or fail other fields
@@ -1182,7 +1359,7 @@ mod tests {
 
         let s: AppSettings =
             serde_json::from_str(json).expect("Deserialization of unknown theme should succeed");
-        assert_eq!(s.theme, AppTheme::Perpetuity);
+        assert_eq!(s.theme, AppTheme::PromotorWow);
         assert!(!s.enabled);
         assert!(s.startup_enabled);
         assert_eq!(s.history_limit, 300);
@@ -1205,7 +1382,7 @@ mod tests {
         {
             let storage = SettingsStorage::new_with_path(Some(file_path.clone()));
             let mut s = storage.get();
-            s.theme = AppTheme::Amberstate;
+            s.theme = AppTheme::ZenLinen;
             s.sound_enabled = true;
             storage.update(s).expect("Failed to persist theme setting");
         }
@@ -1213,7 +1390,7 @@ mod tests {
         {
             let storage = SettingsStorage::new_with_path(Some(file_path.clone()));
             let reloaded = storage.get();
-            assert_eq!(reloaded.theme, AppTheme::Amberstate);
+            assert_eq!(reloaded.theme, AppTheme::ZenLinen);
             assert!(reloaded.sound_enabled);
         }
 
@@ -1224,15 +1401,23 @@ mod tests {
     fn test_theme_serialization_deserialization() {
         use curry_lib::settings::{AppSettings, AppTheme};
         let mut settings = AppSettings::default();
-        settings.theme = AppTheme::VintagePaper;
+        assert_eq!(settings.theme, AppTheme::PromotorWow);
 
+        settings.theme = AppTheme::MatrixGreen;
         let json = serde_json::to_string(&settings).expect("Serialization failed");
-        assert!(json.contains("\"theme\":\"vintage-paper\""));
+        assert!(json.contains("\"theme\":\"matrix-green\""));
 
         let deserialized: AppSettings =
             serde_json::from_str(&json).expect("Deserialization failed");
-        assert_eq!(deserialized.theme, AppTheme::VintagePaper);
+        assert_eq!(deserialized.theme, AppTheme::MatrixGreen);
         assert_eq!(settings, deserialized);
+
+        settings.theme = AppTheme::NeonMagenta;
+        let json_neon = serde_json::to_string(&settings).expect("Serialization failed");
+        assert!(json_neon.contains("\"theme\":\"neon-magenta\""));
+        let deserialized_neon: AppSettings =
+            serde_json::from_str(&json_neon).expect("Deserialization failed");
+        assert_eq!(deserialized_neon.theme, AppTheme::NeonMagenta);
     }
 
     // =========================================================================
@@ -2373,8 +2558,8 @@ mod tests {
         assert_eq!(hex_to_colorref("#121826"), Some(0x00261812));
         assert_eq!(hex_to_colorref("121826"), Some(0x00261812));
 
-        // Vintage Paper surface: #f7f3ec -> R: 0xf7, G: 0xf3, B: 0xec -> 0x00ECF3F7
-        assert_eq!(hex_to_colorref("#f7f3ec"), Some(0x00ECF3F7));
+        // Zen Linen surface: #f7f6f2 -> R: 0xf7, G: 0xf3, B: 0xf2 -> 0x00F2F6F7
+        assert_eq!(hex_to_colorref("#f7f6f2"), Some(0x00F2F6F7));
 
         // Pure white: #ffffff -> 0x00FFFFFF
         assert_eq!(hex_to_colorref("#ffffff"), Some(0x00FFFFFF));
@@ -2398,14 +2583,26 @@ mod tests {
         assert!(!light_default.is_dark);
         assert_eq!(light_default.caption_color, 0x00FCFAF8); // #f8fafc
 
-        let light_vintage = WindowChromeColors::resolve(AppTheme::VintagePaper, false);
-        assert!(!light_vintage.is_dark);
-        assert_eq!(light_vintage.caption_color, 0x00ECF3F7); // #f7f3ec
+        let light_zen = WindowChromeColors::resolve(AppTheme::ZenLinen, false);
+        assert!(!light_zen.is_dark);
+        assert_eq!(light_zen.caption_color, 0x00F2F6F7); // #f7f6f2
 
         // Dark mode resolution
+        let dark_promotor = WindowChromeColors::resolve(AppTheme::PromotorWow, true);
+        assert!(dark_promotor.is_dark);
+        assert_eq!(dark_promotor.caption_color, 0x00140E0C); // #0c0e14
+
         let dark_perpetuity = WindowChromeColors::resolve(AppTheme::Perpetuity, true);
         assert!(dark_perpetuity.is_dark);
         assert_eq!(dark_perpetuity.caption_color, 0x00261812); // #121826
+
+        let dark_matrix = WindowChromeColors::resolve(AppTheme::MatrixGreen, true);
+        assert!(dark_matrix.is_dark);
+        assert_eq!(dark_matrix.caption_color, 0x00080D05); // #050d08
+
+        let dark_neon = WindowChromeColors::resolve(AppTheme::NeonMagenta, true);
+        assert!(dark_neon.is_dark);
+        assert_eq!(dark_neon.caption_color, 0x0014080F); // #0f0814
 
         let dark_catppuccin = WindowChromeColors::resolve(AppTheme::Catppuccin, true);
         assert!(dark_catppuccin.is_dark);
@@ -2420,27 +2617,21 @@ mod tests {
         // Explicit Dark always returns true
         assert!(is_effective_dark_mode(
             AppearanceMode::Dark,
-            AppTheme::Perpetuity
+            AppTheme::PromotorWow
         ));
         assert!(is_effective_dark_mode(
             AppearanceMode::Dark,
-            AppTheme::VintagePaper
+            AppTheme::ZenLinen
         ));
 
         // Explicit Light always returns false
         assert!(!is_effective_dark_mode(
             AppearanceMode::Light,
-            AppTheme::Perpetuity
+            AppTheme::PromotorWow
         ));
         assert!(!is_effective_dark_mode(
             AppearanceMode::Light,
-            AppTheme::VintagePaper
-        ));
-
-        // Vintage Paper in System mode resolves to Light (false)
-        assert!(!is_effective_dark_mode(
-            AppearanceMode::System,
-            AppTheme::VintagePaper
+            AppTheme::ZenLinen
         ));
     }
 }

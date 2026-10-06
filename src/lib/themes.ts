@@ -1,10 +1,13 @@
 export type ThemeId =
+  | 'promotor-wow'
+  | 'perpetuity'
   | 'catppuccin'
-  | 'vintage-paper'
+  | 'zen-linen'
+  | 'matrix-green'
+  | 'neon-magenta'
   | 'amethyst-haze'
   | 'sage-mist'
   | 'bubblegum'
-  | 'perpetuity'
   | 'amberstate';
 
 export interface ThemeDefinition {
@@ -30,9 +33,31 @@ export interface ThemeDefinition {
   };
 }
 
-export const DEFAULT_THEME: ThemeId = 'perpetuity';
+export const DEFAULT_THEME: ThemeId = 'promotor-wow';
 
 export const THEMES: ThemeDefinition[] = [
+  {
+    id: 'promotor-wow',
+    name: 'Promotor Wow',
+    label: 'Promotor Wow',
+    description: 'Deep obsidian navy & electric vibrant orange-coral aura (Default)',
+    swatches: ['#0c0e14', '#131722', '#ff5c00', '#ff8a00'],
+    glowPalette: ['#ff5c00', '#ff8a00', '#ffaa33', '#f97316', '#ea580c', '#fdba74'],
+    colors: {
+      background: '#0c0e14',
+      backgroundSecondary: '#07080c',
+      surface: '#131722',
+      surfaceElevated: '#1c2233',
+      text: '#f8fafc',
+      textMuted: '#94a3b8',
+      border: 'rgba(255, 255, 255, 0.08)',
+      accent: '#ff5c00',
+      accentSecondary: '#ff8a00',
+      success: '#10b981',
+      warning: '#f59e0b',
+      danger: '#ef4444',
+    },
+  },
   {
     id: 'perpetuity',
     name: 'Perpetuity',
@@ -78,25 +103,69 @@ export const THEMES: ThemeDefinition[] = [
     },
   },
   {
-    id: 'vintage-paper',
-    name: 'Vintage Paper',
-    label: 'Vintage Paper',
-    description: 'Editorial warm parchment, sepia body & rich dark ink',
-    swatches: ['#f4efe6', '#f7f3ec', '#8b5e34', '#b8860b'],
-    glowPalette: ['#8b5e34', '#b8860b', '#2d6a4f', '#d4a373', '#9c6644', '#7f4f24', '#c68b59'],
+    id: 'zen-linen',
+    name: 'Zen Linen',
+    label: 'Zen Linen',
+    description: 'Calm organic linen, airy warm stone & refined sage-moss accents',
+    swatches: ['#f7f6f2', '#fcfbfa', '#5c6753', '#8a957f'],
+    glowPalette: ['#5c6753', '#8a957f', '#727e69', '#3e4638', '#a4af9a', '#c2cbba'],
     colors: {
-      background: '#f4efe6',
-      backgroundSecondary: '#ebe4d8',
-      surface: '#f7f3ec',
-      surfaceElevated: '#ded6c7',
-      text: '#241e17',
-      textMuted: '#68594c',
-      border: 'rgba(168, 150, 130, 0.38)',
-      accent: '#8b5e34',
-      accentSecondary: '#b8860b',
+      background: '#f7f6f2',
+      backgroundSecondary: '#efeee9',
+      surface: '#fcfbfa',
+      surfaceElevated: '#e8e6df',
+      text: '#1c1b18',
+      textMuted: '#706d64',
+      border: 'rgba(120, 115, 105, 0.22)',
+      accent: '#5c6753',
+      accentSecondary: '#8a957f',
       success: '#2d6a4f',
       warning: '#b8860b',
       danger: '#b91c1c',
+    },
+  },
+  {
+    id: 'matrix-green',
+    name: 'Matrix Green',
+    label: 'Matrix Green',
+    description: 'High-contrast cyber matrix terminal & luminous emerald glow',
+    swatches: ['#050d08', '#0a170f', '#22c55e', '#10b981'],
+    glowPalette: ['#22c55e', '#10b981', '#4ade80', '#16a34a', '#86efac', '#059669'],
+    colors: {
+      background: '#050d08',
+      backgroundSecondary: '#020704',
+      surface: '#0a170f',
+      surfaceElevated: '#112418',
+      text: '#e6fcf0',
+      textMuted: '#86efac',
+      border: 'rgba(34, 197, 94, 0.22)',
+      accent: '#22c55e',
+      accentSecondary: '#10b981',
+      success: '#22c55e',
+      warning: '#eab308',
+      danger: '#ef4444',
+    },
+  },
+  {
+    id: 'neon-magenta',
+    name: 'Neon Magenta',
+    label: 'Neon Magenta',
+    description: 'Cyberpunk midnight void & high-voltage neon magenta radiance',
+    swatches: ['#0f0814', '#1a0e24', '#e11488', '#06b6d4'],
+    glowPalette: ['#e11488', '#ec4899', '#f43f5e', '#d946ef', '#06b6d4', '#f472b6'],
+    colors: {
+      background: '#0f0814',
+      backgroundSecondary: '#09040c',
+      surface: '#1a0e24',
+      surfaceElevated: '#29163a',
+      text: '#fdf2f8',
+      textMuted: '#f472b6',
+      border: 'rgba(236, 72, 153, 0.22)',
+      accent: '#e11488',
+      accentSecondary: '#06b6d4',
+      success: '#10b981',
+      warning: '#f59e0b',
+      danger: '#e11488',
     },
   },
   {

@@ -2,7 +2,7 @@
   import { THEMES, type ThemeId } from "$lib/themes";
 
   let {
-    selectedTheme = "perpetuity",
+    selectedTheme = "promotor-wow",
     onselect = undefined,
     className = "",
   }: {
@@ -46,6 +46,24 @@
       </div>
 
       <p class="theme-card-desc">{theme.description}</p>
+
+      <!-- Mini UI Token Preview -->
+      <div
+        class="theme-mini-preview"
+        style="background: {theme.colors.background}; border: 1px solid {theme.colors.border};"
+        aria-hidden="true"
+      >
+        <div
+          class="theme-preview-panel"
+          style="background: {theme.colors.surface}; border: 1px solid {theme.colors.border}; box-shadow: 0 0 8px {theme.glowPalette[0]}40;"
+        >
+          <div class="preview-row">
+            <span class="preview-dot" style="background: {theme.colors.accent}; box-shadow: 0 0 6px {theme.colors.accent};"></span>
+            <span class="preview-bar accent" style="background: {theme.colors.accent};"></span>
+          </div>
+          <span class="preview-bar text" style="background: {theme.colors.text}; opacity: 0.85;"></span>
+        </div>
+      </div>
 
       <div class="theme-swatches" aria-hidden="true">
         {#each theme.swatches as swatch}
@@ -134,6 +152,49 @@
     color: var(--text-muted, #94a3b8);
     line-height: 1.35;
     flex-grow: 1;
+  }
+
+  .theme-mini-preview {
+    width: 100%;
+    border-radius: 8px;
+    padding: 6px;
+    margin: 4px 0;
+    box-sizing: border-box;
+  }
+
+  .theme-preview-panel {
+    border-radius: 6px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .preview-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .preview-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .preview-bar {
+    height: 4px;
+    border-radius: 2px;
+  }
+
+  .preview-bar.accent {
+    width: 45%;
+  }
+
+  .preview-bar.text {
+    width: 75%;
+    height: 3px;
   }
 
   .theme-swatches {

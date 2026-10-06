@@ -29,11 +29,11 @@ impl WindowChromeColors {
         if !is_dark {
             // Light appearance mode
             match theme {
-                AppTheme::VintagePaper => Self {
+                AppTheme::ZenLinen => Self {
                     is_dark: false,
-                    caption_color: hex_to_colorref("#f7f3ec").unwrap_or(0x00ECF3F7),
-                    text_color: hex_to_colorref("#241e17").unwrap_or(0x00171E24),
-                    border_color: hex_to_colorref("#ded6c7").unwrap_or(0x00C7D6DE),
+                    caption_color: hex_to_colorref("#f7f6f2").unwrap_or(0x00F2F6F7),
+                    text_color: hex_to_colorref("#1c1b18").unwrap_or(0x00181B1C),
+                    border_color: hex_to_colorref("#e8e6df").unwrap_or(0x00DFE6E8),
                 },
                 _ => Self {
                     is_dark: false,
@@ -45,6 +45,12 @@ impl WindowChromeColors {
         } else {
             // Dark appearance mode
             match theme {
+                AppTheme::PromotorWow => Self {
+                    is_dark: true,
+                    caption_color: hex_to_colorref("#0c0e14").unwrap_or(0x00140E0C),
+                    text_color: hex_to_colorref("#f8fafc").unwrap_or(0x00FCFAF8),
+                    border_color: hex_to_colorref("#1c2233").unwrap_or(0x0033221C),
+                },
                 AppTheme::Perpetuity => Self {
                     is_dark: true,
                     caption_color: hex_to_colorref("#121826").unwrap_or(0x00261812),
@@ -56,6 +62,24 @@ impl WindowChromeColors {
                     caption_color: hex_to_colorref("#1e1e2e").unwrap_or(0x002E1E1E),
                     text_color: hex_to_colorref("#cdd6f4").unwrap_or(0x00F4D6CD),
                     border_color: hex_to_colorref("#313244").unwrap_or(0x00443231),
+                },
+                AppTheme::ZenLinen => Self {
+                    is_dark: true,
+                    caption_color: hex_to_colorref("#23221e").unwrap_or(0x001E2223),
+                    text_color: hex_to_colorref("#f7f6f2").unwrap_or(0x00F2F6F7),
+                    border_color: hex_to_colorref("#3d3a33").unwrap_or(0x00333A3D),
+                },
+                AppTheme::MatrixGreen => Self {
+                    is_dark: true,
+                    caption_color: hex_to_colorref("#050d08").unwrap_or(0x00080D05),
+                    text_color: hex_to_colorref("#e6fcf0").unwrap_or(0x00F0FCE6),
+                    border_color: hex_to_colorref("#112418").unwrap_or(0x00182411),
+                },
+                AppTheme::NeonMagenta => Self {
+                    is_dark: true,
+                    caption_color: hex_to_colorref("#0f0814").unwrap_or(0x0014080F),
+                    text_color: hex_to_colorref("#fdf2f8").unwrap_or(0x00F8F2FD),
+                    border_color: hex_to_colorref("#29163a").unwrap_or(0x003A1629),
                 },
                 AppTheme::AmethystHaze => Self {
                     is_dark: true,
@@ -80,13 +104,6 @@ impl WindowChromeColors {
                     caption_color: hex_to_colorref("#161b22").unwrap_or(0x00221B16),
                     text_color: hex_to_colorref("#f8fafc").unwrap_or(0x00FCFAF8),
                     border_color: hex_to_colorref("#212833").unwrap_or(0x00332821),
-                },
-                AppTheme::VintagePaper => Self {
-                    // Vintage paper requested in dark mode keeps dark surface with vintage tones
-                    is_dark: true,
-                    caption_color: hex_to_colorref("#1e1a16").unwrap_or(0x00161A1E),
-                    text_color: hex_to_colorref("#f7f3ec").unwrap_or(0x00ECF3F7),
-                    border_color: hex_to_colorref("#3d342a").unwrap_or(0x002A343D),
                 },
             }
         }
@@ -153,17 +170,11 @@ pub fn is_windows_system_dark_mode() -> bool {
 }
 
 /// Determines the effective dark/light mode given the appearance setting and theme.
-pub fn is_effective_dark_mode(appearance: AppearanceMode, theme: AppTheme) -> bool {
+pub fn is_effective_dark_mode(appearance: AppearanceMode, _theme: AppTheme) -> bool {
     match appearance {
         AppearanceMode::Dark => true,
         AppearanceMode::Light => false,
-        AppearanceMode::System => {
-            if theme == AppTheme::VintagePaper {
-                false
-            } else {
-                is_windows_system_dark_mode()
-            }
-        }
+        AppearanceMode::System => is_windows_system_dark_mode(),
     }
 }
 

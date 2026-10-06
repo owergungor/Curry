@@ -187,17 +187,20 @@ Built for modern OLED and Mini-LED monitors:
 
 ## 🎨 Themes
 
-Curry includes **7 curated themes**. **Perpetuity** is the canonical default theme.
+Curry includes **10 curated themes**. **Promotor Wow** is the canonical default theme.
 
 | Theme | Style | Default | Primary Swatches |
 |---|---|:---:|---|
-| **🪐 Perpetuity** | Obsidian slate & futuristic cyan-indigo glow | ✅ | `#0b0f19` `#121826` `#6366f1` `#38bdf8` |
-| **🐱 Catppuccin** | Soothing pastel Mocha with mauve & blue accents | | `#1e1e2e` `#181825` `#cba6f7` `#89b4fa` |
-| **📜 Vintage Paper** | Warm sepia & muted parchment for low eye strain | | `#181614` `#221f1c` `#d4a373` `#e09f67` |
-| **💜 Amethyst Haze** | Deep midnight violet & luminous neon purple glow | | `#0e0b16` `#161224` `#a855f7` `#ec4899` |
-| **🌿 Sage Mist** | Calming eucalyptus slate with mint & emerald accents | | `#0d1412` `#131d1a` `#10b981` `#34d399` |
-| **🩷 Bubblegum** | High-energy retro cyberpunk pink & electric cyan | | `#120914` `#1a0f1d` `#f43f5e` `#06b6d4` |
-| **🟠 Amberstate** | Industrial dark charcoal with warm amber glow | | `#14120e` `#1c1914` `#f59e0b` `#fbbf24` |
+| **⚡ Promotor Wow** | Deep obsidian navy & electric vibrant orange-coral aura | ✅ | `#0c0e14` `#131722` `#ff5c00` `#ff8a00` |
+| **🪐 Perpetuity** | Obsidian slate & futuristic cyan-indigo glow | | `#0b0f19` `#121826` `#6366f1` `#38bdf8` |
+| **🐱 Catppuccin** | Soothing pastel Mocha with mauve & blue accents | | `#181825` `#1e1e2e` `#cba6f7` `#89b4fa` |
+| **🍃 Zen Linen** | Calm organic linen, airy warm stone & refined sage-moss accents | | `#f7f6f2` `#fcfbfa` `#5c6753` `#8a957f` |
+| **🟩 Matrix Green** | High-contrast cyber matrix terminal & luminous emerald glow | | `#050d08` `#0a170f` `#22c55e` `#10b981` |
+| **💖 Neon Magenta** | Cyberpunk midnight void & high-voltage neon magenta radiance | | `#0f0814` `#1a0e24` `#e11488` `#06b6d4` |
+| **💜 Amethyst Haze** | Deep midnight violet & luminous neon purple glow | | `#0e0b16` `#191329` `#a855f7` `#ec4899` |
+| **🌿 Sage Mist** | Calming eucalyptus slate with mint & emerald accents | | `#0c1310` `#121e18` `#34d399` `#14b8a6` |
+| **🩷 Bubblegum** | High-energy retro cyberpunk pink & electric cyan | | `#140a14` `#221022` `#f43f5e` `#c084fc` |
+| **🟠 Amberstate** | Industrial dark charcoal with warm amber glow | | `#0d1117` `#161b22` `#f59e0b` `#ea580c` |
 
 ---
 
