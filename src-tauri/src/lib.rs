@@ -43,12 +43,21 @@ pub struct AddNotificationInput {
     pub icon: Option<String>,
 }
 
+fn format_display_version(pkg_version: &str) -> String {
+    let parts: Vec<&str> = pkg_version.split('.').collect();
+    if parts.len() >= 2 {
+        format!("{}.{}", parts[0], parts[1])
+    } else {
+        pkg_version.to_string()
+    }
+}
+
 #[tauri::command]
 fn check_backend_connection() -> BackendConnectionStatus {
     BackendConnectionStatus {
         connected: true,
         app_name: "Curry".to_string(),
-        version: env!("CARGO_PKG_VERSION").to_string(),
+        version: format_display_version(env!("CARGO_PKG_VERSION")),
         target_os: std::env::consts::OS.to_string(),
         target_arch: std::env::consts::ARCH.to_string(),
         message: "Tauri backend connected successfully".to_string(),

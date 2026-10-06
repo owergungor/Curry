@@ -204,7 +204,17 @@
     });
   });
 
-  // Software Update Management (v1.6)
+  // Software Update Management (v1.7)
+  function formatUserVersion(v: string | undefined | null): string {
+    if (!v) return "1.7";
+    const clean = v.replace(/^v/, "");
+    const parts = clean.split(".");
+    if (parts.length >= 2) {
+      return `${parts[0]}.${parts[1]}`;
+    }
+    return clean;
+  }
+
   const AUTO_UPDATE_FREQUENCY_OPTIONS: DropdownItem[] = [
     { value: "startup", label: "Açılışta (Startup)", description: "Check every time Curry opens" },
     { value: "daily", label: "Günlük (Daily)", description: "Check automatically every 24 hours" },
@@ -230,9 +240,9 @@
       if (update && update.available) {
         pendingUpdateObj = update;
         updateAvailable = true;
-        updateStatusMessage = `Curry v${update.version} is available!`;
+        updateStatusMessage = `Curry v${formatUserVersion(update.version)} is available!`;
       } else {
-        updateStatusMessage = `Curry v${connectionInfo?.version ?? '1.6'} is up to date.`;
+        updateStatusMessage = `Curry v${formatUserVersion(connectionInfo?.version ?? '1.7')} is up to date.`;
       }
     } catch (err: unknown) {
       updateStatusMessage = "Unable to reach update server (offline or rate-limited).";
@@ -269,7 +279,7 @@
       if (update && update.available) {
         pendingUpdateObj = update;
         updateAvailable = true;
-        updateStatusMessage = `Curry v${update.version} is available!`;
+        updateStatusMessage = `Curry v${formatUserVersion(update.version)} is available!`;
       }
     } catch {
       // Background silent check; fail gracefully without interrupting user
@@ -1217,7 +1227,7 @@
       <div class="brand-text">
         <div class="brand-row">
           <h1 class="brand-title">Curry</h1>
-          <span class="brand-version-pill">v{connectionInfo?.version ?? '1.6'}</span>
+          <span class="brand-version-pill">v{formatUserVersion(connectionInfo?.version ?? '1.7')}</span>
         </div>
       </div>
     </div>
@@ -1473,7 +1483,7 @@
                   <div class="system-meta-grid">
                     <div class="meta-box">
                       <span class="meta-box-label">Application</span>
-                      <span class="meta-box-val">{connectionInfo.app_name} v{connectionInfo.version}</span>
+                      <span class="meta-box-val">{connectionInfo.app_name} v{formatUserVersion(connectionInfo.version)}</span>
                     </div>
                     <div class="meta-box">
                       <span class="meta-box-label">Target OS & Arch</span>
@@ -2282,8 +2292,8 @@
             <div class="settings-sections-stack">
               <!-- Appearance Mode (System / Light / Dark) -->
               <section class="card panel-card appearance-card">
-                <div class="panel-header">
-                  <div class="panel-title-wrap">
+                <div class="appearance-row">
+                  <div class="panel-title-wrap appearance-title-wrap">
                     <div class="panel-icon-circle">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="5"></circle>
@@ -2297,18 +2307,18 @@
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                       </svg>
                     </div>
-                    <div>
+                    <div class="appearance-label-block">
                       <h3 class="panel-title">Appearance Mode</h3>
                       <p class="panel-desc">Choose between System theme detection, Light, or Dark mode</p>
                     </div>
                   </div>
-                </div>
 
-                <div class="appearance-tabs-container">
-                  <AppearanceTabs
-                    selected={appearance}
-                    onChange={(mode) => handleAppearanceChange(mode)}
-                  />
+                  <div class="appearance-tabs-container">
+                    <AppearanceTabs
+                      selected={appearance}
+                      onChange={(mode) => handleAppearanceChange(mode)}
+                    />
+                  </div>
                 </div>
               </section>
 
@@ -2612,12 +2622,12 @@
                   <!-- Current Version & Action Row -->
                   <div class="control-item updater-row">
                     <div class="control-label-group">
-                      <span class="control-title">Curry v{connectionInfo?.version ?? '1.6'}</span>
+                      <span class="control-title">Curry v{formatUserVersion(connectionInfo?.version ?? '1.7')}</span>
                       <span class="control-sub">
                         {#if updateStatusMessage}
                           {updateStatusMessage}
                         {:else}
-                          Curry v{connectionInfo?.version ?? '1.6'} is up to date.
+                          Curry v{formatUserVersion(connectionInfo?.version ?? '1.7')} is up to date.
                         {/if}
                       </span>
                     </div>
@@ -3548,9 +3558,34 @@
     align-items: center;
   }
 
-  /* Appearance Selector in Settings */
+  /* Appearance Selector in Settings (Strict single horizontal row) */
+  .appearance-card {
+    padding: 14px 18px;
+  }
+
+  .appearance-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .appearance-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .appearance-label-block {
+    min-width: 0;
+  }
+
   .appearance-tabs-container {
-    padding: 6px 0 12px;
+    padding: 0;
+    flex-shrink: 0;
   }
 
   /* Updater Card in Settings */
@@ -5122,9 +5157,15 @@
     .system-meta-grid {
       grid-template-columns: repeat(2, 1fr);
     }
+    .appearance-card .panel-desc {
+      display: none;
+    }
   }
 
   @media (max-width: 540px) {
+    .appearance-row {
+      gap: 8px;
+    }
     .nav-tab span {
       display: none;
     }

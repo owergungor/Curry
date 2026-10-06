@@ -131,6 +131,8 @@
     justify-content: center;
     gap: 7px;
     padding: 7px 16px;
+    min-width: 82px;
+    white-space: nowrap;
     border-radius: 9px;
     background: transparent;
     border: none;
@@ -175,6 +177,24 @@
 
   .tab-label {
     line-height: 1;
+  }
+
+  @media (max-width: 600px) {
+    .appearance-tab {
+      padding: 6px 10px;
+      font-size: 12px;
+      gap: 5px;
+      min-width: 68px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .appearance-tab {
+      padding: 5px 6px;
+      font-size: 11px;
+      gap: 4px;
+      min-width: 52px;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
