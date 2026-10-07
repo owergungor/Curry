@@ -41,12 +41,20 @@
       const prevIndex = (currentIndex - 1 + options.length) % options.length;
       selectTab(options[prevIndex].id);
       document.getElementById(`appearance-tab-${options[prevIndex].id}`)?.focus();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      selectTab(options[0].id);
+      document.getElementById(`appearance-tab-${options[0].id}`)?.focus();
+    } else if (event.key === "End") {
+      event.preventDefault();
+      selectTab(options[options.length - 1].id);
+      document.getElementById(`appearance-tab-${options[options.length - 1].id}`)?.focus();
     }
   }
 </script>
 
 <div class="appearance-tabs-wrap" role="tablist" aria-label="Appearance Mode">
-  <!-- Magic UI Inspired Animated Sliding Active Background Indicator -->
+  <!-- Apple Segmented Control Animated Active Pill -->
   <div
     class="animated-indicator"
     style:transform="translateX({(activeIndex >= 0 ? activeIndex : 0) * 100}%)"
@@ -98,13 +106,14 @@
     display: inline-grid;
     grid-template-columns: repeat(3, 1fr);
     align-items: center;
-    background: var(--surface, rgba(255, 255, 255, 0.04));
-    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
-    border-radius: 12px;
+    background: var(--surface-elevated, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+    border-radius: 10px;
     padding: 3px;
     user-select: none;
     box-sizing: border-box;
     backdrop-filter: blur(12px);
+    height: 36px;
   }
 
   .animated-indicator {
@@ -113,13 +122,12 @@
     bottom: 3px;
     left: 3px;
     width: calc((100% - 6px) / 3);
-    background: var(--surface-elevated, rgba(255, 255, 255, 0.14));
-    border-radius: 9px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25),
-                0 0 0 1px var(--border-strong, rgba(255, 255, 255, 0.15)),
-                0 0 16px -2px var(--glow-surface, rgba(99, 102, 241, 0.25));
+    background: var(--surface, rgba(255, 255, 255, 0.12));
+    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
+    border-radius: 7px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.12);
     pointer-events: none;
-    transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 1;
   }
 
@@ -129,23 +137,28 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    padding: 7px 16px;
-    min-width: 82px;
+    gap: 6px;
+    padding: 0 14px;
+    height: 28px;
+    min-width: 78px;
     white-space: nowrap;
-    border-radius: 9px;
+    border-radius: 7px;
     background: transparent;
     border: none;
     color: var(--text-muted, #94a3b8);
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 500;
     font-family: inherit;
     cursor: pointer;
-    transition: color 0.18s ease;
+    transition: color 0.15s ease, transform 0.12s ease;
   }
 
   .appearance-tab:hover:not(.active) {
     color: var(--text-primary, #f8fafc);
+  }
+
+  .appearance-tab:active {
+    transform: scale(0.97);
   }
 
   .appearance-tab.active {
@@ -155,45 +168,46 @@
 
   .appearance-tab:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--accent, #6366f1);
+    box-shadow: 0 0 0 2px var(--bg, #0c0e14), 0 0 0 4px var(--accent, #6366f1);
   }
 
   .tab-icon {
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
     flex-shrink: 0;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
   }
 
   .appearance-tab.active .sun-icon {
-    transform: rotate(20deg) scale(1.08);
+    transform: rotate(15deg);
     color: #f59e0b;
   }
 
   .appearance-tab.active .moon-icon {
-    transform: rotate(-10deg) scale(1.08);
-    color: #818cf8;
+    transform: rotate(-8deg);
+    color: var(--accent, #818cf8);
   }
 
   .tab-label {
     line-height: 1;
+    letter-spacing: -0.01em;
   }
 
   @media (max-width: 600px) {
     .appearance-tab {
-      padding: 6px 10px;
-      font-size: 12px;
-      gap: 5px;
-      min-width: 68px;
+      padding: 0 8px;
+      font-size: 11.5px;
+      gap: 4px;
+      min-width: 62px;
     }
   }
 
   @media (max-width: 480px) {
     .appearance-tab {
-      padding: 5px 6px;
+      padding: 0 6px;
       font-size: 11px;
-      gap: 4px;
-      min-width: 52px;
+      gap: 3px;
+      min-width: 50px;
     }
   }
 

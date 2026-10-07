@@ -51,7 +51,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 7px;
     font-family: inherit;
     font-weight: 500;
     line-height: 1.2;
@@ -59,16 +59,25 @@
     border: 1px solid transparent;
     cursor: pointer;
     user-select: none;
-    transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-color 0.15s ease,
+                border-color 0.15s ease,
+                color 0.15s ease,
+                transform 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.15s ease;
     outline: none;
     box-sizing: border-box;
     white-space: nowrap;
     text-decoration: none;
+    letter-spacing: -0.01em;
   }
 
   .curry-btn:focus-visible {
-    outline: 2px solid var(--accent, #6366f1);
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg, #0c0e14), 0 0 0 4px var(--accent, #6366f1);
+  }
+
+  .curry-btn:active:not(:disabled) {
+    transform: scale(0.97) !important;
   }
 
   /* Sizes */
@@ -96,49 +105,39 @@
   /* Variants */
   .curry-btn.primary {
     background: var(--accent, #6366f1);
-    color: #ffffff;
+    color: var(--accent-fg, #ffffff);
     border-color: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   }
 
   .curry-btn.primary:hover:not(:disabled) {
-    filter: brightness(1.08);
+    filter: brightness(1.07);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
-  }
-
-  .curry-btn.primary:active:not(:disabled) {
-    transform: translateY(0);
-    filter: brightness(0.95);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
   }
 
   .curry-btn.secondary {
     background: var(--surface-elevated, rgba(255, 255, 255, 0.06));
-    color: var(--text, #e2e8f0);
+    color: var(--text-primary, #e2e8f0);
     border-color: var(--border, rgba(255, 255, 255, 0.08));
     backdrop-filter: blur(12px);
   }
 
   .curry-btn.secondary:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: var(--border-hover, rgba(255, 255, 255, 0.15));
+    background: var(--surface-hover, rgba(255, 255, 255, 0.1));
+    border-color: var(--border-strong, rgba(255, 255, 255, 0.16));
     transform: translateY(-1px);
   }
 
-  .curry-btn.secondary:active:not(:disabled) {
-    transform: translateY(0);
-    background: rgba(255, 255, 255, 0.05);
-  }
-
   .curry-btn.danger {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-    border-color: rgba(239, 68, 68, 0.3);
+    background: var(--danger-bg, rgba(239, 68, 68, 0.15));
+    color: var(--danger-text, #ef4444);
+    border-color: var(--danger-border, rgba(239, 68, 68, 0.3));
   }
 
   .curry-btn.danger:hover:not(:disabled) {
-    background: rgba(239, 68, 68, 0.25);
-    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.22);
+    border-color: rgba(239, 68, 68, 0.45);
     transform: translateY(-1px);
   }
 
@@ -149,23 +148,23 @@
   }
 
   .curry-btn.ghost:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text, #f8fafc);
+    background: var(--surface-hover, rgba(255, 255, 255, 0.06));
+    color: var(--text-primary, #f8fafc);
   }
 
   .curry-btn.outline {
     background: transparent;
-    color: var(--text, #e2e8f0);
-    border-color: var(--border, rgba(255, 255, 255, 0.15));
+    color: var(--text-primary, #e2e8f0);
+    border-color: var(--border-strong, rgba(255, 255, 255, 0.18));
   }
 
   .curry-btn.outline:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-hover, rgba(255, 255, 255, 0.06));
     border-color: var(--accent, #6366f1);
   }
 
   .curry-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
     transform: none !important;
     box-shadow: none !important;

@@ -6,6 +6,7 @@
   import Dropdown, { type DropdownItem } from "$lib/Dropdown.svelte";
   import Skeleton from "$lib/Skeleton.svelte";
   import AppearanceTabs, { type Appearance } from "$lib/AppearanceTabs.svelte";
+  import AppleSwitch from "$lib/components/AppleSwitch.svelte";
   import ColorPicker from "$lib/ColorPicker.svelte";
   import { check as checkUpdate } from "@tauri-apps/plugin-updater";
 
@@ -204,9 +205,9 @@
     });
   });
 
-  // Software Update Management (v1.8)
+  // Software Update Management (v1.9)
   function formatUserVersion(v: string | undefined | null): string {
-    if (!v) return "1.8";
+    if (!v) return "1.9";
     const clean = v.replace(/^v/, "");
     const parts = clean.split(".");
     if (parts.length >= 2) {
@@ -242,7 +243,7 @@
         updateAvailable = true;
         updateStatusMessage = `Curry v${formatUserVersion(update.version)} is available!`;
       } else {
-        updateStatusMessage = `Curry v${formatUserVersion(connectionInfo?.version ?? '1.8')} is up to date.`;
+        updateStatusMessage = `Curry v${formatUserVersion(connectionInfo?.version ?? '1.9')} is up to date.`;
       }
     } catch (err: unknown) {
       updateStatusMessage = "Unable to reach update server (offline or rate-limited).";
@@ -1232,7 +1233,7 @@
       <div class="brand-text">
         <div class="brand-row">
           <h1 class="brand-title">Curry</h1>
-          <span class="brand-version-pill">v{formatUserVersion(connectionInfo?.version ?? '1.8')}</span>
+          <span class="brand-version-pill">v{formatUserVersion(connectionInfo?.version ?? '1.9')}</span>
         </div>
       </div>
     </div>
@@ -1925,15 +1926,12 @@
                         <span>Preview</span>
                       </button>
 
-                      <button
-                        class="switch-control {profile.enabled ? 'on' : 'off'}"
-                        onclick={() => toggleProfile(profile)}
-                        role="switch"
-                        aria-checked={profile.enabled}
-                        title={profile.enabled ? "Disable this profile" : "Enable this profile"}
-                      >
-                        <span class="switch-ball"></span>
-                      </button>
+                      <AppleSwitch
+                        checked={profile.enabled}
+                        onchange={() => toggleProfile(profile)}
+                        ariaLabel={profile.enabled ? `Disable profile ${profile.applicationName}` : `Enable profile ${profile.applicationName}`}
+                        size="sm"
+                      />
 
                       <button
                         class="secondary-btn edit-btn"
@@ -2013,18 +2011,15 @@
                       <span class="control-title">Enable Screen-Edge Glow</span>
                       <span class="control-sub">Render ambient edge glow on incoming desktop notifications</span>
                     </div>
-                    <button
-                      class="switch-control {appSettings.glow.enabled ? 'on' : 'off'}"
-                      onclick={() => {
-                        appSettings.glow.enabled = !appSettings.glow.enabled;
+                    <AppleSwitch
+                      id="glow-enabled-switch"
+                      checked={appSettings.glow.enabled}
+                      onchange={(val) => {
+                        appSettings.glow.enabled = val;
                         saveAppSettings();
                       }}
-                      role="switch"
-                      aria-checked={appSettings.glow.enabled}
-                      aria-label="Toggle screen-edge glow"
-                    >
-                      <span class="switch-ball"></span>
-                    </button>
+                      ariaLabel="Toggle screen-edge glow"
+                    />
                   </div>
 
                   <div class="control-item">
@@ -2258,18 +2253,15 @@
                       <span class="control-title">OLED Mode Optimization</span>
                       <span class="control-sub">Caps peak brightness to 60%, narrows border spread, and limits duration to prevent burn-in</span>
                     </div>
-                    <button
-                      class="switch-control {appSettings.oled_mode ? 'on' : 'off'}"
-                      onclick={() => {
-                        appSettings.oled_mode = !appSettings.oled_mode;
+                    <AppleSwitch
+                      id="oled-mode-switch"
+                      checked={appSettings.oled_mode}
+                      onchange={(val) => {
+                        appSettings.oled_mode = val;
                         saveAppSettings();
                       }}
-                      role="switch"
-                      aria-checked={appSettings.oled_mode}
-                      aria-label="Toggle OLED optimization mode"
-                    >
-                      <span class="switch-ball"></span>
-                    </button>
+                      ariaLabel="Toggle OLED optimization mode"
+                    />
                   </div>
                 </div>
               </section>
@@ -2417,15 +2409,12 @@
                       <span class="control-title">Start with Windows</span>
                       <span class="control-sub">Launch Curry automatically in the system tray upon Windows login</span>
                     </div>
-                    <button
-                      class="switch-control {appSettings.startup_enabled ? 'on' : 'off'}"
-                      onclick={toggleStartup}
-                      role="switch"
-                      aria-checked={appSettings.startup_enabled}
-                      aria-label="Toggle start with Windows"
-                    >
-                      <span class="switch-ball"></span>
-                    </button>
+                    <AppleSwitch
+                      id="startup-enabled-switch"
+                      checked={appSettings.startup_enabled}
+                      onchange={toggleStartup}
+                      ariaLabel="Toggle start with Windows"
+                    />
                   </div>
 
                   <div class="control-item">
@@ -2433,18 +2422,15 @@
                       <span class="control-title">Master Monitoring Switch</span>
                       <span class="control-sub">Global kill-switch for notification capture and edge illumination</span>
                     </div>
-                    <button
-                      class="switch-control {appSettings.enabled ? 'on' : 'off'}"
-                      onclick={() => {
-                        appSettings.enabled = !appSettings.enabled;
+                    <AppleSwitch
+                      id="master-monitoring-switch"
+                      checked={appSettings.enabled}
+                      onchange={(val) => {
+                        appSettings.enabled = val;
                         saveAppSettings();
                       }}
-                      role="switch"
-                      aria-checked={appSettings.enabled}
-                      aria-label="Toggle master monitoring switch"
-                    >
-                      <span class="switch-ball"></span>
-                    </button>
+                      ariaLabel="Toggle master monitoring switch"
+                    />
                   </div>
                 </div>
               </section>
@@ -2472,18 +2458,15 @@
                       <span class="control-title">Enable Sound Chime</span>
                       <span class="control-sub">Trigger native sound alert when notifications are captured</span>
                     </div>
-                    <button
-                      class="switch-control {appSettings.sound_enabled ? 'on' : 'off'}"
-                      onclick={() => {
-                        appSettings.sound_enabled = !appSettings.sound_enabled;
+                    <AppleSwitch
+                      id="sound-enabled-switch"
+                      checked={appSettings.sound_enabled}
+                      onchange={(val) => {
+                        appSettings.sound_enabled = val;
                         saveAppSettings();
                       }}
-                      role="switch"
-                      aria-checked={appSettings.sound_enabled}
-                      aria-label="Toggle sound chime"
-                    >
-                      <span class="switch-ball"></span>
-                    </button>
+                      ariaLabel="Toggle sound chime"
+                    />
                   </div>
 
                   <div class="control-item">
@@ -2531,18 +2514,15 @@
                       <span class="control-title">Show Notifications Feed</span>
                       <span class="control-sub">Display captured desktop alerts inside the UI</span>
                     </div>
-                    <button
-                      class="switch-control {appSettings.show_notifications ? 'on' : 'off'}"
-                      onclick={() => {
-                        appSettings.show_notifications = !appSettings.show_notifications;
+                    <AppleSwitch
+                      id="show-notifications-switch"
+                      checked={appSettings.show_notifications}
+                      onchange={(val) => {
+                        appSettings.show_notifications = val;
                         saveAppSettings();
                       }}
-                      role="switch"
-                      aria-checked={appSettings.show_notifications}
-                      aria-label="Toggle show notifications feed"
-                    >
-                      <span class="switch-ball"></span>
-                    </button>
+                      ariaLabel="Toggle show notifications feed"
+                    />
                   </div>
 
                   <div class="control-item">
@@ -2590,17 +2570,15 @@
                       <span class="control-title">Automatic Updates</span>
                       <span class="control-sub">Periodically check for official signed updates in the background</span>
                     </div>
-                    <label class="toggle-switch">
-                      <input
-                        type="checkbox"
-                        checked={appSettings.auto_update_enabled ?? true}
-                        onchange={(e) => {
-                          appSettings.auto_update_enabled = (e.target as HTMLInputElement).checked;
-                          saveAppSettings();
-                        }}
-                      />
-                      <span class="toggle-slider"></span>
-                    </label>
+                    <AppleSwitch
+                      id="auto-update-switch"
+                      checked={appSettings.auto_update_enabled ?? true}
+                      onchange={(val) => {
+                        appSettings.auto_update_enabled = val;
+                        saveAppSettings();
+                      }}
+                      ariaLabel="Toggle automatic updates"
+                    />
                   </div>
 
                   <!-- Update Frequency Dropdown -->
@@ -2627,12 +2605,12 @@
                   <!-- Current Version & Action Row -->
                   <div class="control-item updater-row">
                     <div class="control-label-group">
-                      <span class="control-title">Curry v{formatUserVersion(connectionInfo?.version ?? '1.8')}</span>
+                      <span class="control-title">Curry v{formatUserVersion(connectionInfo?.version ?? '1.9')}</span>
                       <span class="control-sub">
                         {#if updateStatusMessage}
                           {updateStatusMessage}
                         {:else}
-                          Curry v{formatUserVersion(connectionInfo?.version ?? '1.8')} is up to date.
+                          Curry v{formatUserVersion(connectionInfo?.version ?? '1.9')} is up to date.
                         {/if}
                       </span>
                     </div>
@@ -2842,17 +2820,14 @@
               <span class="control-title">Enabled</span>
               <span class="control-sub">Enable custom ambient glow for this app</span>
             </div>
-            <button
-              class="switch-control {editingProfile.enabled ? 'on' : 'off'}"
-              onclick={() => {
-                if (editingProfile) editingProfile.enabled = !editingProfile.enabled;
+            <AppleSwitch
+              id="modal-profile-enabled-switch"
+              checked={editingProfile.enabled}
+              onchange={(val) => {
+                if (editingProfile) editingProfile.enabled = val;
               }}
-              role="switch"
-              aria-checked={editingProfile.enabled}
-              aria-label="Toggle profile enabled state"
-            >
-              <span class="switch-ball"></span>
-            </button>
+              ariaLabel="Toggle profile enabled state"
+            />
           </div>
 
           <div class="form-section-header">Glow Illumination</div>
@@ -2980,17 +2955,14 @@
               <span class="control-title">Suppress in Fullscreen</span>
               <span class="control-sub">Silence glow overlay when games or fullscreen apps are active</span>
             </div>
-            <button
-              class="switch-control {editingProfile.suppressInFullscreen ? 'on' : 'off'}"
-              onclick={() => {
-                if (editingProfile) editingProfile.suppressInFullscreen = !editingProfile.suppressInFullscreen;
+            <AppleSwitch
+              id="modal-profile-suppress-switch"
+              checked={editingProfile.suppressInFullscreen}
+              onchange={(val) => {
+                if (editingProfile) editingProfile.suppressInFullscreen = val;
               }}
-              role="switch"
-              aria-checked={editingProfile.suppressInFullscreen}
-              aria-label="Toggle fullscreen suppression"
-            >
-              <span class="switch-ball"></span>
-            </button>
+              ariaLabel="Toggle fullscreen suppression"
+            />
           </div>
         </div>
 
@@ -3036,7 +3008,9 @@
     pointer-events: auto;
     background-color: #0b0f19;
     color: #f8fafc;
-    font-family: "Segoe UI Variable Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     user-select: none;
     overflow: hidden;
     transition: background-color 0.2s ease, color 0.15s ease;
@@ -3570,7 +3544,11 @@
     border: 1px solid transparent;
     cursor: pointer;
     overflow: hidden;
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .nav-tab:active {
+    transform: scale(0.96);
   }
 
   .nav-tab-glow {
@@ -3599,17 +3577,17 @@
     color: var(--accent);
     border-color: var(--border-strong);
     font-weight: 600;
-    box-shadow: 0 0 16px -2px var(--glow-surface), 0 1px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--border);
   }
 
   .nav-tab.active .nav-tab-glow {
-    opacity: 1;
+    opacity: 0.8;
     transform: scale(1.05);
   }
 
   .nav-tab:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 1px;
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
   }
 
   .nav-icon {
@@ -3800,9 +3778,13 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   }
 
+  .listening-toggle-btn:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
   .listening-toggle-btn:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
   }
 
   .listening-toggle-btn.ok {
@@ -4004,12 +3986,12 @@
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
   }
 
   .panel-card {
-    padding: 14px 18px;
+    padding: 16px 20px;
   }
 
   .panel-header {
@@ -4029,7 +4011,7 @@
   .panel-icon-circle {
     width: 28px;
     height: 28px;
-    border-radius: 7px;
+    border-radius: 8px;
     background: var(--surface-elevated);
     display: flex;
     align-items: center;
@@ -4044,15 +4026,17 @@
 
   .panel-title {
     margin: 0;
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 600;
+    letter-spacing: -0.01em;
     color: var(--text-primary);
   }
 
   .panel-desc {
     margin: 2px 0 0 0;
-    font-size: 11px;
+    font-size: 11.5px;
     color: var(--text-muted);
+    line-height: 1.4;
   }
 
   .panel-header-actions {
@@ -4746,19 +4730,20 @@
   /* Native Select */
   .native-select {
     padding: 6px 12px;
-    border-radius: 6px;
+    border-radius: 8px;
     background: var(--surface-elevated);
     border: 1px solid var(--border);
     color: var(--text-primary);
     font-size: 12px;
     cursor: pointer;
     outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .native-select:focus-visible {
-    border-color: var(--ring);
-    outline: 2px solid var(--ring);
-    outline-offset: 1px;
+    border-color: var(--accent);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
   }
 
   /* Color Palette Chips */
@@ -4862,30 +4847,37 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    padding: 12px;
-    border-radius: 10px;
+    padding: 13px 14px;
+    border-radius: 11px;
     background: var(--surface-elevated);
-    border: 2px solid var(--border);
+    border: 1px solid var(--border);
     cursor: pointer;
     text-align: left;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.15s ease,
+                background-color 0.15s ease,
+                box-shadow 0.15s ease;
   }
 
   .theme-picker-card:hover {
     border-color: var(--border-strong);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+
+  .theme-picker-card:active {
+    transform: scale(0.985);
   }
 
   .theme-picker-card.active {
     border-color: var(--accent);
-    box-shadow: 0 0 14px var(--glow-surface), 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 0 0 1px var(--accent), 0 3px 12px rgba(0, 0, 0, 0.16);
   }
 
   .theme-picker-card:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
   }
 
   .theme-card-top {
@@ -4976,75 +4968,117 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 14px;
-    border-radius: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
     font-size: 12px;
     font-weight: 600;
-    background: var(--accent-gradient);
-    border: 1px solid var(--border);
+    background: var(--accent);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     color: var(--accent-fg);
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    transition: opacity 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.15s ease,
+                transform 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.15s ease;
   }
 
   .primary-btn:hover:not(:disabled) {
-    opacity: 0.92;
-    box-shadow: 0 0 12px var(--glow-surface);
+    filter: brightness(1.07);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
+  }
+
+  .primary-btn:active:not(:disabled) {
+    transform: scale(0.97);
   }
 
   .primary-btn:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  }
+
+  .primary-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
   }
 
   .secondary-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 7px 13px;
+    border-radius: 8px;
     font-size: 12px;
     font-weight: 500;
     background: var(--surface-elevated);
     border: 1px solid var(--border);
     color: var(--text-primary);
     cursor: pointer;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
+    transition: background-color 0.15s ease,
+                border-color 0.15s ease,
+                transform 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.15s ease;
   }
 
   .secondary-btn:hover:not(:disabled) {
     background: var(--surface-hover);
     border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
+
+  .secondary-btn:active:not(:disabled) {
+    transform: scale(0.97);
   }
 
   .secondary-btn:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  }
+
+  .secondary-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none !important;
   }
 
   .danger-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 7px 13px;
+    border-radius: 8px;
     font-size: 12px;
     font-weight: 600;
     background: var(--danger-bg);
     border: 1px solid var(--danger-border);
     color: var(--danger-text);
     cursor: pointer;
-    transition: opacity 0.15s ease;
+    transition: background-color 0.15s ease,
+                transform 0.12s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.15s ease;
   }
 
   .danger-btn:hover:not(:disabled) {
-    opacity: 0.85;
+    background: rgba(239, 68, 68, 0.22);
+    border-color: rgba(239, 68, 68, 0.45);
+    transform: translateY(-1px);
+  }
+
+  .danger-btn:active:not(:disabled) {
+    transform: scale(0.97);
   }
 
   .danger-btn:focus-visible {
-    outline: 2px solid var(--danger);
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--danger);
+  }
+
+  .danger-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none !important;
   }
 
   .text-link-btn {
@@ -5307,6 +5341,12 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-md, 10px);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .app-search-bar:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
   }
 
   .app-search-bar .search-icon {
@@ -5586,17 +5626,18 @@
     padding: 8px 12px;
     background: var(--surface-subtle);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 8px;
     color: var(--text-primary);
     font-size: 13px;
     outline: none;
     font-family: inherit;
     box-sizing: border-box;
-    transition: border-color 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .native-input:focus {
-    border-color: var(--primary);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
   }
 
   .input-with-action {

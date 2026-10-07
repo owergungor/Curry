@@ -221,17 +221,17 @@
 
   .r-dropdown-trigger.open {
     border-color: var(--accent, #6366f1);
-    box-shadow: 0 0 0 3px var(--glow-surface, rgba(99, 102, 241, 0.2));
+    box-shadow: 0 0 0 1px var(--accent, #6366f1);
   }
 
   .r-dropdown-trigger:focus-visible {
     outline: none;
     border-color: var(--accent, #6366f1);
-    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent, #6366f1);
+    box-shadow: 0 0 0 2px var(--bg, #0c0e14), 0 0 0 4px var(--accent, #6366f1);
   }
 
   .r-dropdown-trigger.disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
   }
 
