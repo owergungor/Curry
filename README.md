@@ -51,21 +51,21 @@ Curry features 10 curated color themes designed for optimal contrast and visual 
 
 ## Installation
 
-Download the latest release (**v1.9**) from [GitHub Releases](https://github.com/owergungor/Curry/releases).
+Download the latest release (**v2.0**) from [GitHub Releases](https://github.com/owergungor/Curry/releases).
 
 ### Windows
 
 Supported on Windows 10 (Build 14393+) and Windows 11.
 
-- **Installer (Recommended)**: Download and run `Curry_v1.9_win-x64-setup.exe` (or `Curry_vX.Y_win-x64-setup.exe`) for automated setup, Start menu shortcuts, and seamless updates.
-- **Portable**: Download `Curry_v1.9_win-x64.zip` (or `Curry_vX.Y_win-x64.zip`), extract to any directory, and launch `Curry.exe`.
+- **Installer (Recommended)**: Download and run `Curry_v2.0_win-x64-setup.exe` (or `Curry_vX.Y_win-x64-setup.exe`) for automated setup, Start menu shortcuts, and seamless updates.
+- **Portable**: Download `Curry_v2.0_win-x64.zip` (or `Curry_vX.Y_win-x64.zip`), extract to any directory, and launch `Curry.exe`.
 
 ### macOS
 
 Supported on macOS 11.0+ (Apple Silicon / arm64).
 
-- **Disk Image**: Download `Curry_v1.9_mac-arm64.dmg` (or `Curry_vX.Y_mac-arm64.dmg`), open the DMG, and drag Curry into your `Applications` folder.
-- **Portable Archive**: Download `Curry_v1.9_mac-arm64.app.zip` (or `Curry_vX.Y_mac-arm64.app.zip`), extract, and launch.
+- **Disk Image**: Download `Curry_v2.0_mac-arm64.dmg` (or `Curry_vX.Y_mac-arm64.dmg`), open the DMG, and drag Curry into your `Applications` folder.
+- **Portable Archive**: Download `Curry_v2.0_mac-arm64.app.zip` (or `Curry_vX.Y_mac-arm64.app.zip`), extract, and launch.
 
 Browse all downloads and release assets on the official [Releases page](https://github.com/owergungor/Curry/releases).
 

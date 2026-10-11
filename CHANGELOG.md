@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0] - 2026-10-11
+
+### Added
+- Comprehensive v2.0 desktop enhancements across platform providers, window theme management, and installer configurations.
+- Modern Svelte 5 runes-based desktop user interface and error management.
+- Multi-platform packaging for Windows x64 (NSIS setup & portable) and Apple Silicon macOS (DMG & app bundle).
+- Integrated updater architecture with Minisign verification.
+
+---
+
+## [1.9] - 2026-10-07
+
+### Added
+- Tactile `AppleSwitch.svelte` toggle component for smooth state transitions.
+- Refined button interaction styling (`Button.svelte`) and responsive dashboard controls.
+
+---
+
+## [1.8] - 2026-10-06
+
+### Added
+- 10 curated color themes architecture (`src/lib/themes.ts`) and interactive `ThemeSelector.svelte` component.
+- Dynamic accent color propagation and persistent theme state synchronization across frontend and backend.
+
+---
+
+## [1.7] - 2026-10-06
+
+### Added
+- Refined appearance tab controls and live glow preview responsiveness in main dashboard.
+
+---
+
+## [1.6] - 2026-10-03
+
+### Added
+- Native Windows window theming engine (`src-tauri/src/window_theme.rs`) via DWM APIs.
+- Title bar caption color and dark/light mode synchronization with desktop theme settings.
+
+---
+
+## [1.5] - 2026-09-29
+
+### Added
+- Modular UI component architecture (`ColorPicker.svelte`, `Dropdown.svelte`, `AppearanceTabs.svelte`).
+- Project `.agents` developer toolkits, rules, and plugin definitions.
+- Enhanced glow settings persistence and application profile synchronization.
+
+---
+
+## [1.4] - 2026-09-29
+
+### Added
+- Native Apple Silicon (aarch64-apple-darwin) macOS platform support.
+- DMG packaging pipeline and AppKit window transparency gating.
+
+---
+
+## [1.3] - 2026-09-08
+
+### Added
+- Performance profiling and intelligent resource consumption optimization.
+- Bounded capacity ring-buffers and lazy listener evaluation.
+
+---
+
 ## [1.2] - 2026-09-08
 
 ### Added

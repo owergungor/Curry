@@ -5,17 +5,133 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g. v2.0)'
+        required: false
+        type: string
+      allow_unsigned:
+        description: 'Allow test build without Apple signing / updater credentials (default false)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 jobs:
-  release-mac:
-    name: Build macOS Apple Silicon (arm64)
-    runs-on: macos-14
+  validate-tag:
+    name: Validate Release Tag and Version Match
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.check.outputs.tag }}
+      release_tag: ${{ steps.check.outputs.release_tag }}
+      commit_sha: ${{ steps.check.outputs.commit_sha }}
+      is_test_build: ${{ steps.check.outputs.is_test_build }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Tag Format and Version Matching
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=""
+          IS_TEST="false"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            IS_TEST="false"
+            git checkout -q "$GITHUB_REF"
+          elif [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+            if [ "${{ inputs.allow_unsigned }}" = "true" ]; then
+              IS_TEST="true"
+            fi
+            if git rev-parse -q --verify "refs/tags/${TAG}^{commit}" >/dev/null 2>&1; then
+              echo "Existing tag '$TAG' found in repository. Checking out tagged commit."
+              git checkout -q "refs/tags/${TAG}"
+            else
+              if [ "$IS_TEST" != "true" ]; then
+                echo "::error::Tag '$TAG' does not exist in repository git tags! Official release via workflow_dispatch requires an existing git tag."
+                exit 1
+              fi
+              echo "Notice: Tag '$TAG' not found in git tags; proceeding with branch HEAD for test build."
+            fi
+          else
+            echo "::error::Release tag could not be determined. Push a tag matching 'v*' or provide tag input for manual dispatch."
+            exit 1
+          fi
+
+          if [[ ! "$TAG" =~ ^v[0-9]+(\.[0-9]+)*$ ]]; then
+            echo "::error::Invalid release tag format: '$TAG'. Must match 'vX.Y' (e.g. v2.0) or 'vX.Y.Z'."
+            exit 1
+          fi
+
+          USER_VER="${TAG#v}"
+          EXPECTED_TECH=""
+          if [[ "$USER_VER" =~ ^[0-9]+\.[0-9]+$ ]]; then
+            EXPECTED_TECH="${USER_VER}.0"
+          elif [[ "$USER_VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            EXPECTED_TECH="${USER_VER}"
+          else
+            echo "::error::Release tag version '$USER_VER' is invalid. Expected format 'X.Y' or 'X.Y.Z'."
+            exit 1
+          fi
+
+          if [ ! -f "src-tauri/tauri.conf.json" ] || [ ! -f "package.json" ]; then
+            echo "::error::Manifest files missing (src-tauri/tauri.conf.json or package.json not found)!"
+            exit 1
+          fi
+
+          TAURI_VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          PKG_VER=$(node -p "require('./package.json').version")
+
+          if [ "$TAURI_VER" != "$PKG_VER" ]; then
+            echo "::error::Version mismatch between manifests: tauri.conf.json ($TAURI_VER) != package.json ($PKG_VER)"
+            exit 1
+          fi
+
+          if [ "$TAURI_VER" != "$EXPECTED_TECH" ]; then
+            echo "::error::Tag version '$TAG' (expected technical SemVer: '$EXPECTED_TECH') does not match manifest version '$TAURI_VER'. Aborting release before building any binaries."
+            exit 1
+          fi
+
+          COMMIT_SHA=$(git rev-parse HEAD)
+
+          if [ "$IS_TEST" = "true" ]; then
+            RELEASE_TAG="${TAG}-test.${GITHUB_RUN_NUMBER}"
+            echo "Test build isolated release tag: $RELEASE_TAG"
+          else
+            RELEASE_TAG="${TAG}"
+            if gh release view "$RELEASE_TAG" --json isDraft -q .isDraft 2>/dev/null | grep -q "false"; then
+              echo "::error::Official release for tag '$RELEASE_TAG' is already published and immutable! Re-releasing over an existing published release is prohibited."
+              exit 1
+            fi
+          fi
+
+          echo "Valid release tag confirmed: $TAG"
+          echo "Target GitHub release tag: $RELEASE_TAG"
+          echo "Verified commit SHA: $COMMIT_SHA"
+          echo "Manifest version verified: $TAURI_VER (expected: $EXPECTED_TECH)"
+          echo "Test build mode: $IS_TEST"
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+          echo "is_test_build=$IS_TEST" >> "$GITHUB_OUTPUT"
+
+  release-mac:
+    name: Build macOS Apple Silicon (arm64)
+    runs-on: macos-14
+    needs: [validate-tag]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-tag.outputs.commit_sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -37,6 +153,7 @@ jobs:
       - name: Check and Configure Updater Signing
         id: updater-check
         env:
+          IS_TEST_BUILD: ${{ needs.validate-tag.outputs.is_test_build }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
@@ -48,10 +165,56 @@ jobs:
             echo "Valid Tauri updater signing key detected. Enabling updater artifacts generation."
             node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); c.bundle.createUpdaterArtifacts=true; fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(c,null,2));"
             echo "SIGNING_ENABLED=true" >> "$GITHUB_ENV"
-          else
-            echo "Tauri updater signing key is not provided or not in valid format. Building standard application bundle without updater artifacts."
+          elif [ "$IS_TEST_BUILD" = "true" ]; then
+            echo "Notice: Test build mode. Tauri updater signing key not provided; continuing without updater artifacts."
             echo "SIGNING_ENABLED=false" >> "$GITHUB_ENV"
+          else
+            echo "::error::Official release requires TAURI_SIGNING_PRIVATE_KEY secret for updater security! Official releases cannot be published without updater artifacts."
+            exit 1
           fi
+
+      - name: Verify Apple Developer Credentials
+        env:
+          IS_TEST_BUILD: ${{ needs.validate-tag.outputs.is_test_build }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ "$IS_TEST_BUILD" != "true" ]; then
+            if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_CERTIFICATE_PASSWORD" ] || [ -z "$APPLE_SIGNING_IDENTITY" ]; then
+              echo "::error::Official release requires Apple Developer ID signing certificate (APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY). Building unsigned packages for official releases is prohibited."
+              exit 1
+            fi
+            if [ -z "$APPLE_ID" ] || [ -z "$APPLE_PASSWORD" ] || [ -z "$APPLE_TEAM_ID" ]; then
+              echo "::error::Official release requires Apple notarization credentials (APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID). Releasing un-notarized packages for official releases is prohibited."
+              exit 1
+            fi
+            echo "Apple Developer signing and notarization credentials verified for official release."
+          else
+            echo "Notice: Test build mode enabled (allow_unsigned=true). Bypassing Apple signing/notarization requirement."
+          fi
+
+      - name: Setup macOS Keychain for Apple Developer Signing
+        if: env.APPLE_CERTIFICATE != ''
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "Setting up temporary keychain for Apple Developer ID certificate..."
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 24)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$KEYCHAIN_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          echo "KEYCHAIN_CONFIGURED=true" >> "$GITHUB_ENV"
 
       - name: Build Tauri macOS Apple Silicon App & DMG
         env:
@@ -65,7 +228,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           if [ -z "$APPLE_CERTIFICATE" ]; then
-            echo "Notice: Apple Developer ID certificate not provided. Building unsigned/ad-hoc package for testing."
             unset APPLE_CERTIFICATE
             unset APPLE_CERTIFICATE_PASSWORD
             unset APPLE_SIGNING_IDENTITY
@@ -82,13 +244,8 @@ jobs:
       - name: Stage and Package macOS Artifacts
         run: |
           mkdir -p "$GITHUB_WORKSPACE/dist_release"
-          TAG_NAME="${GITHUB_REF_NAME:-v2.0}"
-          if [ "$TAG_NAME" = "main" ] || [ -z "$TAG_NAME" ]; then
-            TAG_NAME="v2.0"
-          fi
-          if [[ ! "$TAG_NAME" =~ ^v ]]; then
-            TAG_NAME="v$TAG_NAME"
-          fi
+          TAG_NAME="${{ needs.validate-tag.outputs.tag }}"
+
           # Rename and package DMG
           if compgen -G "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg" > /dev/null; then
             cp src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg "$GITHUB_WORKSPACE/dist_release/Curry_${TAG_NAME}_mac-arm64.dmg"
@@ -105,6 +262,18 @@ jobs:
             cp -r src-tauri/target/aarch64-apple-darwin/release/bundle/updater/* "$GITHUB_WORKSPACE/dist_release/" 2>/dev/null || true
           fi
 
+      - name: Sign DMG Container (if signing identity present)
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          if [ -n "$APPLE_SIGNING_IDENTITY" ]; then
+            DMG_FILE=$(compgen -G "$GITHUB_WORKSPACE/dist_release/Curry_*_mac-arm64.dmg" | head -n 1)
+            if [ -f "$DMG_FILE" ]; then
+              echo "Explicitly signing DMG container with Apple Developer ID identity..."
+              codesign --force --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$DMG_FILE"
+            fi
+          fi
+
       - name: Verify Code Signing and Gatekeeper Assessment
         run: |
           APP_PATH="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app"
@@ -119,6 +288,7 @@ jobs:
 
       - name: Notarize and Staple DMG (if Apple credentials provided)
         env:
+          IS_TEST_BUILD: ${{ needs.validate-tag.outputs.is_test_build }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -128,11 +298,21 @@ jobs:
             if [ -f "$DMG_FILE" ]; then
               echo "Submitting DMG for Apple notarization..."
               xcrun notarytool submit "$DMG_FILE" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
-              echo "Stapling notarization ticket..."
+              echo "Stapling notarization ticket to DMG..."
               xcrun stapler staple "$DMG_FILE"
+              echo "Verifying Gatekeeper assessment on DMG..."
+              spctl -a -t open --context context:primary-signature -v "$DMG_FILE" || true
             fi
+            APP_PATH="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app"
+            if [ -d "$APP_PATH" ]; then
+              echo "Stapling notarization ticket to app bundle..."
+              xcrun stapler staple "$APP_PATH" || true
+            fi
+          elif [ "$IS_TEST_BUILD" = "true" ]; then
+            echo "Notice: Test build mode without Apple notarization credentials."
           else
-            echo "Notice: Apple Developer ID credentials not configured. Skipping notarization (producing unsigned test build)."
+            echo "::error::Notarization failed: credentials missing in official release flow."
+            exit 1
           fi
 
       - name: Upload macOS Artifacts to Actions
@@ -141,28 +321,15 @@ jobs:
           name: macos-arm64-artifacts
           path: dist_release/*
 
-      - name: Upload macOS Release Assets
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-        with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.0' }}
-          name: Curry v2.0
-          fail_on_unmatched_files: false
-          files: |
-            dist_release/Curry_*_mac-arm64.dmg
-            dist_release/Curry_*_mac-arm64.app.zip
-            dist_release/*.tar.gz
-            dist_release/*.sig
-            dist_release/latest.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   release-windows:
     name: Build Windows x64
     runs-on: windows-latest
+    needs: [validate-tag]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-tag.outputs.commit_sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -184,6 +351,7 @@ jobs:
       - name: Build Tauri Windows Binary
         shell: pwsh
         env:
+          IS_TEST_BUILD: ${{ needs.validate-tag.outputs.is_test_build }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
@@ -196,10 +364,13 @@ jobs:
           if ($hasValidKey) {
             Write-Host "Valid Tauri updater signing private key detected. Enabling updater artifacts generation."
             node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); c.bundle.createUpdaterArtifacts=true; fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(c,null,2));"
-          } else {
-            Write-Host "Tauri updater signing key is missing or not in valid format. Building standard installer and binary without updater artifacts."
+          } elseif ($env:IS_TEST_BUILD -eq "true") {
+            Write-Host "Test build mode: Tauri updater signing key is missing; continuing without updater artifacts."
             Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY -ErrorAction SilentlyContinue
             Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue
+          } else {
+            Write-Error "Official release requires TAURI_SIGNING_PRIVATE_KEY for Windows updater artifacts!"
+            exit 1
           }
           npx tauri build
 
@@ -207,9 +378,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path dist_release -Force | Out-Null
-          $tag = $env:GITHUB_REF_NAME
-          if ([string]::IsNullOrEmpty($tag) -or $tag -eq "main") { $tag = "v2.0" }
-          if (-not $tag.StartsWith("v")) { $tag = "v$tag" }
+          $tag = "${{ needs.validate-tag.outputs.tag }}"
           
           # Copy NSIS setup installer as Curry_vX.Y_win-x64-setup.exe
           $nsisExe = Get-ChildItem -Path "src-tauri\target\release\bundle\nsis\*.exe" | Select-Object -First 1
@@ -238,16 +407,112 @@ jobs:
           name: windows-x64-artifacts
           path: dist_release/*
 
-      - name: Upload Windows Release Assets
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+  publish-release:
+    name: Publish Draft Release
+    runs-on: ubuntu-latest
+    needs: [validate-tag, release-mac, release-windows]
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.0' }}
-          name: Curry v2.0
+          path: staged_artifacts
+
+      - name: Consolidate and verify release assets
+        run: |
+          rm -rf dist_release
+          mkdir -p dist_release
+          TAG="${{ needs.validate-tag.outputs.tag }}"
+          IS_TEST="${{ needs.validate-tag.outputs.is_test_build }}"
+
+          if [ -d "staged_artifacts/macos-arm64-artifacts" ]; then
+            cp -r staged_artifacts/macos-arm64-artifacts/* dist_release/
+          fi
+          if [ -d "staged_artifacts/windows-x64-artifacts" ]; then
+            cp -r staged_artifacts/windows-x64-artifacts/* dist_release/
+          fi
+
+          # Safely merge multi-platform latest.json updater manifests if both were generated
+          MAC_LATEST="staged_artifacts/macos-arm64-artifacts/latest.json"
+          WIN_LATEST="staged_artifacts/windows-x64-artifacts/latest.json"
+          if [ -f "$MAC_LATEST" ] && [ -f "$WIN_LATEST" ]; then
+            echo "Merging macOS and Windows updater manifests into unified multi-platform latest.json..."
+            node -e "
+              const fs = require('fs');
+              const mac = JSON.parse(fs.readFileSync('$MAC_LATEST', 'utf8'));
+              const win = JSON.parse(fs.readFileSync('$WIN_LATEST', 'utf8'));
+              const merged = { ...mac, ...win, platforms: { ...(mac.platforms || {}), ...(win.platforms || {}) } };
+              fs.writeFileSync('dist_release/latest.json', JSON.stringify(merged, null, 2));
+            "
+          elif [ -f "$MAC_LATEST" ]; then
+            cp "$MAC_LATEST" dist_release/latest.json
+          elif [ -f "$WIN_LATEST" ]; then
+            cp "$WIN_LATEST" dist_release/latest.json
+          fi
+
+          echo "=== Staged Release Assets for $TAG ==="
+          ls -lh dist_release/
+
+          REQUIRED_ASSETS=(
+            "dist_release/Curry_${TAG}_win-x64-setup.exe"
+            "dist_release/Curry_${TAG}_win-x64.zip"
+            "dist_release/Curry_${TAG}_mac-arm64.dmg"
+            "dist_release/Curry_${TAG}_mac-arm64.app.zip"
+          )
+
+          for asset in "${REQUIRED_ASSETS[@]}"; do
+            if [ ! -s "$asset" ]; then
+              echo "::error::Required release asset '$asset' is missing or zero bytes!"
+              exit 1
+            fi
+          done
+
+          if [ "$IS_TEST" != "true" ]; then
+            if [ ! -s "dist_release/latest.json" ]; then
+              echo "::error::Official release requires a valid, non-empty 'latest.json' updater manifest!"
+              exit 1
+            fi
+            echo "Verifying latest.json platform signatures..."
+            node -e "
+              const fs = require('fs');
+              const m = JSON.parse(fs.readFileSync('dist_release/latest.json', 'utf8'));
+              if (!m.platforms || !m.platforms['darwin-aarch64'] || !m.platforms['windows-x86_64']) {
+                console.error('::error::latest.json is missing required platform keys (darwin-aarch64 and windows-x86_64)!');
+                process.exit(1);
+              }
+              if (!m.platforms['darwin-aarch64'].signature || !m.platforms['windows-x86_64'].signature) {
+                console.error('::error::latest.json is missing platform updater signatures!');
+                process.exit(1);
+              }
+              console.log('Unified latest.json verified with valid platforms and signatures.');
+            "
+          fi
+
+          cd dist_release
+          rm -f SHA256SUMS.txt
+          mapfile -t FILES_TO_HASH < <(find . -maxdepth 1 -type f ! -name "SHA256SUMS.txt" -printf "%f\n" | sort)
+          if [ ${#FILES_TO_HASH[@]} -eq 0 ]; then
+            echo "::error::No release files found in dist_release to generate SHA256 checksums!"
+            exit 1
+          fi
+          sha256sum "${FILES_TO_HASH[@]}" > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          cd -
+
+      - name: Create GitHub Draft Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.validate-tag.outputs.release_tag }}
+          name: ${{ needs.validate-tag.outputs.is_test_build == 'true' && format('Curry {0} (Test Build)', needs.validate-tag.outputs.tag) || format('Curry {0}', needs.validate-tag.outputs.tag) }}
+          draft: true
+          prerelease: ${{ needs.validate-tag.outputs.is_test_build == 'true' }}
           fail_on_unmatched_files: false
           files: |
             dist_release/Curry_*_win-x64-setup.exe
             dist_release/Curry_*_win-x64.zip
+            dist_release/Curry.exe
+            dist_release/Curry_*_mac-arm64.dmg
+            dist_release/Curry_*_mac-arm64.app.zip
+            dist_release/SHA256SUMS.txt
             dist_release/*.tar.gz
             dist_release/*.sig
             dist_release/latest.json
