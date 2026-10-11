@@ -8,3 +8,5 @@ export { default as AppleSwitch, default as Switch } from "./AppleSwitch.svelte"
 export { default as Skeleton } from "../Skeleton.svelte";
 export { default as ColorPicker } from "../ColorPicker.svelte";
 export { default as AppearanceTabs, type Appearance } from "../AppearanceTabs.svelte";
+export { default as ErrorIsland } from "./ErrorIsland.svelte";
+export { default as ErrorModal } from "./ErrorModal.svelte";

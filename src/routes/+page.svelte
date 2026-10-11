@@ -10,6 +10,9 @@
   import ColorPicker from "$lib/ColorPicker.svelte";
   import { check as checkUpdate } from "@tauri-apps/plugin-updater";
   import { t, currentLanguage, setLanguage, initLanguage, LANGUAGE_DROPDOWN_OPTIONS, type SupportedLocale } from "$lib/i18n";
+  import { errorStore } from "$lib/errors";
+  import ErrorIsland from "$lib/components/ErrorIsland.svelte";
+  import ErrorModal from "$lib/components/ErrorModal.svelte";
 
   interface ConnectionInfo {
     connected: boolean;
@@ -86,6 +89,7 @@
     auto_update_enabled?: boolean;
     auto_update_frequency?: "startup" | "daily" | "weekly" | "monthly";
     last_update_check?: number | null;
+    reduced_motion?: boolean;
   }
 
   type ProviderStatus =
@@ -322,7 +326,14 @@
       await pendingUpdateObj.downloadAndInstall();
       updateStatusMessage = "Update installed! Restarting Curry...";
     } catch (err: unknown) {
-      updateStatusMessage = "Update installation failed: " + (err instanceof Error ? err.message : String(err));
+      errorStore.report({
+        category: "update",
+        rawError: err,
+        title: "Update Installation Incomplete",
+        message: "The application update could not be applied automatically.",
+        suggestion: "You can download the latest installer directly from the releases page.",
+      });
+      updateStatusMessage = "Update installation could not be completed.";
     } finally {
       isInstallingUpdate = false;
     }
@@ -447,6 +458,7 @@
     applications: [],
     oled_mode: false,
     fullscreen_behavior: "suppress_in_fullscreen",
+    reduced_motion: false,
   });
 
   // Application Profiles State
@@ -585,8 +597,11 @@
         }
       }
     } catch (err) {
-      console.error("Failed to pick executable:", err);
-      profileActionError = String(err);
+      const appErr = errorStore.report({
+        category: "profile",
+        rawError: err,
+      });
+      profileActionError = appErr.message;
     }
   }
 
@@ -690,8 +705,12 @@
 
       closeProfileModal();
     } catch (err) {
-      console.error("Failed to save app profile:", err);
-      profileActionError = String(err);
+      const appErr = errorStore.report({
+        category: "profile",
+        rawError: err,
+        onRetry: () => saveProfile(),
+      });
+      profileActionError = appErr.message;
     }
   }
 
@@ -703,7 +722,13 @@
         closeProfileModal();
       }
     } catch (err) {
-      console.error("Failed to delete app profile:", err);
+      errorStore.report({
+        category: "profile",
+        rawError: err,
+        title: "Could Not Delete Profile",
+        message: "The application profile could not be removed from storage.",
+        onRetry: () => deleteProfile(id),
+      });
     }
   }
 
@@ -718,7 +743,13 @@
         applications[idx] = saved;
       }
     } catch (err) {
-      console.error("Failed to toggle profile enabled status:", err);
+      errorStore.report({
+        category: "profile",
+        rawError: err,
+        title: "Could Not Update Profile",
+        message: "Failed to update profile enabled state.",
+        onRetry: () => toggleProfile(p),
+      });
     }
   }
 
@@ -856,8 +887,17 @@
       await fetchPipelineStatus();
     } catch (err: unknown) {
       status = "disconnected";
-      errorMessage = err instanceof Error ? err.message : String(err);
+      errorMessage = "Backend connection lost";
       lastCheckedAt = new Date().toLocaleTimeString();
+      errorStore.report({
+        category: "system",
+        severity: "fatal",
+        rawError: err,
+        title: "Backend Unavailable",
+        message: "Curry could not connect to its background process.",
+        suggestion: "Ensure Curry is running and background processes are permitted.",
+        onRetry: () => checkConnection(),
+      });
     } finally {
       isPinging = false;
     }
@@ -879,6 +919,7 @@
         appSettings.sound_enabled !== s.sound_enabled ||
         appSettings.oled_mode !== s.oled_mode ||
         appSettings.fullscreen_behavior !== s.fullscreen_behavior ||
+        appSettings.reduced_motion !== s.reduced_motion ||
         appSettings.theme !== s.theme ||
         JSON.stringify(appSettings.glow) !== JSON.stringify(s.glow) ||
         JSON.stringify(appSettings.applications) !== JSON.stringify(s.applications)
@@ -895,7 +936,14 @@
         }
       }
     } catch (err) {
-      console.error("Failed to fetch app settings:", err);
+      errorStore.report({
+        category: "settings",
+        rawError: err,
+        title: "Settings Unavailable",
+        message: "Curry could not load your saved settings.",
+        suggestion: "Default settings are active for now.",
+        onRetry: () => fetchAppSettings(),
+      });
     } finally {
       isSettingsLoading = false;
     }
@@ -917,8 +965,12 @@
       isEnabled = updated.enabled;
       settingsError = null;
     } catch (err: unknown) {
-      console.error("Failed to save app settings:", err);
-      settingsError = err instanceof Error ? err.message : String(err);
+      const appErr = errorStore.report({
+        category: "settings",
+        rawError: err,
+        onRetry: () => saveAppSettings(),
+      });
+      settingsError = appErr.message;
       if (settingsErrorTimer) clearTimeout(settingsErrorTimer);
       settingsErrorTimer = setTimeout(() => {
         settingsError = null;
@@ -935,7 +987,13 @@
       appSettings.enabled = next;
       await fetchPipelineStatus();
     } catch (err) {
-      console.error("Failed to toggle app state:", err);
+      errorStore.report({
+        category: "system",
+        rawError: err,
+        title: "State Toggle Failed",
+        message: "Could not switch Curry master state.",
+        onRetry: () => toggleAppState(),
+      });
     } finally {
       isToggling = false;
     }
@@ -947,7 +1005,14 @@
       const res = await invoke<boolean>("set_startup_status", { enabled: target });
       appSettings.startup_enabled = res;
     } catch (err) {
-      console.error("Failed to toggle startup:", err);
+      errorStore.report({
+        category: "system",
+        rawError: err,
+        title: "Startup Toggle Failed",
+        message: "Could not update system startup setting.",
+        suggestion: "Ensure you have permission to modify system startup items.",
+        onRetry: () => toggleStartup(),
+      });
     }
   }
 
@@ -956,7 +1021,13 @@
     try {
       await invoke("play_sound_preview");
     } catch (err) {
-      console.error("Failed to play sound preview:", err);
+      errorStore.report({
+        category: "media",
+        rawError: err,
+        title: "Sound Preview Failed",
+        message: "Could not play alert sound.",
+        suggestion: "Verify system audio output device is connected and unmuted.",
+      });
     } finally {
       setTimeout(() => {
         isPlayingSound = false;
@@ -1014,8 +1085,14 @@
     try {
       await invoke("preview_global_glow");
     } catch (err) {
-      console.error("Failed to trigger glow preview:", err);
       isPreviewingGlow = false;
+      errorStore.report({
+        category: "window",
+        rawError: err,
+        title: "Preview Unavailable",
+        message: "Curry could not render the screen-edge preview overlay.",
+        suggestion: "Ensure Curry is enabled in the top bar.",
+      });
       return;
     }
     if (glowTimeout) clearTimeout(glowTimeout);
@@ -1034,7 +1111,13 @@
       notifications = [];
       showClearConfirm = false;
     } catch (err) {
-      console.error("Failed to clear notifications:", err);
+      errorStore.report({
+        category: "notification",
+        rawError: err,
+        title: "Could Not Clear History",
+        message: "Curry could not clear notification records from storage.",
+        onRetry: () => confirmClearAll(),
+      });
     } finally {
       isClearing = false;
     }
@@ -1045,7 +1128,12 @@
       await invoke("dismiss_notification", { id });
       notifications = notifications.filter((n) => n.id !== id);
     } catch (err) {
-      console.error(`Failed to remove notification ${id}:`, err);
+      errorStore.report({
+        category: "notification",
+        rawError: err,
+        title: "Could Not Dismiss Notification",
+        message: "The notification could not be removed from history.",
+      });
     }
   }
 
@@ -1054,7 +1142,12 @@
       await invoke("mark_notification_as_read", { id });
       notifications = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
     } catch (err) {
-      console.error(`Failed to mark notification ${id} as read:`, err);
+      errorStore.report({
+        category: "notification",
+        rawError: err,
+        title: "Could Not Update Notification",
+        message: "Unable to update the read status of this notification.",
+      });
     }
   }
 
@@ -1063,7 +1156,12 @@
       await invoke("mark_notification_as_unread", { id });
       notifications = notifications.map((n) => (n.id === id ? { ...n, read: false } : n));
     } catch (err) {
-      console.error(`Failed to mark notification ${id} as unread:`, err);
+      errorStore.report({
+        category: "notification",
+        rawError: err,
+        title: "Could Not Update Notification",
+        message: "Unable to update the read status of this notification.",
+      });
     }
   }
 
@@ -1077,7 +1175,12 @@
       }
       await fetchPipelineStatus();
     } catch (err: unknown) {
-      testNotificationError = err instanceof Error ? err.message : String(err);
+      const appErr = errorStore.report({
+        category: "notification",
+        rawError: err,
+        onRetry: () => sendTestNotification(),
+      });
+      testNotificationError = appErr.message;
     } finally {
       isSendingTest = false;
     }
@@ -1087,7 +1190,13 @@
     try {
       await invoke("open_notification_settings");
     } catch (err) {
-      console.error("Failed to open Windows notification settings:", err);
+      errorStore.report({
+        category: "system",
+        rawError: err,
+        title: "Could Not Open Settings",
+        message: "Curry could not open system notification settings automatically.",
+        suggestion: "Please open your operating system settings manually.",
+      });
     }
   }
 
@@ -2308,6 +2417,22 @@
                       ariaLabel="Toggle OLED optimization mode"
                     />
                   </div>
+
+                  <div class="control-item">
+                    <div class="control-label-group">
+                      <span class="control-title">Reduced Motion</span>
+                      <span class="control-sub">Minimize UI transitions and motion across all application views</span>
+                    </div>
+                    <AppleSwitch
+                      id="reduced-motion-switch"
+                      checked={appSettings.reduced_motion ?? false}
+                      onchange={(val) => {
+                        appSettings.reduced_motion = val;
+                        saveAppSettings();
+                      }}
+                      ariaLabel="Toggle reduced motion accessibility"
+                    />
+                  </div>
                 </div>
               </section>
             </div>
@@ -3076,6 +3201,10 @@
       </div>
     </div>
   {/if}
+
+  <!-- Application-Owned Centralized Error System Presentation -->
+  <ErrorIsland reducedMotion={appSettings.reduced_motion} />
+  <ErrorModal />
 </div>
 
 <style>
