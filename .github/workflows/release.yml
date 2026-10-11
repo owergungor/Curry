@@ -118,18 +118,21 @@ jobs:
           fi
 
       - name: Notarize and Staple DMG (if Apple credentials provided)
-        if: ${{ secrets.APPLE_ID != '' && secrets.APPLE_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          DMG_FILE=$(compgen -G "$GITHUB_WORKSPACE/dist_release/Curry_*_mac-arm64.dmg" | head -n 1)
-          if [ -f "$DMG_FILE" ]; then
-            echo "Submitting DMG for Apple notarization..."
-            xcrun notarytool submit "$DMG_FILE" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
-            echo "Stapling notarization ticket..."
-            xcrun stapler staple "$DMG_FILE"
+          if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            DMG_FILE=$(compgen -G "$GITHUB_WORKSPACE/dist_release/Curry_*_mac-arm64.dmg" | head -n 1)
+            if [ -f "$DMG_FILE" ]; then
+              echo "Submitting DMG for Apple notarization..."
+              xcrun notarytool submit "$DMG_FILE" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+              echo "Stapling notarization ticket..."
+              xcrun stapler staple "$DMG_FILE"
+            fi
+          else
+            echo "Notice: Apple Developer ID credentials not configured. Skipping notarization (producing unsigned test build)."
           fi
 
       - name: Upload macOS Artifacts to Actions
