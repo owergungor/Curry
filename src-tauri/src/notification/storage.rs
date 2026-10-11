@@ -95,7 +95,7 @@ impl NotificationStorage {
                         let _ = file.sync_data();
                         drop(file);
                         // Atomic replacement: rename tmp over target file
-                        if let Err(_) = fs::rename(&tmp_path, path) {
+                        if fs::rename(&tmp_path, path).is_err() {
                             // On Windows, if destination exists, rename may fail; fallback to replace
                             let _ = fs::remove_file(path);
                             let _ = fs::rename(&tmp_path, path);

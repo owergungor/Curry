@@ -28,6 +28,12 @@ impl WindowsNotificationProvider {
     }
 }
 
+impl Default for WindowsNotificationProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NotificationProvider for WindowsNotificationProvider {
     fn name(&self) -> &'static str {
         "Windows Notification Provider"

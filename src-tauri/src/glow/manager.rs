@@ -339,6 +339,7 @@ impl GlowManager {
 
 #[cfg(target_os = "windows")]
 fn find_active_monitor(window: &WebviewWindow) -> Option<tauri::Monitor> {
+    #[allow(clippy::upper_case_acronyms)]
     #[repr(C)]
     struct POINT {
         x: i32,

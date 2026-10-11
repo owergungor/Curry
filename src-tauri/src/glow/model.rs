@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 /// Animation style for the screen-edge glow effect.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum GlowAnimationStyle {
+    #[default]
     Pulse,
     Sweep,
     Ambient,
@@ -40,12 +41,6 @@ pub fn normalize_animation(value: &str) -> GlowAnimationStyle {
     }
 }
 
-impl Default for GlowAnimationStyle {
-    fn default() -> Self {
-        Self::Pulse
-    }
-}
-
 impl<'de> Deserialize<'de> for GlowAnimationStyle {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -60,20 +55,15 @@ impl<'de> Deserialize<'de> for GlowAnimationStyle {
 }
 
 /// Target monitor configuration for overlay placement.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum MonitorTarget {
+    #[default]
     Primary,
     Active,
     All,
     #[serde(rename = "specific")]
     Specific(String),
-}
-
-impl Default for MonitorTarget {
-    fn default() -> Self {
-        Self::Primary
-    }
 }
 
 impl<'de> Deserialize<'de> for MonitorTarget {

@@ -6,10 +6,15 @@
 pub mod platform {
     use std::ffi::c_void;
 
+    #[allow(clippy::upper_case_acronyms)]
     type HANDLE = *mut c_void;
+    #[allow(clippy::upper_case_acronyms)]
     type HWND = *mut c_void;
+    #[allow(clippy::upper_case_acronyms)]
     type BOOL = i32;
+    #[allow(clippy::upper_case_acronyms)]
     type DWORD = u32;
+    #[allow(clippy::upper_case_acronyms)]
     type LPCWSTR = *const u16;
 
     const ERROR_ALREADY_EXISTS: DWORD = 183;
@@ -81,8 +86,7 @@ pub mod platform {
             if handle.is_null() {
                 // If Global namespace failed due to permissions (e.g., standard non-admin account),
                 // fall back immediately to local session namespace
-                if name.starts_with("Global\\") {
-                    let local_name = &name["Global\\".len()..];
+                if let Some(local_name) = name.strip_prefix("Global\\") {
                     return try_acquire_named_mutex(local_name);
                 }
 

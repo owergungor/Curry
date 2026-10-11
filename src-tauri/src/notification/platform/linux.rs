@@ -1,6 +1,7 @@
 use super::{NotificationCallback, NotificationError, NotificationProvider, ProviderStatus};
 
 /// Linux Notification Provider placeholder.
+#[derive(Default)]
 pub struct LinuxNotificationProvider;
 
 impl LinuxNotificationProvider {

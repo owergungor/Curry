@@ -1,6 +1,7 @@
 use super::{NotificationCallback, NotificationError, NotificationProvider, ProviderStatus};
 
 /// macOS Notification Provider placeholder.
+#[derive(Default)]
 pub struct MacOSNotificationProvider;
 
 impl MacOSNotificationProvider {

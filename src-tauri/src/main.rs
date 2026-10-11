@@ -6,6 +6,7 @@ fn main() {
 }
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default, clippy::useless_vec)]
 mod tests {
     use curry_lib::notification::model::{Notification, NotificationUrgency};
     use curry_lib::notification::platform::{

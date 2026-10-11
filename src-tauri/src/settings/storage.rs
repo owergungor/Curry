@@ -122,7 +122,7 @@ impl SettingsStorage {
                     if file.write_all(json.as_bytes()).is_ok() && file.flush().is_ok() {
                         let _ = file.sync_data();
                         drop(file);
-                        if let Err(_) = fs::rename(&tmp_path, path) {
+                        if fs::rename(&tmp_path, path).is_err() {
                             let _ = fs::remove_file(path);
                             let _ = fs::rename(&tmp_path, path);
                         }

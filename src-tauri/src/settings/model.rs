@@ -3,9 +3,10 @@ use serde::{Deserialize, Serialize};
 use crate::glow::model::GlowSettings;
 
 /// User-selected visual theme for Curry inspired by 21st.dev Community Themes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
 pub enum AppTheme {
     #[serde(rename = "promotor-wow")]
+    #[default]
     PromotorWow,
     #[serde(rename = "perpetuity")]
     Perpetuity,
@@ -23,12 +24,6 @@ pub enum AppTheme {
     Bubblegum,
     #[serde(rename = "amberstate")]
     Amberstate,
-}
-
-impl Default for AppTheme {
-    fn default() -> Self {
-        Self::PromotorWow
-    }
 }
 
 impl<'de> Deserialize<'de> for AppTheme {
@@ -59,34 +54,24 @@ use crate::settings::fullscreen::FullscreenBehavior;
 use crate::settings::profiles::ApplicationProfile;
 
 /// Overall UI appearance mode (system auto-detection, explicit light, or explicit dark).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum AppearanceMode {
+    #[default]
     System,
     Light,
     Dark,
 }
 
-impl Default for AppearanceMode {
-    fn default() -> Self {
-        Self::System
-    }
-}
-
 /// Frequency for automated software update checks.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum AutoUpdateFrequency {
     Startup,
+    #[default]
     Daily,
     Weekly,
     Monthly,
-}
-
-impl Default for AutoUpdateFrequency {
-    fn default() -> Self {
-        Self::Daily
-    }
 }
 
 fn default_true() -> bool {
@@ -135,6 +120,9 @@ pub struct AppSettings {
     /// Selected interface language (en, es, fr, de, tr).
     #[serde(default)]
     pub language: Option<String>,
+    /// Whether user preference for reduced motion is explicitly enabled.
+    #[serde(default, alias = "reducedMotion")]
+    pub reduced_motion: bool,
 }
 
 impl Default for AppSettings {
@@ -155,6 +143,7 @@ impl Default for AppSettings {
             auto_update_frequency: AutoUpdateFrequency::default(),
             last_update_check: None,
             language: Some("en".to_string()),
+            reduced_motion: false,
         }
     }
 }

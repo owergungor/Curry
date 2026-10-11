@@ -10,18 +10,13 @@ pub enum FullscreenState {
 }
 
 /// Global user-configured policy for glow overlay behavior when fullscreen / gaming is active.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum FullscreenBehavior {
     AlwaysShow,
+    #[default]
     SuppressInFullscreen,
     SuppressGaming,
-}
-
-impl Default for FullscreenBehavior {
-    fn default() -> Self {
-        Self::SuppressInFullscreen
-    }
 }
 
 impl<'de> Deserialize<'de> for FullscreenBehavior {
@@ -67,6 +62,7 @@ pub fn should_suppress_for_fullscreen(
 /// Windows Win32 detection for determining whether the active foreground window covers the full monitor bounds.
 #[cfg(target_os = "windows")]
 pub fn detect_fullscreen_state() -> FullscreenState {
+    #[allow(clippy::upper_case_acronyms)]
     #[repr(C)]
     struct RECT {
         left: i32,
@@ -75,6 +71,7 @@ pub fn detect_fullscreen_state() -> FullscreenState {
         bottom: i32,
     }
 
+    #[allow(clippy::upper_case_acronyms)]
     #[repr(C)]
     struct MONITORINFO {
         cb_size: u32,

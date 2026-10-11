@@ -526,6 +526,7 @@ fn preview_application_glow(state: State<'_, AppState>, profile_id: String) -> R
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 fn preview_glow(
     state: State<'_, AppState>,
     color: Option<String>,
