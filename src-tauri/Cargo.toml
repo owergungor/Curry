@@ -35,11 +35,3 @@ features = [
     "Foundation_Collections",
     "ApplicationModel",
 ]
-
-[profile.release]
-opt-level = 3
-lto = "thin"
-codegen-units = 1
-panic = "unwind"
-strip = true
-
