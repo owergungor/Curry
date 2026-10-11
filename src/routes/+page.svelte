@@ -9,6 +9,7 @@
   import AppleSwitch from "$lib/components/AppleSwitch.svelte";
   import ColorPicker from "$lib/ColorPicker.svelte";
   import { check as checkUpdate } from "@tauri-apps/plugin-updater";
+  import { t, currentLanguage, setLanguage, initLanguage, LANGUAGE_DROPDOWN_OPTIONS, type SupportedLocale } from "$lib/i18n";
 
   interface ConnectionInfo {
     connected: boolean;
@@ -78,6 +79,7 @@
     glow: GlowSettings;
     theme?: ThemeId;
     appearance?: Appearance;
+    language?: string;
     applications?: ApplicationProfile[];
     oled_mode?: boolean;
     fullscreen_behavior?: "always_show" | "suppress_in_fullscreen" | "suppress_gaming";
@@ -205,9 +207,9 @@
     });
   });
 
-  // Software Update Management (v1.9)
+  // Software Update Management (v2.0)
   function formatUserVersion(v: string | undefined | null): string {
-    if (!v) return "1.9";
+    if (!v) return "2.0";
     const clean = v.replace(/^v/, "");
     const parts = clean.split(".");
     if (parts.length >= 2) {
@@ -216,11 +218,18 @@
     return clean;
   }
 
+  function handleLanguageChange(newLang: string) {
+    const valid = newLang as SupportedLocale;
+    setLanguage(valid);
+    appSettings.language = valid;
+    saveAppSettings();
+  }
+
   const AUTO_UPDATE_FREQUENCY_OPTIONS: DropdownItem[] = [
-    { value: "startup", label: "Açılışta (Startup)", description: "Check every time Curry opens" },
-    { value: "daily", label: "Günlük (Daily)", description: "Check automatically every 24 hours" },
-    { value: "weekly", label: "Haftalık (Weekly)", description: "Check automatically every 7 days" },
-    { value: "monthly", label: "Aylık (Monthly)", description: "Check automatically every 30 days" },
+    { value: "startup", label: "At Startup", description: "Check every time Curry opens" },
+    { value: "daily", label: "Once a Day", description: "Check automatically every 24 hours" },
+    { value: "weekly", label: "Every Week", description: "Check automatically every 7 days" },
+    { value: "monthly", label: "Every Month", description: "Check automatically every 30 days" },
   ];
 
   let isCheckingUpdate = $state(false);
@@ -235,18 +244,34 @@
     updateStatusMessage = null;
     updateAvailable = false;
     try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        updateStatusMessage = t("updater.offline");
+        return;
+      }
       const update = await checkUpdate();
       appSettings.last_update_check = Math.floor(Date.now() / 1000);
       saveAppSettings();
       if (update && update.available) {
         pendingUpdateObj = update;
         updateAvailable = true;
-        updateStatusMessage = `Curry v${formatUserVersion(update.version)} is available!`;
+        updateStatusMessage = t("updater.update_available", { version: formatUserVersion(update.version) });
       } else {
-        updateStatusMessage = `Curry v${formatUserVersion(connectionInfo?.version ?? '1.9')} is up to date.`;
+        updateStatusMessage = t("updater.up_to_date", { version: formatUserVersion(connectionInfo?.version ?? '2.0') });
       }
     } catch (err: unknown) {
-      updateStatusMessage = "Unable to reach update server (offline or rate-limited).";
+      const errStr = err instanceof Error ? err.message : String(err);
+      console.warn("[Updater] Check returned:", errStr);
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        updateStatusMessage = t("updater.offline");
+      } else if (errStr.includes("429") || errStr.toLowerCase().includes("rate limit") || errStr.includes("403")) {
+        updateStatusMessage = t("updater.rate_limited");
+      } else if (errStr.includes("404") || errStr.toLowerCase().includes("not found")) {
+        updateStatusMessage = t("updater.server_error");
+      } else if (errStr.toLowerCase().includes("signature") || errStr.toLowerCase().includes("key")) {
+        updateStatusMessage = t("updater.signature_error");
+      } else {
+        updateStatusMessage = t("updater.network_error");
+      }
     } finally {
       isCheckingUpdate = false;
     }
@@ -865,6 +890,9 @@
         } else {
           selectedTheme = DEFAULT_THEME;
         }
+        if (s.language && ["en", "es", "fr", "de", "tr"].includes(s.language)) {
+          setLanguage(s.language as SupportedLocale);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch app settings:", err);
@@ -1065,9 +1093,22 @@
 
   onMount(() => {
     try {
+      // Initialize language from localStorage or system locale
+      const savedLang = (typeof localStorage !== "undefined" ? localStorage.getItem("curry_language") : null) as SupportedLocale;
+      if (savedLang && ["en", "es", "fr", "de", "tr"].includes(savedLang)) {
+        setLanguage(savedLang);
+      } else {
+        initLanguage();
+      }
+
       // [LEGACY / BACKWARDS COMPATIBILITY] Read curry_selected_theme with fallback to legacy notiglow_selected_theme
       const savedTheme = (localStorage.getItem("curry_selected_theme") || localStorage.getItem("notiglow_selected_theme")) as string;
-      if (savedTheme && THEMES.some((t) => t.id === savedTheme)) {
+      if (savedTheme === "matrix-green" || savedTheme === "matrix_green") {
+        selectedTheme = DEFAULT_THEME;
+        try {
+          localStorage.setItem("curry_selected_theme", DEFAULT_THEME);
+        } catch {}
+      } else if (savedTheme && THEMES.some((t) => t.id === savedTheme)) {
         selectedTheme = savedTheme as ThemeId;
       } else {
         selectedTheme = DEFAULT_THEME;
@@ -1077,6 +1118,7 @@
       }
     } catch {
       selectedTheme = DEFAULT_THEME;
+      initLanguage();
     }
 
     checkConnection();
@@ -1095,6 +1137,9 @@
       isEnabled = event.payload.enabled;
       if (event.payload.theme && THEMES.some((t) => t.id === event.payload.theme)) {
         selectedTheme = event.payload.theme;
+      }
+      if (event.payload.language && ["en", "es", "fr", "de", "tr"].includes(event.payload.language)) {
+        setLanguage(event.payload.language as SupportedLocale);
       }
     });
 
@@ -2287,39 +2332,71 @@
             {/if}
 
             <div class="settings-sections-stack">
-              <!-- Appearance Mode (System / Light / Dark) -->
-              <section class="card panel-card appearance-card">
-                <div class="appearance-row">
-                  <div class="panel-title-wrap appearance-title-wrap">
-                    <div class="panel-icon-circle">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                      </svg>
+              <!-- Appearance Mode & Language Row (2 columns) -->
+              <div class="settings-appearance-grid">
+                <!-- Sol Kolon: Appearance Mode -->
+                <section class="card panel-card appearance-card">
+                  <div class="appearance-col">
+                    <div class="panel-title-wrap appearance-title-wrap">
+                      <div class="panel-icon-circle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="5"></circle>
+                          <line x1="12" y1="1" x2="12" y2="3"></line>
+                          <line x1="12" y1="21" x2="12" y2="23"></line>
+                          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                          <line x1="1" y1="12" x2="3" y2="12"></line>
+                          <line x1="21" y1="12" x2="23" y2="12"></line>
+                          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                      </div>
+                      <div class="appearance-label-block">
+                        <h3 class="panel-title">{t('settings.appearance_mode')}</h3>
+                        <p class="panel-desc">{t('settings.appearance_desc')}</p>
+                      </div>
                     </div>
-                    <div class="appearance-label-block">
-                      <h3 class="panel-title">Appearance Mode</h3>
-                      <p class="panel-desc">Choose between System theme detection, Light, or Dark mode</p>
+
+                    <div class="appearance-tabs-container">
+                      <AppearanceTabs
+                        selected={appearance}
+                        onChange={(mode) => handleAppearanceChange(mode)}
+                      />
                     </div>
                   </div>
+                </section>
 
-                  <div class="appearance-tabs-container">
-                    <AppearanceTabs
-                      selected={appearance}
-                      onChange={(mode) => handleAppearanceChange(mode)}
-                    />
+                <!-- Sağ Kolon: Language Dropdown -->
+                <section class="card panel-card language-card">
+                  <div class="appearance-col">
+                    <div class="panel-title-wrap appearance-title-wrap">
+                      <div class="panel-icon-circle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="2" y1="12" x2="22" y2="12"></line>
+                          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        </svg>
+                      </div>
+                      <div class="appearance-label-block">
+                        <h3 class="panel-title">{t('settings.language')}</h3>
+                        <p class="panel-desc">{t('settings.language_desc')}</p>
+                      </div>
+                    </div>
+
+                    <div class="language-dropdown-container">
+                      <Dropdown
+                        id="language-selector"
+                        items={LANGUAGE_DROPDOWN_OPTIONS}
+                        value={$currentLanguage}
+                        onchange={(val) => handleLanguageChange(val as string)}
+                        ariaLabel={t('settings.language')}
+                      />
+                    </div>
                   </div>
-                </div>
-              </section>
+                </section>
+              </div>
 
-              <!-- Appearance & 10 Themes -->
+              <!-- Appearance & Curated Themes -->
               <section class="card panel-card">
                 <div class="panel-header">
                   <div class="panel-title-wrap">
@@ -2331,8 +2408,8 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="panel-title">Appearance & Themes</h3>
-                      <p class="panel-desc">Select from 10 curated design systems (Default: Promotor Wow)</p>
+                      <h3 class="panel-title">{t('settings.themes')}</h3>
+                      <p class="panel-desc">{t('settings.themes_desc')}</p>
                     </div>
                   </div>
                 </div>
@@ -2348,18 +2425,21 @@
                       id="theme-{theme.id}-btn"
                     >
                       <div class="theme-card-top">
-                        <span class="theme-card-title">{theme.label}</span>
+                        <div class="theme-title-group">
+                          <span class="theme-card-title">{t(`theme.${theme.id}.name`, {}, theme.label)}</span>
+                          <span class="theme-family-badge">{theme.familyLabel}</span>
+                        </div>
                         {#if selectedTheme === theme.id}
                           <span class="theme-selected-pill">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="tiny-icon">
                               <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
-                            Active
+                            {t('common.active')}
                           </span>
                         {/if}
                       </div>
 
-                      <p class="theme-card-desc">{theme.description}</p>
+                      <p class="theme-card-desc">{t(`theme.${theme.id}.desc`, {}, theme.description)}</p>
 
                       <!-- Swatches Row -->
                       <div class="theme-swatches-strip" aria-hidden="true">
@@ -3034,10 +3114,11 @@
 
   /* Root Base Themes */
   :global(body[data-theme="promotor-wow"]) { background-color: #0c0e14; color: #f8fafc; }
-  :global(body[data-theme="perpetuity"]) { background-color: #0b0f19; color: #f8fafc; }
+  :global(body[data-theme="perpetuity"]) { background-color: #000000; color: #ededed; }
+  :global(body[data-theme="perpetuity"][data-appearance="light"]) { background-color: #ffffff; color: #000000; }
   :global(body[data-theme="catppuccin"]) { background-color: #181825; color: #cdd6f4; }
   :global(body[data-theme="zen-linen"]) { background-color: #f7f6f2; color: #1c1b18; }
-  :global(body[data-theme="matrix-green"]) { background-color: #050d08; color: #e6fcf0; }
+  :global(body[data-theme="zen-linen"][data-appearance="dark"]) { background-color: #181714; color: #f7f6f2; }
   :global(body[data-theme="neon-magenta"]) { background-color: #0f0814; color: #fdf2f8; }
   :global(body[data-theme="amethyst-haze"]) { background-color: #0e0b16; color: #f5f0ff; }
   :global(body[data-theme="sage-mist"]) { background-color: #0c1310; color: #ecfdf5; }
@@ -3081,33 +3162,55 @@
   }
 
   /* ------------------------------------------------------------------------- */
-  /* THEME 2: PERPETUITY                                                       */
+  /* THEME 2: STANDARD (VERCEL MONOCHROME PRECISION)                           */
   /* ------------------------------------------------------------------------- */
   .shell[data-theme="perpetuity"] {
-    --bg: #0b0f19;
-    --bg-secondary: #070a11;
-    --surface: #121826;
-    --surface-elevated: #1a2336;
-    --surface-hover: #222f47;
-    --border: rgba(255, 255, 255, 0.09);
-    --border-strong: rgba(99, 102, 241, 0.45);
-    --text-primary: #f8fafc;
-    --text-secondary: #e2e8f0;
-    --text-muted: #94a3b8;
-    --accent: #6366f1;
-    --accent-hover: #4f46e5;
+    --bg: #000000;
+    --bg-secondary: #0a0a0a;
+    --surface: #111111;
+    --surface-elevated: #1a1a1a;
+    --surface-hover: #222222;
+    --border: rgba(255, 255, 255, 0.14);
+    --border-strong: rgba(0, 112, 243, 0.5);
+    --text-primary: #ededed;
+    --text-secondary: #a1a1a1;
+    --text-muted: #888888;
+    --accent: #ffffff;
+    --accent-hover: #eaeaea;
+    --accent-fg: #000000;
+    --accent-gradient: linear-gradient(135deg, #0070f3 0%, #00dfd8 100%);
+    --header-glow: radial-gradient(circle, rgba(0, 112, 243, 0.16) 0%, rgba(50, 145, 255, 0.05) 50%, transparent 70%);
+    --glow-surface: rgba(0, 112, 243, 0.18);
+    --ring: #0070f3;
+    --danger: #e00000;
+    --danger-bg: rgba(224, 0, 0, 0.14);
+    --danger-border: rgba(224, 0, 0, 0.35);
+    --danger-text: #ff6666;
+    --warning: #f5a623;
+    --warning-bg: rgba(245, 166, 35, 0.14);
+    --warning-border: rgba(245, 166, 35, 0.35);
+    --warning-text: #f5a623;
+    --success: #0070f3;
+    --success-bg: rgba(0, 112, 243, 0.14);
+    --success-border: rgba(0, 112, 243, 0.35);
+    --success-text: #3291ff;
+  }
+
+  .shell[data-theme="perpetuity"][data-appearance="light"] {
+    --bg: #ffffff;
+    --bg-secondary: #fafafa;
+    --surface: #ffffff;
+    --surface-elevated: #f5f5f5;
+    --surface-hover: #eaeaea;
+    --border: rgba(0, 0, 0, 0.09);
+    --border-strong: rgba(0, 112, 243, 0.45);
+    --text-primary: #000000;
+    --text-secondary: #444444;
+    --text-muted: #666666;
+    --accent: #000000;
+    --accent-hover: #222222;
     --accent-fg: #ffffff;
-    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #38bdf8 100%);
-    --header-glow: radial-gradient(circle, rgba(99, 102, 241, 0.16) 0%, rgba(56, 189, 248, 0.08) 50%, transparent 70%);
-    --glow-surface: rgba(99, 102, 241, 0.2);
-    --ring: #6366f1;
-    --danger: #ef4444;
-    --danger-bg: rgba(239, 68, 68, 0.14);
-    --danger-border: rgba(239, 68, 68, 0.35);
-    --danger-text: #fca5a5;
-    --warning: #f59e0b;
-    --warning-bg: rgba(245, 158, 11, 0.14);
-    --warning-border: rgba(245, 158, 11, 0.35);
+    --ring: #0070f3;
     --warning-text: #fbbf24;
     --success: #10b981;
     --success-bg: rgba(16, 185, 129, 0.14);
@@ -3151,7 +3254,7 @@
   }
 
   /* ------------------------------------------------------------------------- */
-  /* THEME 4: ZEN LINEN                                                        */
+  /* THEME: ZEN LINEN (LIGHT & DARK DUAL-MODE)                                 */
   /* ------------------------------------------------------------------------- */
   .shell[data-theme="zen-linen"] {
     --bg: #f7f6f2;
@@ -3185,39 +3288,36 @@
     --success-text: #2d6a4f;
   }
 
-  /* ------------------------------------------------------------------------- */
-  /* THEME 5: MATRIX GREEN                                                     */
-  /* ------------------------------------------------------------------------- */
-  .shell[data-theme="matrix-green"] {
-    --bg: #050d08;
-    --bg-secondary: #020704;
-    --surface: #0a170f;
-    --surface-elevated: #112418;
-    --surface-hover: #183322;
-    --border: rgba(34, 197, 94, 0.22);
-    --border-strong: rgba(34, 197, 94, 0.5);
-    --text-primary: #e6fcf0;
-    --text-secondary: #bbf7d0;
-    --text-muted: #86efac;
-    --accent: #22c55e;
-    --accent-hover: #16a34a;
-    --accent-fg: #022c14;
-    --accent-gradient: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
-    --header-glow: radial-gradient(circle, rgba(34, 197, 94, 0.18) 0%, rgba(16, 185, 129, 0.08) 50%, transparent 70%);
-    --glow-surface: rgba(34, 197, 94, 0.22);
-    --ring: #22c55e;
-    --danger: #ef4444;
-    --danger-bg: rgba(239, 68, 68, 0.14);
-    --danger-border: rgba(239, 68, 68, 0.35);
+  .shell[data-theme="zen-linen"][data-appearance="dark"] {
+    --bg: #181714;
+    --bg-secondary: #12110e;
+    --surface: #201f1b;
+    --surface-elevated: #2a2924;
+    --surface-hover: #33322c;
+    --border: rgba(180, 175, 160, 0.16);
+    --border-strong: rgba(138, 149, 127, 0.45);
+    --text-primary: #f7f6f2;
+    --text-secondary: #c4c1b5;
+    --text-muted: #8e8a7d;
+    --accent: #7a8870;
+    --accent-hover: #8f9e85;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #7a8870 0%, #a4af9a 100%);
+    --header-glow: radial-gradient(circle, rgba(122, 136, 112, 0.15) 0%, rgba(164, 175, 154, 0.05) 50%, transparent 70%);
+    --glow-surface: rgba(122, 136, 112, 0.18);
+    --ring: #7a8870;
+    --danger: #f87171;
+    --danger-bg: rgba(248, 113, 113, 0.14);
+    --danger-border: rgba(248, 113, 113, 0.35);
     --danger-text: #fca5a5;
-    --warning: #eab308;
-    --warning-bg: rgba(234, 179, 8, 0.14);
-    --warning-border: rgba(234, 179, 8, 0.35);
-    --warning-text: #facc15;
-    --success: #22c55e;
-    --success-bg: rgba(34, 197, 94, 0.14);
-    --success-border: rgba(34, 197, 94, 0.35);
-    --success-text: #4ade80;
+    --warning: #fbbf24;
+    --warning-bg: rgba(251, 191, 36, 0.14);
+    --warning-border: rgba(251, 191, 36, 0.35);
+    --warning-text: #fbbf24;
+    --success: #34d399;
+    --success-bg: rgba(52, 211, 153, 0.14);
+    --success-border: rgba(52, 211, 153, 0.35);
+    --success-text: #34d399;
   }
 
   /* ------------------------------------------------------------------------- */
@@ -3425,7 +3525,6 @@
     overflow: hidden;
     background-color: var(--bg);
     color: var(--text-primary);
-    scrollbar-gutter: stable;
   }
 
   .ambient-glow-mesh {
@@ -3649,9 +3748,35 @@
     align-items: center;
   }
 
-  /* Appearance Selector in Settings (Strict single horizontal row) */
-  .appearance-card {
-    padding: 14px 18px;
+  /* Appearance Mode & Language Row (2 columns) */
+  .settings-appearance-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+  }
+
+  @media (max-width: 820px) {
+    .settings-appearance-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+
+  .appearance-card,
+  .language-card {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .appearance-col {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: 100%;
+    justify-content: space-between;
   }
 
   .appearance-row {
@@ -3665,9 +3790,8 @@
   .appearance-title-wrap {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     min-width: 0;
-    flex: 1 1 auto;
   }
 
   .appearance-label-block {
@@ -3676,7 +3800,30 @@
 
   .appearance-tabs-container {
     padding: 0;
-    flex-shrink: 0;
+    width: 100%;
+  }
+
+  .language-dropdown-container {
+    width: 100%;
+  }
+
+  .theme-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: flex-start;
+  }
+
+  .theme-family-badge {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    background: var(--surface-elevated);
+    padding: 2px 7px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
   }
 
   /* Updater Card in Settings */

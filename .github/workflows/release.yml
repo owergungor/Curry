@@ -62,9 +62,9 @@ jobs:
       - name: Stage and Package macOS Artifacts
         run: |
           mkdir -p "$GITHUB_WORKSPACE/dist_release"
-          TAG_NAME="${GITHUB_REF_NAME:-v1.9}"
+          TAG_NAME="${GITHUB_REF_NAME:-v2.0}"
           if [ "$TAG_NAME" = "main" ] || [ -z "$TAG_NAME" ]; then
-            TAG_NAME="v1.9"
+            TAG_NAME="v2.0"
           fi
           if [[ ! "$TAG_NAME" =~ ^v ]]; then
             TAG_NAME="v$TAG_NAME"
@@ -73,12 +73,41 @@ jobs:
           if compgen -G "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg" > /dev/null; then
             cp src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg "$GITHUB_WORKSPACE/dist_release/Curry_${TAG_NAME}_mac-arm64.dmg"
           fi
-          # Verify architecture and package .app bundle into zip
+          # Verify architecture and package .app bundle into zip preserving symlinks (-y is critical for Gatekeeper)
           if [ -d "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app" ]; then
             cd src-tauri/target/aarch64-apple-darwin/release/bundle/macos
             file Curry.app/Contents/MacOS/*
-            zip -r "$GITHUB_WORKSPACE/dist_release/Curry_${TAG_NAME}_mac-arm64.app.zip" Curry.app
+            zip -r -y "$GITHUB_WORKSPACE/dist_release/Curry_${TAG_NAME}_mac-arm64.app.zip" Curry.app
             cd -
+          fi
+          # Stage updater artifacts if created
+          if [ -d "src-tauri/target/aarch64-apple-darwin/release/bundle/updater" ]; then
+            cp -r src-tauri/target/aarch64-apple-darwin/release/bundle/updater/* "$GITHUB_WORKSPACE/dist_release/" 2>/dev/null || true
+          fi
+
+      - name: Verify Code Signing and Gatekeeper Assessment
+        run: |
+          APP_PATH="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app"
+          if [ -d "$APP_PATH" ]; then
+            echo "--- Codesign verification ---"
+            codesign --verify --deep --strict --verbose=2 "$APP_PATH" || echo "Warning: Ad-hoc signature without Apple Developer ID"
+            echo "--- Gatekeeper spctl assessment ---"
+            spctl --assess --type execute --verbose=4 "$APP_PATH" || echo "Warning: Requires Apple Notarization for Gatekeeper acceptance"
+          fi
+
+      - name: Notarize and Staple DMG (if Apple credentials provided)
+        if: ${{ env.APPLE_ID != '' && env.APPLE_PASSWORD != '' && env.APPLE_TEAM_ID != '' }}
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          DMG_FILE=$(compgen -G "$GITHUB_WORKSPACE/dist_release/Curry_*_mac-arm64.dmg" | head -n 1)
+          if [ -f "$DMG_FILE" ]; then
+            echo "Submitting DMG for Apple notarization..."
+            xcrun notarytool submit "$DMG_FILE" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+            echo "Stapling notarization ticket..."
+            xcrun stapler staple "$DMG_FILE"
           fi
 
       - name: Upload macOS Artifacts to Actions
@@ -94,6 +123,9 @@ jobs:
           files: |
             dist_release/Curry_*_mac-arm64.dmg
             dist_release/Curry_*_mac-arm64.app.zip
+            dist_release/*.tar.gz
+            dist_release/*.sig
+            dist_release/latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -133,7 +165,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path dist_release -Force | Out-Null
           $tag = $env:GITHUB_REF_NAME
-          if ([string]::IsNullOrEmpty($tag) -or $tag -eq "main") { $tag = "v1.9" }
+          if ([string]::IsNullOrEmpty($tag) -or $tag -eq "main") { $tag = "v2.0" }
           if (-not $tag.StartsWith("v")) { $tag = "v$tag" }
           
           # Copy NSIS setup installer as Curry_vX.Y_win-x64-setup.exe
@@ -152,6 +184,11 @@ jobs:
           Compress-Archive -Path "$stage\*" -DestinationPath "dist_release\Curry_${tag}_win-x64.zip" -Force
           Remove-Item -Recurse -Force $stage
 
+          # Stage updater artifacts if created
+          if (Test-Path "src-tauri\target\release\bundle\updater\*") {
+            Copy-Item "src-tauri\target\release\bundle\updater\*" "dist_release\" -Recurse -Force
+          }
+
       - name: Upload Windows Artifacts to Actions
         uses: actions/upload-artifact@v4
         with:
@@ -165,5 +202,8 @@ jobs:
           files: |
             dist_release/Curry_*_win-x64-setup.exe
             dist_release/Curry_*_win-x64.zip
+            dist_release/*.tar.gz
+            dist_release/*.sig
+            dist_release/latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

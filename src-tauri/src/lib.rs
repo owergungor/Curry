@@ -716,11 +716,11 @@ fn sync_window_chrome(
             Some("promotor-wow") | Some("promotor_wow") | Some("promotorwow") => {
                 AppTheme::PromotorWow
             }
-            Some("perpetuity") => AppTheme::Perpetuity,
+            Some("perpetuity") | Some("standard") => AppTheme::Perpetuity,
             Some("catppuccin") => AppTheme::Catppuccin,
             Some("zen-linen") | Some("zen_linen") | Some("zenlinen") => AppTheme::ZenLinen,
             Some("matrix-green") | Some("matrix_green") | Some("matrixgreen") => {
-                AppTheme::MatrixGreen
+                AppTheme::PromotorWow
             }
             Some("neon-magenta") | Some("neon_magenta") | Some("neonmagenta") => {
                 AppTheme::NeonMagenta

@@ -1125,10 +1125,6 @@ mod tests {
             AppTheme::ZenLinen
         );
         assert_eq!(
-            serde_json::from_str::<AppTheme>("\"matrix-green\"").unwrap(),
-            AppTheme::MatrixGreen
-        );
-        assert_eq!(
             serde_json::from_str::<AppTheme>("\"neon-magenta\"").unwrap(),
             AppTheme::NeonMagenta
         );
@@ -1152,6 +1148,49 @@ mod tests {
             serde_json::from_str::<AppTheme>("\"amber-slate\"").unwrap(),
             AppTheme::Amberstate
         );
+    }
+
+    #[test]
+    fn test_matrix_green_silent_migration() {
+        use curry_lib::settings::{AppSettings, AppTheme};
+
+        // matrix-green variants must deserialize silently to Promotor Wow
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"matrix-green\"").unwrap(),
+            AppTheme::PromotorWow
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"matrix_green\"").unwrap(),
+            AppTheme::PromotorWow
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"matrixgreen\"").unwrap(),
+            AppTheme::PromotorWow
+        );
+
+        let legacy_json = r##"{
+            "enabled": true,
+            "startup_enabled": false,
+            "show_notifications": true,
+            "history_limit": 100,
+            "sound_enabled": false,
+            "glow": {
+                "enabled": true,
+                "duration_ms": 2500,
+                "intensity": 0.8,
+                "thickness": 8,
+                "corner_radius": 24,
+                "animation_style": "pulse",
+                "monitor_target": "primary",
+                "color": "#ff5c00"
+            },
+            "theme": "matrix-green"
+        }"##;
+
+        let s: AppSettings = serde_json::from_str(legacy_json)
+            .expect("Legacy matrix-green settings JSON must deserialize silently");
+        assert_eq!(s.theme, AppTheme::PromotorWow);
+        assert!(s.enabled);
     }
 
     #[test]
@@ -1210,10 +1249,10 @@ mod tests {
             AppTheme::ZenLinen
         );
 
-        // CASE 3: Saved theme = matrix-green => matrix-green
+        // CASE 3: Saved theme = matrix-green => promotor-wow (Matrix Green removed in v2.0)
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"matrix-green\"").unwrap(),
-            AppTheme::MatrixGreen
+            AppTheme::PromotorWow
         );
 
         // CASE 4: Saved theme = neon-magenta => neon-magenta
@@ -1403,13 +1442,13 @@ mod tests {
         let mut settings = AppSettings::default();
         assert_eq!(settings.theme, AppTheme::PromotorWow);
 
-        settings.theme = AppTheme::MatrixGreen;
+        settings.theme = AppTheme::Amberstate;
         let json = serde_json::to_string(&settings).expect("Serialization failed");
-        assert!(json.contains("\"theme\":\"matrix-green\""));
+        assert!(json.contains("\"theme\":\"amberstate\""));
 
         let deserialized: AppSettings =
             serde_json::from_str(&json).expect("Deserialization failed");
-        assert_eq!(deserialized.theme, AppTheme::MatrixGreen);
+        assert_eq!(deserialized.theme, AppTheme::Amberstate);
         assert_eq!(settings, deserialized);
 
         settings.theme = AppTheme::NeonMagenta;
@@ -2596,9 +2635,9 @@ mod tests {
         assert!(dark_perpetuity.is_dark);
         assert_eq!(dark_perpetuity.caption_color, 0x00261812); // #121826
 
-        let dark_matrix = WindowChromeColors::resolve(AppTheme::MatrixGreen, true);
-        assert!(dark_matrix.is_dark);
-        assert_eq!(dark_matrix.caption_color, 0x00080D05); // #050d08
+        let dark_zen = WindowChromeColors::resolve(AppTheme::ZenLinen, true);
+        assert!(dark_zen.is_dark);
+        assert_eq!(dark_zen.caption_color, 0x001E2223); // #23221e
 
         let dark_neon = WindowChromeColors::resolve(AppTheme::NeonMagenta, true);
         assert!(dark_neon.is_dark);

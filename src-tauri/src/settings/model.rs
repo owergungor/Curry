@@ -13,8 +13,6 @@ pub enum AppTheme {
     Catppuccin,
     #[serde(rename = "zen-linen")]
     ZenLinen,
-    #[serde(rename = "matrix-green")]
-    MatrixGreen,
     #[serde(rename = "neon-magenta")]
     NeonMagenta,
     #[serde(rename = "amethyst-haze")]
@@ -41,16 +39,16 @@ impl<'de> Deserialize<'de> for AppTheme {
         let s = String::deserialize(deserializer)?;
         match s.to_lowercase().as_str() {
             "promotor-wow" | "promotor_wow" | "promotorwow" => Ok(Self::PromotorWow),
-            "perpetuity" => Ok(Self::Perpetuity),
+            "perpetuity" | "standard" => Ok(Self::Perpetuity),
             "catppuccin" => Ok(Self::Catppuccin),
             "zen-linen" | "zen_linen" | "zenlinen" => Ok(Self::ZenLinen),
-            "matrix-green" | "matrix_green" | "matrixgreen" => Ok(Self::MatrixGreen),
             "neon-magenta" | "neon_magenta" | "neonmagenta" => Ok(Self::NeonMagenta),
             "amethyst-haze" | "amethyst_haze" | "amethyst" => Ok(Self::AmethystHaze),
             "sage-mist" | "sage_mist" | "sagemist" => Ok(Self::SageMist),
             "bubblegum" => Ok(Self::Bubblegum),
             "amberstate" | "amber-slate" | "amberslate" | "amber_state" => Ok(Self::Amberstate),
-            // Migration: vintage-paper silently maps to default Promotor Wow without error
+            // Migrations: matrix-green and vintage-paper silently map to default Promotor Wow without error
+            "matrix-green" | "matrix_green" | "matrixgreen" => Ok(Self::PromotorWow),
             "vintage-paper" | "vintage_paper" | "vintagepaper" => Ok(Self::PromotorWow),
             _ => Ok(Self::PromotorWow),
         }
@@ -134,6 +132,9 @@ pub struct AppSettings {
     /// Unix timestamp of last update check in seconds.
     #[serde(default, alias = "lastUpdateCheck")]
     pub last_update_check: Option<u64>,
+    /// Selected interface language (en, es, fr, de, tr).
+    #[serde(default)]
+    pub language: Option<String>,
 }
 
 impl Default for AppSettings {
@@ -153,6 +154,7 @@ impl Default for AppSettings {
             auto_update_enabled: true,
             auto_update_frequency: AutoUpdateFrequency::default(),
             last_update_check: None,
+            language: Some("en".to_string()),
         }
     }
 }

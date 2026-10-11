@@ -69,12 +69,6 @@ impl WindowChromeColors {
                     text_color: hex_to_colorref("#f7f6f2").unwrap_or(0x00F2F6F7),
                     border_color: hex_to_colorref("#3d3a33").unwrap_or(0x00333A3D),
                 },
-                AppTheme::MatrixGreen => Self {
-                    is_dark: true,
-                    caption_color: hex_to_colorref("#050d08").unwrap_or(0x00080D05),
-                    text_color: hex_to_colorref("#e6fcf0").unwrap_or(0x00F0FCE6),
-                    border_color: hex_to_colorref("#112418").unwrap_or(0x00182411),
-                },
                 AppTheme::NeonMagenta => Self {
                     is_dark: true,
                     caption_color: hex_to_colorref("#0f0814").unwrap_or(0x0014080F),

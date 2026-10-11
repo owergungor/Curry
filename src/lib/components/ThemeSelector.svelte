@@ -1,5 +1,6 @@
 <script lang="ts">
   import { THEMES, type ThemeId } from "$lib/themes";
+  import { t } from "$lib/i18n";
 
   let {
     selectedTheme = "promotor-wow",
@@ -34,7 +35,10 @@
       id="theme-card-{theme.id}"
     >
       <div class="theme-card-header">
-        <span class="theme-card-title">{theme.label}</span>
+        <div class="title-family-wrap">
+          <span class="theme-card-title">{t('theme.' + theme.id + '.name') || theme.name}</span>
+          <span class="theme-family-tag">{theme.familyLabel}</span>
+        </div>
         {#if isActive}
           <span class="theme-active-pill">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="tiny-check">
@@ -45,7 +49,7 @@
         {/if}
       </div>
 
-      <p class="theme-card-desc">{theme.description}</p>
+      <p class="theme-card-desc">{t('theme.' + theme.id + '.desc') || theme.description}</p>
 
       <!-- Mini UI Token Preview -->
       <div
@@ -128,8 +132,15 @@
   .theme-card-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     width: 100%;
+    gap: 6px;
+  }
+
+  .title-family-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .theme-card-title {
@@ -137,6 +148,14 @@
     font-weight: 600;
     color: var(--text-primary, #f8fafc);
     letter-spacing: -0.01em;
+  }
+
+  .theme-family-tag {
+    font-size: 0.62rem;
+    font-weight: 500;
+    color: var(--text-muted, #94a3b8);
+    opacity: 0.85;
+    letter-spacing: 0.01em;
   }
 
   .theme-active-pill {
@@ -150,6 +169,7 @@
     background: var(--accent, #6366f1);
     color: var(--accent-fg, #ffffff);
     line-height: 1.1;
+    flex-shrink: 0;
   }
 
   .tiny-check {
