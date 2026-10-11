@@ -457,10 +457,9 @@ FunctionEnd
 Function FinishLeave
   SendMessage $RunAtStartupCheckbox ${BM_GETCHECK} 0 0 $RunAtStartupCheckboxState
   ${If} $RunAtStartupCheckboxState = ${BST_CHECKED}
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}" '"$INSTDIR\\${MAINBINARYNAME}.exe" --autostart'
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}" '"$INSTDIR\${MAINBINARYNAME}.exe" --autostart'
   ${Else}
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}"
-    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Curry"
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Curry"
   ${EndIf}
 FunctionEnd

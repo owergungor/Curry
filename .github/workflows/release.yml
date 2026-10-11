@@ -34,6 +34,25 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      - name: Check and Configure Updater Signing
+        id: updater-check
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          HAS_VALID_KEY=false
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] && printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | grep -q "untrusted comment:"; then
+            HAS_VALID_KEY=true
+          fi
+          if [ "$HAS_VALID_KEY" = "true" ]; then
+            echo "Valid Tauri updater signing key detected. Enabling updater artifacts generation."
+            node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); c.bundle.createUpdaterArtifacts=true; fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(c,null,2));"
+            echo "SIGNING_ENABLED=true" >> "$GITHUB_ENV"
+          else
+            echo "Tauri updater signing key is not provided or not in valid format. Building standard application bundle without updater artifacts."
+            echo "SIGNING_ENABLED=false" >> "$GITHUB_ENV"
+          fi
+
       - name: Build Tauri macOS Apple Silicon App & DMG
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -46,6 +65,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "Notice: Apple Developer ID certificate not provided. Building unsigned/ad-hoc package for testing."
             unset APPLE_CERTIFICATE
             unset APPLE_CERTIFICATE_PASSWORD
             unset APPLE_SIGNING_IDENTITY
@@ -53,7 +73,7 @@ jobs:
             unset APPLE_PASSWORD
             unset APPLE_TEAM_ID
           fi
-          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+          if [ "$SIGNING_ENABLED" != "true" ]; then
             unset TAURI_SIGNING_PRIVATE_KEY
             unset TAURI_SIGNING_PRIVATE_KEY_PASSWORD
           fi
@@ -89,14 +109,16 @@ jobs:
         run: |
           APP_PATH="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app"
           if [ -d "$APP_PATH" ]; then
-            echo "--- Codesign verification ---"
-            codesign --verify --deep --strict --verbose=2 "$APP_PATH" || echo "Warning: Ad-hoc signature without Apple Developer ID"
-            echo "--- Gatekeeper spctl assessment ---"
-            spctl --assess --type execute --verbose=4 "$APP_PATH" || echo "Warning: Requires Apple Notarization for Gatekeeper acceptance"
+            echo "=== Codesign Verification ==="
+            codesign -dv --verbose=4 "$APP_PATH" || true
+            echo "=== Deep Codesign Check ==="
+            codesign --verify --deep --strict --verbose=2 "$APP_PATH" || echo "Notice: Ad-hoc/unsigned build (no Apple Developer ID signature present)"
+            echo "=== Gatekeeper spctl Assessment ==="
+            spctl --assess --type execute --verbose=4 "$APP_PATH" || echo "Notice: Notarization ticket not stapled; this build is an unsigned test artifact not accepted by Gatekeeper by default"
           fi
 
       - name: Notarize and Staple DMG (if Apple credentials provided)
-        if: ${{ env.APPLE_ID != '' && env.APPLE_PASSWORD != '' && env.APPLE_TEAM_ID != '' }}
+        if: ${{ secrets.APPLE_ID != '' && secrets.APPLE_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -118,8 +140,11 @@ jobs:
 
       - name: Upload macOS Release Assets
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.0' }}
+          name: Curry v2.0
+          fail_on_unmatched_files: false
           files: |
             dist_release/Curry_*_mac-arm64.dmg
             dist_release/Curry_*_mac-arm64.app.zip
@@ -154,10 +179,25 @@ jobs:
         run: npm run build
 
       - name: Build Tauri Windows Binary
+        shell: pwsh
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
+          $hasValidKey = $false
+          if (-not [string]::IsNullOrEmpty($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            if ($env:TAURI_SIGNING_PRIVATE_KEY -match "untrusted comment:") {
+              $hasValidKey = $true
+            }
+          }
+          if ($hasValidKey) {
+            Write-Host "Valid Tauri updater signing private key detected. Enabling updater artifacts generation."
+            node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); c.bundle.createUpdaterArtifacts=true; fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(c,null,2));"
+          } else {
+            Write-Host "Tauri updater signing key is missing or not in valid format. Building standard installer and binary without updater artifacts."
+            Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY -ErrorAction SilentlyContinue
+            Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue
+          }
           npx tauri build
 
       - name: Stage and Package Windows Artifacts
@@ -197,8 +237,11 @@ jobs:
 
       - name: Upload Windows Release Assets
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.0' }}
+          name: Curry v2.0
+          fail_on_unmatched_files: false
           files: |
             dist_release/Curry_*_win-x64-setup.exe
             dist_release/Curry_*_win-x64.zip

@@ -60,7 +60,6 @@
       "icons/icon.png"
     ],
     "category": "Utility",
-    "createUpdaterArtifacts": true,
     "windows": {
       "nsis": {
         "installMode": "currentUser",
