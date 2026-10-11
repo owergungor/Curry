@@ -1,18 +1,21 @@
 ---
-description: Release management and Git safety governance rules
+description: Release management, tag preservation, and versioning rules
 trigger: always_on
 ---
 
 # Release Governance & Versioning Rules
 
-## 1. Tag Preservation
-- Never delete, force-overwrite, or mutate existing historical release tags (`v1.0`, `v1.1`, `v1.2`, `v1.3`).
-- Target release tags must match the standard convention: `vX.Y` (e.g., `v1.4`).
-- Technical package manifests use SemVer `1.4.0`, but user-facing tags and assets must be prefixed with `v1.4`.
+Authoritative policy: [RELEASE_POLICY.md](file:///c:/Users/omer/Projects/Curry/docs/governance/RELEASE_POLICY.md)
 
-## 2. Asset Integrity Checks
-- Every release artifact must be verified with SHA-256 and byte size before publication.
-- Required release assets:
-  - Windows: `Curry_vX.Y_win-x64.zip` and `Curry.exe`
-  - macOS: `Curry_vX.Y_mac-arm64.dmg`
-- Never publish placeholder, mock, or zero-byte installers.
+## 1. Tag Preservation & Safety
+- **Future-Proof Tag Protection**: Never delete, force-overwrite (`git push --force`), or mutate any release tag (`v*`). Historical tags (`v1.0` through `v2.0` and subsequent) are immutable.
+- **Explicit Approval Required**: Never create or push tags, never trigger GitHub releases without prior user approval.
+
+## 2. Versioning Format
+- **User-Facing Release Format**: Two-component format `vX.Y` (e.g. `v2.0`). User-facing assets, titles, and release tags follow this convention.
+- **Technical Manifest Format**: Standard SemVer `X.Y.0` (e.g. `2.0.0`) in `package.json`, `Cargo.toml`, and `tauri.conf.json`.
+
+## 3. Asset Integrity
+- Windows required assets: `Curry_vX.Y_win-x64-setup.exe` (NSIS), `Curry_vX.Y_win-x64.zip`, and `Curry.exe`.
+- macOS required assets: `Curry_vX.Y_mac-arm64.dmg` and `Curry_vX.Y_mac-arm64.app.zip`.
+- Verify SHA-256 digests and file sizes immediately after building. Never publish placeholder or zero-byte assets.

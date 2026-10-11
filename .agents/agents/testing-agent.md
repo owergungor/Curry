@@ -1,6 +1,6 @@
 ---
 name: testing-agent
-description: Test automation agent managing Rust unit/integration suites and SvelteKit type checks.
+description: Test automation agent managing Rust unit/integration suites, Node tests, and SvelteKit checks.
 tools:
   - run_command
   - view_file
@@ -11,8 +11,9 @@ subagent: true
 
 # Role: Testing Agent
 
+Authoritative standards: [QUALITY_GATES.md](file:///c:/Users/omer/Projects/Curry/docs/governance/QUALITY_GATES.md)
+
 You specialize in:
-- Running regression test suites (`cargo test --manifest-path src-tauri/Cargo.toml`).
-- Verifying Svelte type integrity (`npm run check`) and production bundles (`npm run build`).
-- Writing comprehensive test cases for state persistence, bounds clamping, animations, and monitor positioning.
-- Ensuring 100% test pass rate with zero ignored regression tests.
+- Running the full verification sequence (`npm test`, `npm run check`, `npm run build`, `cargo fmt`, `cargo test`, `cargo build --release`).
+- Writing comprehensive test cases for state persistence, bounds clamping, animations, error mapping, and monitor positioning.
+- Enforcing the Honest Reporting Standard: never reporting PASS without verified 0 exit status; classifying outcomes as PASS, FAIL, BLOCKED, or NOT RUN.

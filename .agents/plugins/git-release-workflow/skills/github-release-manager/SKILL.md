@@ -5,13 +5,23 @@ description: Manage and verify GitHub releases, tags, assets, and checksums usin
 
 # GitHub Release Manager Workflow
 
-1. Check release state:
+> [!IMPORTANT]
+> Always obtain explicit user approval before publishing releases, uploading assets, or modifying existing tags.
+> Refer to [docs/governance/RELEASE_POLICY.md](file:///c:/Users/omer/Projects/Curry/docs/governance/RELEASE_POLICY.md) for authoritative rules.
+
+1. Inspect release state:
    ```powershell
-   gh release view v1.4
+   gh release view <tag> # e.g. v2.0
    ```
-2. Upload assets with clobber protection:
+2. Verify local release assets before upload (ensure SHA-256 digests and file sizes are non-zero):
+   - Windows Installer: `dist_release/Curry_<tag>_win-x64-setup.exe`
+   - Windows Portable: `dist_release/Curry_<tag>_win-x64.zip`
+   - Windows Binary: `dist_release/Curry.exe`
+   - macOS DMG: `dist_release/Curry_<tag>_mac-arm64.dmg`
+   - macOS App Archive: `dist_release/Curry_<tag>_mac-arm64.app.zip`
+3. Upload assets (only after user approval; do NOT use `--clobber` unless user explicitly requests asset replacement):
    ```powershell
-   gh release upload v1.4 "dist_release/Curry_v1.4_mac-arm64.dmg" "dist_release/Curry_v1.4_win-x64.zip" "dist_release/Curry.exe" --clobber
+   gh release upload <tag> "dist_release/Curry_<tag>_win-x64-setup.exe" "dist_release/Curry_<tag>_win-x64.zip" "dist_release/Curry_<tag>_mac-arm64.dmg"
    ```
-3. Verify download integrity:
-   Download the published asset and verify SHA-256 matches the local build digest.
+4. Verify download integrity:
+   Download published assets into a temporary directory and verify SHA-256 digests match local build artifacts.

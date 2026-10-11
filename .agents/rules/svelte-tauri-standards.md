@@ -5,6 +5,8 @@ trigger: always_on
 
 # Svelte 5 and Tauri IPC Standards
 
+Authoritative standards: [MASTER_GOVERNANCE.md](file:///c:/Users/omer/Projects/Curry/docs/governance/MASTER_GOVERNANCE.md) & [SECURITY_POLICY.md](file:///c:/Users/omer/Projects/Curry/docs/governance/SECURITY_POLICY.md)
+
 ## 1. Svelte 5 Runes & Reactivity
 - Use modern Svelte 5 runes (`$state`, `$derived`, `$effect`, `$props`) instead of legacy Svelte 3/4 stores where applicable.
 - Keep UI primitives modular in `src/lib/components/` (Button, Slider, Modal, Dropdown, Tabs, ThemeSelector, Skeleton, ColorPicker).
