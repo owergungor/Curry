@@ -236,48 +236,92 @@
     { value: "monthly", label: "Every Month", description: "Check automatically every 30 days" },
   ];
 
-  let isCheckingUpdate = $state(false);
-  let isInstallingUpdate = $state(false);
+  type UpdateLifecycleState =
+    | "idle"
+    | "checking"
+    | "uptodate"
+    | "available"
+    | "downloading"
+    | "verifying"
+    | "installing"
+    | "restart_required"
+    | "error";
+
+  let updateState = $state<UpdateLifecycleState>("idle");
+  let updateProgress = $state<number | null>(null);
+  let isCheckingUpdate = $derived(updateState === "checking");
+  let isInstallingUpdate = $derived(
+    updateState === "downloading" ||
+    updateState === "verifying" ||
+    updateState === "installing"
+  );
   let updateStatusMessage = $state<string | null>(null);
-  let updateAvailable = $state(false);
+  let updateAvailable = $derived(updateState === "available");
   let pendingUpdateObj = $state<any>(null);
+  let updateDownloadCancelled = $state(false);
 
   async function checkForUpdatesManually() {
     if (isCheckingUpdate || isInstallingUpdate) return;
-    isCheckingUpdate = true;
-    updateStatusMessage = null;
-    updateAvailable = false;
+    updateState = "checking";
+    updateProgress = null;
+    updateStatusMessage = t("updater.checking");
+
     try {
       if (typeof navigator !== "undefined" && !navigator.onLine) {
+        updateState = "error";
         updateStatusMessage = t("updater.offline");
         return;
       }
-      const update = await checkUpdate();
+
+      const checkPromise = checkUpdate();
+      const timeoutPromise = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout: Update check took longer than 15s")), 15000)
+      );
+
+      const update = await Promise.race([checkPromise, timeoutPromise]);
       appSettings.last_update_check = Math.floor(Date.now() / 1000);
       saveAppSettings();
+
       if (update && update.available) {
         pendingUpdateObj = update;
-        updateAvailable = true;
-        updateStatusMessage = t("updater.update_available", { version: formatUserVersion(update.version) });
+        updateState = "available";
+        updateStatusMessage = t("updater.update_available", {
+          version: formatUserVersion(update.version),
+        });
       } else {
-        updateStatusMessage = t("updater.up_to_date", { version: formatUserVersion(connectionInfo?.version ?? '2.0') });
+        pendingUpdateObj = null;
+        updateState = "uptodate";
+        updateStatusMessage = t("updater.up_to_date", {
+          version: formatUserVersion(connectionInfo?.version ?? "2.0"),
+        });
       }
     } catch (err: unknown) {
+      updateState = "error";
       const errStr = err instanceof Error ? err.message : String(err);
       console.warn("[Updater] Check returned:", errStr);
+
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         updateStatusMessage = t("updater.offline");
-      } else if (errStr.includes("429") || errStr.toLowerCase().includes("rate limit") || errStr.includes("403")) {
+      } else if (
+        errStr.includes("429") ||
+        errStr.toLowerCase().includes("rate limit") ||
+        errStr.includes("403")
+      ) {
         updateStatusMessage = t("updater.rate_limited");
-      } else if (errStr.includes("404") || errStr.toLowerCase().includes("not found")) {
+      } else if (
+        errStr.includes("404") ||
+        errStr.toLowerCase().includes("not found")
+      ) {
         updateStatusMessage = t("updater.server_error");
-      } else if (errStr.toLowerCase().includes("signature") || errStr.toLowerCase().includes("key")) {
+      } else if (
+        errStr.toLowerCase().includes("signature") ||
+        errStr.toLowerCase().includes("minisign") ||
+        errStr.toLowerCase().includes("public key")
+      ) {
         updateStatusMessage = t("updater.signature_error");
       } else {
         updateStatusMessage = t("updater.network_error");
       }
-    } finally {
-      isCheckingUpdate = false;
     }
   }
 
@@ -299,43 +343,102 @@
     }
 
     if (!isDue) return;
-
     if (isCheckingUpdate || isInstallingUpdate) return;
-    isCheckingUpdate = true;
+
     try {
       const update = await checkUpdate();
       appSettings.last_update_check = now;
       saveAppSettings();
       if (update && update.available) {
         pendingUpdateObj = update;
-        updateAvailable = true;
-        updateStatusMessage = `Curry v${formatUserVersion(update.version)} is available!`;
+        updateState = "available";
+        updateStatusMessage = t("updater.update_available", {
+          version: formatUserVersion(update.version),
+        });
       }
     } catch {
-      // Background silent check; fail gracefully without interrupting user
-    } finally {
-      isCheckingUpdate = false;
+      // Silent background check failure
+    }
+  }
+
+  function cancelUpdateDownload() {
+    if (updateState === "downloading") {
+      updateDownloadCancelled = true;
+      updateState = "available";
+      updateProgress = null;
+      updateStatusMessage = t("updater.update_available", {
+        version: formatUserVersion(pendingUpdateObj?.version ?? "2.1"),
+      });
+    }
+  }
+
+  async function restartCurry() {
+    try {
+      await invoke("restart_app");
+    } catch {
+      if (typeof window !== "undefined") {
+        window.location.reload();
+      }
     }
   }
 
   async function installUpdate() {
     if (!pendingUpdateObj || isInstallingUpdate) return;
-    isInstallingUpdate = true;
+    updateDownloadCancelled = false;
+    updateState = "downloading";
+    updateProgress = 0;
+    updateStatusMessage = t("updater.downloading", { progress: 0 });
+
     try {
-      updateStatusMessage = "Downloading and installing update...";
-      await pendingUpdateObj.downloadAndInstall();
-      updateStatusMessage = "Update installed! Restarting Curry...";
+      let downloaded = 0;
+      let totalLength = 0;
+
+      await pendingUpdateObj.downloadAndInstall((event: any) => {
+        if (updateDownloadCancelled) {
+          throw new Error("Download cancelled by user");
+        }
+        if (event.event === "Started") {
+          totalLength = event.data?.contentLength ?? 0;
+          downloaded = 0;
+          updateState = "downloading";
+          updateProgress = 0;
+          updateStatusMessage = t("updater.downloading", { progress: 0 });
+        } else if (event.event === "Progress") {
+          downloaded += event.data?.chunkLength ?? 0;
+          if (totalLength > 0) {
+            updateProgress = Math.min(100, Math.round((downloaded / totalLength) * 100));
+          }
+          updateStatusMessage = t("updater.downloading", { progress: updateProgress ?? 0 });
+        } else if (event.event === "Finished") {
+          updateProgress = 100;
+          updateState = "verifying";
+          updateStatusMessage = t("updater.verifying");
+        }
+      });
+
+      updateState = "restart_required";
+      updateStatusMessage = t("updater.restart_required");
     } catch (err: unknown) {
+      if (updateDownloadCancelled) {
+        return;
+      }
+      const errStr = err instanceof Error ? err.message : String(err);
+      console.warn("[Updater] Installation failed:", errStr);
+      updateState = "error";
+
+      if (errStr.toLowerCase().includes("signature") || errStr.toLowerCase().includes("key")) {
+        updateStatusMessage = t("updater.signature_error");
+      } else {
+        updateStatusMessage = t("updater.server_error");
+      }
+
       errorStore.report({
         category: "update",
         rawError: err,
         title: "Update Installation Incomplete",
-        message: "The application update could not be applied automatically.",
-        suggestion: "You can download the latest installer directly from the releases page.",
+        message: updateStatusMessage,
+        suggestion: "Your current Curry installation remains untouched. You can retry or download the installer directly.",
       });
-      updateStatusMessage = "Update installation could not be completed.";
-    } finally {
-      isInstallingUpdate = false;
     }
   }
 
@@ -2810,18 +2913,44 @@
                   <!-- Current Version & Action Row -->
                   <div class="control-item updater-row">
                     <div class="control-label-group">
-                      <span class="control-title">Curry v{formatUserVersion(connectionInfo?.version ?? '1.9')}</span>
+                      <span class="control-title">Curry v{formatUserVersion(connectionInfo?.version ?? '2.0')}</span>
                       <span class="control-sub">
                         {#if updateStatusMessage}
                           {updateStatusMessage}
                         {:else}
-                          Curry v{formatUserVersion(connectionInfo?.version ?? '1.9')} is up to date.
+                          {t('updater.up_to_date', { version: formatUserVersion(connectionInfo?.version ?? '2.0') })}
                         {/if}
                       </span>
+                      {#if updateState === 'downloading' && updateProgress !== null}
+                        <div class="update-progress-bar-wrap" role="progressbar" aria-valuenow={updateProgress} aria-valuemin="0" aria-valuemax="100">
+                          <div class="update-progress-bar-fill" style="width: {updateProgress}%;"></div>
+                        </div>
+                      {/if}
                     </div>
                     <div class="updater-actions">
-                      {#if updateAvailable}
+                      {#if updateState === 'downloading'}
                         <button
+                          type="button"
+                          class="secondary-btn cancel-update-btn"
+                          onclick={cancelUpdateDownload}
+                        >
+                          <span>{t('updater.cancel')}</span>
+                        </button>
+                      {:else if updateState === 'restart_required'}
+                        <button
+                          type="button"
+                          class="primary-btn restart-btn"
+                          onclick={restartCurry}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                          </svg>
+                          <span>{t('updater.restart_now')}</span>
+                        </button>
+                      {:else if updateState === 'available'}
+                        <button
+                          type="button"
                           class="primary-btn update-btn"
                           onclick={installUpdate}
                           disabled={isInstallingUpdate}
@@ -2831,10 +2960,35 @@
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
                           </svg>
-                          <span>{isInstallingUpdate ? "Installing..." : "Install & Restart"}</span>
+                          <span>{t('updater.ready_to_install')}</span>
+                        </button>
+                      {:else if updateState === 'verifying' || updateState === 'installing'}
+                        <button
+                          type="button"
+                          class="secondary-btn"
+                          disabled
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon spin">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 6v6l4 2"></path>
+                          </svg>
+                          <span>{updateState === 'verifying' ? t('updater.verifying') : t('updater.installing')}</span>
+                        </button>
+                      {:else if updateState === 'error'}
+                        <button
+                          type="button"
+                          class="secondary-btn retry-btn"
+                          onclick={checkForUpdatesManually}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                            <polyline points="1 4 1 10 7 10"></polyline>
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                          </svg>
+                          <span>{t('updater.retry')}</span>
                         </button>
                       {:else}
                         <button
+                          type="button"
                           class="secondary-btn"
                           onclick={checkForUpdatesManually}
                           disabled={isCheckingUpdate}
@@ -2842,7 +2996,7 @@
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon {isCheckingUpdate ? 'spin' : ''}">
                             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                           </svg>
-                          <span>{isCheckingUpdate ? "Checking..." : "Check Now"}</span>
+                          <span>{isCheckingUpdate ? t('updater.checking') : t('updater.check_now', {}, 'Check Now')}</span>
                         </button>
                       {/if}
                     </div>
@@ -3242,9 +3396,12 @@
   }
 
   /* Root Base Themes */
-  :global(body[data-theme="promotor-wow"]) { background-color: #0c0e14; color: #f8fafc; }
   :global(body[data-theme="perpetuity"]) { background-color: #000000; color: #ededed; }
   :global(body[data-theme="perpetuity"][data-appearance="light"]) { background-color: #ffffff; color: #000000; }
+  :global(body[data-theme="promotor-wow"]) { background-color: #0c0e14; color: #f8fafc; }
+  :global(body[data-theme="indigo"]) { background-color: #0b0f19; color: #f0f4ff; }
+  :global(body[data-theme="indigo"][data-appearance="light"]) { background-color: #f4f7fc; color: #0f172a; }
+  :global(body[data-theme="violet"]) { background-color: #0e0c1b; color: #f3f1ff; }
   :global(body[data-theme="catppuccin"]) { background-color: #181825; color: #cdd6f4; }
   :global(body[data-theme="zen-linen"]) { background-color: #f7f6f2; color: #1c1b18; }
   :global(body[data-theme="zen-linen"][data-appearance="dark"]) { background-color: #181714; color: #f7f6f2; }
@@ -3252,47 +3409,18 @@
   :global(body[data-theme="amethyst-haze"]) { background-color: #0e0b16; color: #f5f0ff; }
   :global(body[data-theme="sage-mist"]) { background-color: #0c1310; color: #ecfdf5; }
   :global(body[data-theme="bubblegum"]) { background-color: #140a14; color: #fdf2f8; }
+  :global(body[data-theme="sakura"]) { background-color: #180d13; color: #fff0f6; }
+  :global(body[data-theme="sakura"][data-appearance="light"]) { background-color: #fff5f8; color: #3b1024; }
+  :global(body[data-theme="burgundy"]) { background-color: #15080c; color: #fde8ef; }
+  :global(body[data-theme="burgundy"][data-appearance="light"]) { background-color: #fff1f4; color: #4c0519; }
   :global(body[data-theme="amberstate"]) { background-color: #0d1117; color: #f8fafc; }
+  :global(body[data-theme="mocha"]) { background-color: #16110d; color: #f9f0e8; }
+  :global(body[data-theme="mocha"][data-appearance="light"]) { background-color: #fbf6f1; color: #332014; }
 
   /* ------------------------------------------------------------------------- */
-  /* THEME 1: PROMOTOR WOW (DEFAULT)                                           */
+  /* THEME 1: STANDARD (PERPETUITY - VERCEL MONOCHROME PRECISION - DEFAULT)    */
   /* ------------------------------------------------------------------------- */
   .shell,
-  .shell[data-theme="promotor-wow"] {
-    --bg: #0c0e14;
-    --bg-secondary: #07080c;
-    --surface: #131722;
-    --surface-elevated: #1c2233;
-    --surface-hover: #262e45;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 92, 0, 0.45);
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
-    --accent: #ff5c00;
-    --accent-hover: #e05200;
-    --accent-fg: #ffffff;
-    --accent-gradient: linear-gradient(135deg, #ff5c00 0%, #ff8a00 100%);
-    --header-glow: radial-gradient(circle, rgba(255, 92, 0, 0.18) 0%, rgba(255, 138, 0, 0.08) 50%, transparent 70%);
-    --glow-surface: rgba(255, 92, 0, 0.22);
-    --ring: #ff5c00;
-    --danger: #ef4444;
-    --danger-bg: rgba(239, 68, 68, 0.14);
-    --danger-border: rgba(239, 68, 68, 0.35);
-    --danger-text: #fca5a5;
-    --warning: #f59e0b;
-    --warning-bg: rgba(245, 158, 11, 0.14);
-    --warning-border: rgba(245, 158, 11, 0.35);
-    --warning-text: #fbbf24;
-    --success: #10b981;
-    --success-bg: rgba(16, 185, 129, 0.14);
-    --success-border: rgba(16, 185, 129, 0.35);
-    --success-text: #34d399;
-  }
-
-  /* ------------------------------------------------------------------------- */
-  /* THEME 2: STANDARD (VERCEL MONOCHROME PRECISION)                           */
-  /* ------------------------------------------------------------------------- */
   .shell[data-theme="perpetuity"] {
     --bg: #000000;
     --bg-secondary: #0a0a0a;
@@ -3323,6 +3451,41 @@
     --success-bg: rgba(0, 112, 243, 0.14);
     --success-border: rgba(0, 112, 243, 0.35);
     --success-text: #3291ff;
+  }
+
+  /* ------------------------------------------------------------------------- */
+  /* THEME 2: PROMOTOR WOW                                                     */
+  /* ------------------------------------------------------------------------- */
+  .shell[data-theme="promotor-wow"] {
+    --bg: #0c0e14;
+    --bg-secondary: #07080c;
+    --surface: #131722;
+    --surface-elevated: #1c2233;
+    --surface-hover: #262e45;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 92, 0, 0.45);
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --accent: #ff5c00;
+    --accent-hover: #e05200;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #ff5c00 0%, #ff8a00 100%);
+    --header-glow: radial-gradient(circle, rgba(255, 92, 0, 0.18) 0%, rgba(255, 138, 0, 0.08) 50%, transparent 70%);
+    --glow-surface: rgba(255, 92, 0, 0.22);
+    --ring: #ff5c00;
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.14);
+    --danger-border: rgba(239, 68, 68, 0.35);
+    --danger-text: #fca5a5;
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.14);
+    --warning-border: rgba(245, 158, 11, 0.35);
+    --warning-text: #fbbf24;
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.14);
+    --success-border: rgba(16, 185, 129, 0.35);
+    --success-text: #34d399;
   }
 
   .shell[data-theme="perpetuity"][data-appearance="light"] {
@@ -3622,6 +3785,272 @@
     --success-bg: rgba(16, 185, 129, 0.14);
     --success-border: rgba(16, 185, 129, 0.35);
     --success-text: #34d399;
+  }
+
+  /* ------------------------------------------------------------------------- */
+  /* THEME 11: INDIGO FROST                                                    */
+  /* ------------------------------------------------------------------------- */
+  .shell[data-theme="indigo"] {
+    --bg: #0b0f19;
+    --bg-secondary: #070a12;
+    --surface: #162035;
+    --surface-elevated: #1e293b;
+    --surface-hover: #27364f;
+    --border: rgba(99, 102, 241, 0.22);
+    --border-strong: rgba(99, 102, 241, 0.45);
+    --text-primary: #f0f4ff;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #38bdf8 100%);
+    --header-glow: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, rgba(56, 189, 248, 0.08) 50%, transparent 70%);
+    --glow-surface: rgba(99, 102, 241, 0.22);
+    --ring: #6366f1;
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.14);
+    --danger-border: rgba(239, 68, 68, 0.35);
+    --danger-text: #fca5a5;
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.14);
+    --warning-border: rgba(245, 158, 11, 0.35);
+    --warning-text: #fbbf24;
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.14);
+    --success-border: rgba(16, 185, 129, 0.35);
+    --success-text: #34d399;
+  }
+
+  .shell[data-theme="indigo"][data-appearance="light"] {
+    --bg: #f4f7fc;
+    --bg-secondary: #ebf0f9;
+    --surface: #ffffff;
+    --surface-elevated: #f1f5fb;
+    --surface-hover: #e2eaf5;
+    --border: rgba(99, 102, 241, 0.18);
+    --border-strong: rgba(99, 102, 241, 0.4);
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --accent: #4f46e5;
+    --accent-hover: #4338ca;
+    --accent-fg: #ffffff;
+  }
+
+  /* ------------------------------------------------------------------------- */
+  /* THEME 12: VIOLET DUSK                                                     */
+  /* ------------------------------------------------------------------------- */
+  .shell[data-theme="violet"] {
+    --bg: #0e0c1b;
+    --bg-secondary: #080612;
+    --surface: #1f1b3c;
+    --surface-elevated: #27224b;
+    --surface-hover: #332d61;
+    --border: rgba(99, 102, 241, 0.25);
+    --border-strong: rgba(168, 85, 247, 0.45);
+    --text-primary: #f3f1ff;
+    --text-secondary: #dcd7ff;
+    --text-muted: #a8a1d9;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    --header-glow: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.08) 50%, transparent 70%);
+    --glow-surface: rgba(99, 102, 241, 0.22);
+    --ring: #6366f1;
+    --danger: #f43f5e;
+    --danger-bg: rgba(244, 63, 94, 0.14);
+    --danger-border: rgba(244, 63, 94, 0.35);
+    --danger-text: #fb7185;
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.14);
+    --warning-border: rgba(245, 158, 11, 0.35);
+    --warning-text: #fbbf24;
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.14);
+    --success-border: rgba(16, 185, 129, 0.35);
+    --success-text: #34d399;
+  }
+
+  /* ------------------------------------------------------------------------- */
+  /* THEME 13: SAKURA DAWN                                                     */
+  /* ------------------------------------------------------------------------- */
+  .shell[data-theme="sakura"] {
+    --bg: #180d13;
+    --bg-secondary: #10080d;
+    --surface: #2e1a26;
+    --surface-elevated: #361f2d;
+    --surface-hover: #4a2b3e;
+    --border: rgba(244, 63, 94, 0.25);
+    --border-strong: rgba(251, 113, 133, 0.45);
+    --text-primary: #fff0f6;
+    --text-secondary: #fce7f3;
+    --text-muted: #deabc2;
+    --accent: #f43f5e;
+    --accent-hover: #e11d48;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #f43f5e 0%, #fda4af 100%);
+    --header-glow: radial-gradient(circle, rgba(244, 63, 94, 0.18) 0%, rgba(253, 164, 175, 0.08) 50%, transparent 70%);
+    --glow-surface: rgba(244, 63, 94, 0.22);
+    --ring: #f43f5e;
+    --danger: #e11d48;
+    --danger-bg: rgba(225, 29, 72, 0.14);
+    --danger-border: rgba(225, 29, 72, 0.35);
+    --danger-text: #fda4af;
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.14);
+    --warning-border: rgba(245, 158, 11, 0.35);
+    --warning-text: #fbbf24;
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.14);
+    --success-border: rgba(16, 185, 129, 0.35);
+    --success-text: #34d399;
+  }
+
+  .shell[data-theme="sakura"][data-appearance="light"] {
+    --bg: #fff5f8;
+    --bg-secondary: #ffeaf1;
+    --surface: #ffffff;
+    --surface-elevated: #fff0f4;
+    --surface-hover: #ffe4ec;
+    --border: rgba(244, 63, 94, 0.18);
+    --border-strong: rgba(244, 63, 94, 0.35);
+    --text-primary: #3b1024;
+    --text-secondary: #5a1e3b;
+    --text-muted: #8e4467;
+    --accent: #e11d48;
+    --accent-hover: #be123c;
+    --accent-fg: #ffffff;
+  }
+
+  /* ------------------------------------------------------------------------- */
+  /* THEME 14: BURGUNDY WINE                                                   */
+  /* ------------------------------------------------------------------------- */
+  .shell[data-theme="burgundy"] {
+    --bg: #15080c;
+    --bg-secondary: #0d0407;
+    --surface: #26121b;
+    --surface-elevated: #2e1621;
+    --surface-hover: #401f2f;
+    --border: rgba(225, 29, 72, 0.25);
+    --border-strong: rgba(244, 63, 94, 0.45);
+    --text-primary: #fde8ef;
+    --text-secondary: #fbcfe8;
+    --text-muted: #c997a8;
+    --accent: #e11d48;
+    --accent-hover: #be123c;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+    --header-glow: radial-gradient(circle, rgba(225, 29, 72, 0.18) 0%, rgba(190, 18, 60, 0.08) 50%, transparent 70%);
+    --glow-surface: rgba(225, 29, 72, 0.22);
+    --ring: #e11d48;
+    --danger: #be123c;
+    --danger-bg: rgba(190, 18, 60, 0.14);
+    --danger-border: rgba(190, 18, 60, 0.35);
+    --danger-text: #fda4af;
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.14);
+    --warning-border: rgba(245, 158, 11, 0.35);
+    --warning-text: #fbbf24;
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.14);
+    --success-border: rgba(16, 185, 129, 0.35);
+    --success-text: #34d399;
+  }
+
+  .shell[data-theme="burgundy"][data-appearance="light"] {
+    --bg: #fff1f4;
+    --bg-secondary: #ffe4ea;
+    --surface: #ffffff;
+    --surface-elevated: #ffebf0;
+    --surface-hover: #ffdfe7;
+    --border: rgba(225, 29, 72, 0.2);
+    --border-strong: rgba(225, 29, 72, 0.4);
+    --text-primary: #4c0519;
+    --text-secondary: #700b27;
+    --text-muted: #9f1239;
+    --accent: #be123c;
+    --accent-hover: #9f1239;
+    --accent-fg: #ffffff;
+  }
+
+  /* ------------------------------------------------------------------------- */
+  /* THEME 15: MOCHA MOUSSE                                                    */
+  /* ------------------------------------------------------------------------- */
+  .shell[data-theme="mocha"] {
+    --bg: #16110d;
+    --bg-secondary: #0e0a07;
+    --surface: #281f19;
+    --surface-elevated: #31261e;
+    --surface-hover: #44342a;
+    --border: rgba(217, 119, 6, 0.25);
+    --border-strong: rgba(245, 158, 11, 0.45);
+    --text-primary: #f9f0e8;
+    --text-secondary: #fed7aa;
+    --text-muted: #c4aea0;
+    --accent: #d97706;
+    --accent-hover: #b45309;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    --header-glow: radial-gradient(circle, rgba(217, 119, 6, 0.18) 0%, rgba(180, 83, 9, 0.08) 50%, transparent 70%);
+    --glow-surface: rgba(217, 119, 6, 0.22);
+    --ring: #d97706;
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.14);
+    --danger-border: rgba(239, 68, 68, 0.35);
+    --danger-text: #fca5a5;
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.14);
+    --warning-border: rgba(245, 158, 11, 0.35);
+    --warning-text: #fde68a;
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.14);
+    --success-border: rgba(16, 185, 129, 0.35);
+    --success-text: #34d399;
+  }
+
+  .shell[data-theme="mocha"][data-appearance="light"] {
+    --bg: #fbf6f1;
+    --bg-secondary: #f4eae1;
+    --surface: #ffffff;
+    --surface-elevated: #f7efe7;
+    --surface-hover: #efe2d5;
+    --border: rgba(180, 83, 9, 0.2);
+    --border-strong: rgba(180, 83, 9, 0.4);
+    --text-primary: #332014;
+    --text-secondary: #54341e;
+    --text-muted: #735643;
+    --accent: #b45309;
+    --accent-hover: #92400e;
+    --accent-fg: #ffffff;
+  }
+
+  /* Updater Progress Bar & Action Styling */
+  .update-progress-bar-wrap {
+    width: 100%;
+    max-width: 280px;
+    height: 6px;
+    background: var(--surface-hover);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+
+  .update-progress-bar-fill {
+    height: 100%;
+    background: var(--accent-gradient, var(--accent));
+    transition: width 0.2s ease;
+  }
+
+  .cancel-update-btn {
+    color: var(--danger-text, #fca5a5);
+    border-color: var(--danger-border, rgba(239, 68, 68, 0.35));
+  }
+
+  .restart-btn {
+    background: var(--accent-gradient, var(--accent));
+    color: var(--accent-fg, #ffffff);
   }
 
   /* ------------------------------------------------------------------------- */

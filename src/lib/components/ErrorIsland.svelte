@@ -1,6 +1,7 @@
 <script lang="ts">
   import { errorStore } from "$lib/errors/store.svelte";
   import type { AppError } from "$lib/errors/types";
+  import { t } from "$lib/i18n";
 
   let { reducedMotion = false }: { reducedMotion?: boolean } = $props();
 
@@ -109,7 +110,7 @@
               class="action-btn secondary-btn"
               onclick={() => handleInspect(error)}
             >
-              View Details
+              {t("errors.view_details")}
             </button>
           </div>
 
@@ -118,7 +119,7 @@
             class="action-btn dismiss-btn"
             onclick={() => handleDismiss(error)}
           >
-            Dismiss
+            {t("errors.dismiss")}
           </button>
         </div>
       </div>
@@ -187,6 +188,25 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    animation: island-pulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes island-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.08);
+      opacity: 0.85;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .island-icon-badge {
+      animation: none !important;
+      transform: none !important;
+    }
   }
 
   .severity-warning .island-icon-badge {

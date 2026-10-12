@@ -1,11 +1,16 @@
 export type ThemeId =
-  | 'promotor-wow'
-  | 'amberstate'
   | 'perpetuity'
+  | 'promotor-wow'
+  | 'indigo'
+  | 'violet'
   | 'amethyst-haze'
   | 'catppuccin'
   | 'neon-magenta'
   | 'bubblegum'
+  | 'sakura'
+  | 'burgundy'
+  | 'amberstate'
+  | 'mocha'
   | 'sage-mist'
   | 'zen-linen';
 
@@ -29,29 +34,70 @@ export interface ThemeDefinition {
   name: string;
   label: string;
   description: string;
-  colorFamily: 'warm' | 'monochrome' | 'cosmic' | 'vibrant' | 'organic';
+  colorFamily: 'monochrome' | 'sapphire' | 'cosmic' | 'vibrant' | 'warm' | 'organic';
   familyLabel: string;
   swatches: string[];
   glowPalette: string[];
   colors: ThemeColors;
-  labelKey?: string;
-  descKey?: string;
-  darkColors?: ThemeColors;
+  lightColors?: ThemeColors;
 }
 
-export const DEFAULT_THEME: ThemeId = 'promotor-wow';
+/** Standard (Vercel Monochrome Precision) is the first and default theme */
+export const DEFAULT_THEME: ThemeId = 'perpetuity';
 
 export const THEMES: ThemeDefinition[] = [
   // ---------------------------------------------------------------------------
-  // GROUP 1: WARM & AMBER FAMILY (Fire, Sunlight & Radiant Warmth)
+  // GROUP 1: MONOCHROME PRECISION (Standard - Vercel Design Language)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'perpetuity',
+    name: 'Standard (Vercel)',
+    label: 'Standard',
+    description: 'Precision monochrome obsidian & electric cyan-indigo glow (Default)',
+    colorFamily: 'monochrome',
+    familyLabel: 'Monochrome Precision',
+    swatches: ['#000000', '#111111', '#0070f3', '#ffffff'],
+    glowPalette: ['#0070f3', '#3291ff', '#00dfd8', '#ffffff', '#7928ca', '#ff0080'],
+    colors: {
+      background: '#000000',
+      backgroundSecondary: '#0a0a0a',
+      surface: '#111111',
+      surfaceElevated: '#1a1a1a',
+      text: '#ededed',
+      textMuted: '#888888',
+      border: 'rgba(255, 255, 255, 0.14)',
+      accent: '#ffffff',
+      accentSecondary: '#0070f3',
+      success: '#0070f3',
+      warning: '#f5a623',
+      danger: '#e00000',
+    },
+    lightColors: {
+      background: '#ffffff',
+      backgroundSecondary: '#fafafa',
+      surface: '#ffffff',
+      surfaceElevated: '#f5f5f5',
+      text: '#000000',
+      textMuted: '#666666',
+      border: 'rgba(0, 0, 0, 0.09)',
+      accent: '#000000',
+      accentSecondary: '#0070f3',
+      success: '#10b981',
+      warning: '#f59e0b',
+      danger: '#ef4444',
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // GROUP 2: SAPPHIRE & OCEAN BLUE FAMILY (Deep Obsidian Navy & Electric Aura)
   // ---------------------------------------------------------------------------
   {
     id: 'promotor-wow',
     name: 'Promotor Wow',
     label: 'Promotor Wow',
-    description: 'Deep obsidian navy & electric vibrant orange-coral aura (Default)',
-    colorFamily: 'warm',
-    familyLabel: 'Warm & Amber Family',
+    description: 'Deep obsidian navy & electric vibrant orange-coral aura',
+    colorFamily: 'sapphire',
+    familyLabel: 'Sapphire & Ocean Blue',
     swatches: ['#0c0e14', '#131722', '#ff5c00', '#ff8a00'],
     glowPalette: ['#ff5c00', '#ff8a00', '#ffaa33', '#f97316', '#ea580c', '#fdba74'],
     colors: {
@@ -70,24 +116,38 @@ export const THEMES: ThemeDefinition[] = [
     },
   },
   {
-    id: 'amberstate',
-    name: 'Amber Slate',
-    label: 'Amberstate',
-    description: 'Molten warm amber & industrial slate steel granite',
-    colorFamily: 'warm',
-    familyLabel: 'Warm & Amber Family',
-    swatches: ['#0d1117', '#161b22', '#f59e0b', '#ea580c'],
-    glowPalette: ['#f59e0b', '#ea580c', '#d97706', '#fbbf24', '#f97316', '#c2410c', '#fde68a'],
+    id: 'indigo',
+    name: 'Indigo Frost',
+    label: 'Indigo Frost',
+    description: 'Deep midnight navy & high-contrast electric indigo aura',
+    colorFamily: 'sapphire',
+    familyLabel: 'Sapphire & Ocean Blue',
+    swatches: ['#0b0f19', '#162035', '#6366f1', '#38bdf8'],
+    glowPalette: ['#6366f1', '#4f46e5', '#38bdf8', '#818cf8', '#0284c7', '#c7d2fe'],
     colors: {
-      background: '#0d1117',
-      backgroundSecondary: '#080a0e',
-      surface: '#161b22',
-      surfaceElevated: '#212833',
-      text: '#f8fafc',
-      textMuted: '#cbd5e1',
-      border: 'rgba(245, 158, 11, 0.22)',
-      accent: '#f59e0b',
-      accentSecondary: '#ea580c',
+      background: '#0b0f19',
+      backgroundSecondary: '#111827',
+      surface: '#162035',
+      surfaceElevated: '#1e293b',
+      text: '#f0f4ff',
+      textMuted: '#94a3b8',
+      border: 'rgba(99, 102, 241, 0.22)',
+      accent: '#6366f1',
+      accentSecondary: '#38bdf8',
+      success: '#10b981',
+      warning: '#f59e0b',
+      danger: '#ef4444',
+    },
+    lightColors: {
+      background: '#f4f7fc',
+      backgroundSecondary: '#ebf0f9',
+      surface: '#ffffff',
+      surfaceElevated: '#f1f5fb',
+      text: '#0f172a',
+      textMuted: '#64748b',
+      border: 'rgba(99, 102, 241, 0.18)',
+      accent: '#4f46e5',
+      accentSecondary: '#0284c7',
       success: '#10b981',
       warning: '#f59e0b',
       danger: '#ef4444',
@@ -95,36 +155,32 @@ export const THEMES: ThemeDefinition[] = [
   },
 
   // ---------------------------------------------------------------------------
-  // GROUP 2: MONOCHROME PRECISION (Standard - Vercel Design Language)
-  // ---------------------------------------------------------------------------
-  {
-    id: 'perpetuity',
-    name: 'Standard (Vercel)',
-    label: 'Standard',
-    description: 'Precision monochrome obsidian & electric cyan-indigo glow',
-    colorFamily: 'monochrome',
-    familyLabel: 'Monochrome Precision (Vercel)',
-    swatches: ['#000000', '#111111', '#0070f3', '#ffffff'],
-    glowPalette: ['#0070f3', '#3291ff', '#00dfd8', '#ffffff', '#7928ca', '#ff0080'],
-    colors: {
-      background: '#000000',
-      backgroundSecondary: '#0a0a0a',
-      surface: '#111111',
-      surfaceElevated: '#1a1a1a',
-      text: '#ededed',
-      textMuted: '#888888',
-      border: 'rgba(255, 255, 255, 0.14)',
-      accent: '#ffffff',
-      accentSecondary: '#0070f3',
-      success: '#0070f3',
-      warning: '#f5a623',
-      danger: '#e00000',
-    },
-  },
-
-  // ---------------------------------------------------------------------------
   // GROUP 3: COSMIC PURPLE & VIOLET (Mystical Aura & Soft Pastels)
   // ---------------------------------------------------------------------------
+  {
+    id: 'violet',
+    name: 'Violet Dusk',
+    label: 'Violet Dusk',
+    description: 'Twilight violet dusk, void purple & luminous neon indigo',
+    colorFamily: 'cosmic',
+    familyLabel: 'Cosmic Purple & Violet',
+    swatches: ['#0e0c1b', '#1f1b3c', '#6366f1', '#a855f7'],
+    glowPalette: ['#6366f1', '#8b5cf6', '#a855f7', '#4f46e5', '#c084fc', '#e0e7ff'],
+    colors: {
+      background: '#0e0c1b',
+      backgroundSecondary: '#151229',
+      surface: '#1f1b3c',
+      surfaceElevated: '#27224b',
+      text: '#f3f1ff',
+      textMuted: '#a8a1d9',
+      border: 'rgba(99, 102, 241, 0.25)',
+      accent: '#6366f1',
+      accentSecondary: '#a855f7',
+      success: '#10b981',
+      warning: '#f59e0b',
+      danger: '#f43f5e',
+    },
+  },
   {
     id: 'amethyst-haze',
     name: 'Amethyst Haze',
@@ -175,7 +231,7 @@ export const THEMES: ThemeDefinition[] = [
   },
 
   // ---------------------------------------------------------------------------
-  // GROUP 4: ELECTRIC MAGENTA & PINK ROSE (Cyberpunk & Velvet Pop)
+  // GROUP 4: ELECTRIC MAGENTA & ROSE FAMILY (Cyberpunk, Velvet & Sakura)
   // ---------------------------------------------------------------------------
   {
     id: 'neon-magenta',
@@ -225,9 +281,151 @@ export const THEMES: ThemeDefinition[] = [
       danger: '#e11d48',
     },
   },
+  {
+    id: 'sakura',
+    name: 'Sakura Dawn',
+    label: 'Sakura Dawn',
+    description: 'Soft cherry blossom dawn & delicate rose quartz illumination',
+    colorFamily: 'vibrant',
+    familyLabel: 'Electric Magenta & Rose',
+    swatches: ['#180d13', '#2e1a26', '#f43f5e', '#fda4af'],
+    glowPalette: ['#f43f5e', '#fb7185', '#fda4af', '#e11d48', '#fecdd3', '#ffe4e6'],
+    colors: {
+      background: '#180d13',
+      backgroundSecondary: '#22131c',
+      surface: '#2e1a26',
+      surfaceElevated: '#361f2d',
+      text: '#fff0f6',
+      textMuted: '#deabc2',
+      border: 'rgba(244, 63, 94, 0.25)',
+      accent: '#f43f5e',
+      accentSecondary: '#fda4af',
+      success: '#10b981',
+      warning: '#f59e0b',
+      danger: '#e11d48',
+    },
+    lightColors: {
+      background: '#fff5f8',
+      backgroundSecondary: '#ffeaf1',
+      surface: '#ffffff',
+      surfaceElevated: '#fff0f4',
+      text: '#3b1024',
+      textMuted: '#8e4467',
+      border: 'rgba(244, 63, 94, 0.18)',
+      accent: '#e11d48',
+      accentSecondary: '#f43f5e',
+      success: '#10b981',
+      warning: '#f59e0b',
+      danger: '#e11d48',
+    },
+  },
+  {
+    id: 'burgundy',
+    name: 'Burgundy Wine',
+    label: 'Burgundy Wine',
+    description: 'Deep royal wine, dark crimson & velvety plum aura',
+    colorFamily: 'vibrant',
+    familyLabel: 'Electric Magenta & Rose',
+    swatches: ['#15080c', '#26121b', '#e11d48', '#be123c'],
+    glowPalette: ['#e11d48', '#be123c', '#9f1239', '#fb7185', '#fda4af', '#881337'],
+    colors: {
+      background: '#15080c',
+      backgroundSecondary: '#1c0d12',
+      surface: '#26121b',
+      surfaceElevated: '#2e1621',
+      text: '#fde8ef',
+      textMuted: '#c997a8',
+      border: 'rgba(225, 29, 72, 0.25)',
+      accent: '#e11d48',
+      accentSecondary: '#be123c',
+      success: '#10b981',
+      warning: '#f59e0b',
+      danger: '#be123c',
+    },
+    lightColors: {
+      background: '#fff1f4',
+      backgroundSecondary: '#ffe4ea',
+      surface: '#ffffff',
+      surfaceElevated: '#ffebf0',
+      text: '#4c0519',
+      textMuted: '#9f1239',
+      border: 'rgba(225, 29, 72, 0.2)',
+      accent: '#be123c',
+      accentSecondary: '#e11d48',
+      success: '#10b981',
+      warning: '#f59e0b',
+      danger: '#9f1239',
+    },
+  },
 
   // ---------------------------------------------------------------------------
-  // GROUP 5: ORGANIC NATURE & EARTH (Botanical Mint & Warm Linen)
+  // GROUP 5: WARM AMBER & EARTH FAMILY (Fire, Sunlight & Velvety Mocha)
+  // ---------------------------------------------------------------------------
+  {
+    id: 'amberstate',
+    name: 'Amber Slate',
+    label: 'Amberstate',
+    description: 'Molten warm amber & industrial slate steel granite',
+    colorFamily: 'warm',
+    familyLabel: 'Warm Amber & Earth',
+    swatches: ['#0d1117', '#161b22', '#f59e0b', '#ea580c'],
+    glowPalette: ['#f59e0b', '#ea580c', '#d97706', '#fbbf24', '#f97316', '#c2410c', '#fde68a'],
+    colors: {
+      background: '#0d1117',
+      backgroundSecondary: '#080a0e',
+      surface: '#161b22',
+      surfaceElevated: '#212833',
+      text: '#f8fafc',
+      textMuted: '#cbd5e1',
+      border: 'rgba(245, 158, 11, 0.22)',
+      accent: '#f59e0b',
+      accentSecondary: '#ea580c',
+      success: '#10b981',
+      warning: '#f59e0b',
+      danger: '#ef4444',
+    },
+  },
+  {
+    id: 'mocha',
+    name: 'Mocha Mousse',
+    label: 'Mocha Mousse',
+    description: 'Rich velvety espresso, warm caramel & toasted cocoa',
+    colorFamily: 'warm',
+    familyLabel: 'Warm Amber & Earth',
+    swatches: ['#16110d', '#281f19', '#d97706', '#b45309'],
+    glowPalette: ['#d97706', '#b45309', '#92400e', '#f59e0b', '#fbbf24', '#78350f'],
+    colors: {
+      background: '#16110d',
+      backgroundSecondary: '#1e1712',
+      surface: '#281f19',
+      surfaceElevated: '#31261e',
+      text: '#f9f0e8',
+      textMuted: '#c4aea0',
+      border: 'rgba(217, 119, 6, 0.25)',
+      accent: '#d97706',
+      accentSecondary: '#b45309',
+      success: '#10b981',
+      warning: '#f59e0b',
+      danger: '#ef4444',
+    },
+    lightColors: {
+      background: '#fbf6f1',
+      backgroundSecondary: '#f4eae1',
+      surface: '#ffffff',
+      surfaceElevated: '#f7efe7',
+      text: '#332014',
+      textMuted: '#735643',
+      border: 'rgba(180, 83, 9, 0.2)',
+      accent: '#b45309',
+      accentSecondary: '#d97706',
+      success: '#10b981',
+      warning: '#f59e0b',
+      danger: '#ef4444',
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // GROUP 6: ORGANIC NATURE & BOTANICAL (Calm Forest & Organic Linen)
   // ---------------------------------------------------------------------------
   {
     id: 'sage-mist',
@@ -235,7 +433,7 @@ export const THEMES: ThemeDefinition[] = [
     label: 'Sage Mist',
     description: 'Calm botanical forest, evergreen tones & sage mint',
     colorFamily: 'organic',
-    familyLabel: 'Organic Nature & Earth',
+    familyLabel: 'Organic Nature & Linen',
     swatches: ['#0c1310', '#121e18', '#34d399', '#14b8a6'],
     glowPalette: ['#34d399', '#14b8a6', '#10b981', '#059669', '#6ee7b7', '#2dd4bf', '#a7f3d0'],
     colors: {
@@ -259,24 +457,10 @@ export const THEMES: ThemeDefinition[] = [
     label: 'Zen Linen',
     description: 'Calm organic linen, airy warm stone & refined sage-moss accents',
     colorFamily: 'organic',
-    familyLabel: 'Organic Nature & Earth',
+    familyLabel: 'Organic Nature & Linen',
     swatches: ['#f7f6f2', '#fcfbfa', '#5c6753', '#8a957f'],
     glowPalette: ['#5c6753', '#8a957f', '#727e69', '#3e4638', '#a4af9a', '#c2cbba'],
     colors: {
-      background: '#f7f6f2',
-      backgroundSecondary: '#efeee9',
-      surface: '#fcfbfa',
-      surfaceElevated: '#e8e6df',
-      text: '#1c1b18',
-      textMuted: '#706d64',
-      border: 'rgba(120, 115, 105, 0.22)',
-      accent: '#5c6753',
-      accentSecondary: '#8a957f',
-      success: '#2d6a4f',
-      warning: '#b8860b',
-      danger: '#b91c1c',
-    },
-    darkColors: {
       background: '#181714',
       backgroundSecondary: '#12110e',
       surface: '#201f1b',
@@ -286,6 +470,20 @@ export const THEMES: ThemeDefinition[] = [
       border: 'rgba(180, 175, 160, 0.16)',
       accent: '#7a8870',
       accentSecondary: '#a4af9a',
+      success: '#2d6a4f',
+      warning: '#b8860b',
+      danger: '#b91c1c',
+    },
+    lightColors: {
+      background: '#f7f6f2',
+      backgroundSecondary: '#efeee9',
+      surface: '#fcfbfa',
+      surfaceElevated: '#e8e6df',
+      text: '#1c1b18',
+      textMuted: '#706d64',
+      border: 'rgba(120, 115, 105, 0.22)',
+      accent: '#5c6753',
+      accentSecondary: '#8a957f',
       success: '#2d6a4f',
       warning: '#b8860b',
       danger: '#b91c1c',

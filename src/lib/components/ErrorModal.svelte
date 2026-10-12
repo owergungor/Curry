@@ -1,6 +1,7 @@
 <script lang="ts">
   import { errorStore } from "$lib/errors/store.svelte";
   import { formatDiagnosticsForExport } from "$lib/errors/sanitizer";
+  import { t } from "$lib/i18n";
 
   let copied = $state(false);
   let copyTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -147,19 +148,19 @@
 
       <div class="modal-body">
         <div class="section-block">
-          <div class="section-label">What Happened</div>
+          <div class="section-label">{t("errors.what_happened")}</div>
           <p class="section-text">{currentError.message}</p>
         </div>
 
         {#if currentError.suggestion}
           <div class="section-block">
-            <div class="section-label">Recommended Action</div>
+            <div class="section-label">{t("errors.recommended_action")}</div>
             <p class="section-text">{currentError.suggestion}</p>
           </div>
         {/if}
 
         <div class="section-block">
-          <div class="section-label">Sanitized Diagnostics</div>
+          <div class="section-label">{t("errors.sanitized_diagnostics")}</div>
           <div class="diagnostics-box">
             <div class="diag-row"><span class="diag-key">Timestamp:</span> <span class="diag-val">{currentError.diagnostics.timestamp}</span></div>
             <div class="diag-row"><span class="diag-key">Category:</span> <span class="diag-val">{currentError.category}</span></div>
@@ -172,7 +173,7 @@
             {/if}
           </div>
           <p class="redaction-note">
-            Personal paths, passwords, and sensitive token values are automatically redacted.
+            {t("errors.redaction_note")}
           </p>
         </div>
       </div>
@@ -187,13 +188,13 @@
             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
               <path fill-rule="evenodd" d="M12.416 3.376a.75.75 0 01.208 1.04l-5 7.5a.75.75 0 01-1.154.114l-3-3a.75.75 0 011.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 011.04-.207z" clip-rule="evenodd" />
             </svg>
-            Copied to Clipboard
+            {t("errors.copied")}
           {:else}
             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
               <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" />
               <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" />
             </svg>
-            Copy Diagnostics
+            {t("errors.copy_diagnostics")}
           {/if}
         </button>
 
@@ -202,7 +203,7 @@
           class="btn close-modal-btn"
           onclick={handleClose}
         >
-          Close
+          {t("errors.close")}
         </button>
       </div>
     </div>

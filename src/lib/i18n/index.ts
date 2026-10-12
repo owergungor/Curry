@@ -1,3 +1,4 @@
+import { getReactiveLanguage, setReactiveLanguage } from './store.svelte';
 export type SupportedLanguage = 'en' | 'es' | 'fr' | 'de' | 'tr';
 
 export interface LanguageOption {
@@ -17,6 +18,42 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
 
 export const translations: Record<SupportedLanguage, Record<string, string>> = {
   en: {
+    'settings.theme_group_sapphire': "Sapphire & Ocean Blue",
+    'theme.mocha.name': "Mocha Mousse",
+    'theme.mocha.desc': "Rich velvety espresso, warm caramel & toasted cocoa",
+    'theme.burgundy.name': "Burgundy Wine",
+    'theme.burgundy.desc': "Deep royal wine, dark crimson & velvety plum",
+    'theme.sakura.name': "Sakura Dawn",
+    'theme.sakura.desc': "Soft cherry blossom dawn & delicate rose quartz",
+    'theme.violet.name': "Violet Dusk",
+    'theme.violet.desc': "Twilight violet dusk & luminous indigo neon",
+    'theme.indigo.name': "Indigo Frost",
+    'theme.indigo.desc': "Deep midnight navy & high-contrast electric indigo",
+    'updater.checking': "Checking for updates...",
+    'updater.update_available': "Curry v{version} is available! Ready to install.",
+    'updater.downloading': "Downloading update ({progress}%)...",
+    'updater.verifying': "Verifying package integrity and cryptographic signature...",
+    'updater.ready_to_install': "Update downloaded and verified. Ready to apply.",
+    'updater.installing': "Installing update package...",
+    'updater.restart_required': "Update installed successfully. Restart Curry to finish.",
+    'updater.restart_now': "Restart Now",
+    'updater.server_error': "Update server returned an error. Please retry later.",
+    'updater.signature_error': "Update signature verification failed. Update rejected for security.",
+    'updater.cancel': "Cancel",
+    'updater.retry': "Retry",
+    'installer.start_on_signin': "Start Curry when I sign in",
+    'errors.view_details': "View Details",
+    'errors.dismiss': "Dismiss",
+    'errors.close': "Close",
+    'errors.copy_diagnostics': "Copy Diagnostics",
+    'errors.copied': "Copied to Clipboard",
+    'errors.what_happened': "What Happened",
+    'errors.recommended_action': "Recommended Action",
+    'errors.sanitized_diagnostics': "Sanitized Diagnostics",
+    'errors.redaction_note': "Personal paths, passwords, and sensitive token values are automatically redacted.",
+    'common.active': "Active",
+    'common.select_option': "Select an option",
+
     // Nav tabs
     'nav.dashboard': 'Dashboard',
     'nav.notifications': 'Notifications',
@@ -218,6 +255,42 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   },
 
   es: {
+    'settings.theme_group_sapphire': "Zafiro y Azul Océano",
+    'theme.mocha.name': "Moca Terciopelo",
+    'theme.mocha.desc': "Café espresso intenso, caramelo cálido y cacao tostado",
+    'theme.burgundy.name': "Borgoña Noir",
+    'theme.burgundy.desc': "Vino real profundo, carmesí oscuro y ciruela aterciopelada",
+    'theme.sakura.name': "Flor de Sakura",
+    'theme.sakura.desc': "Suave amanecer de cerezo en flor y cuarzo rosa",
+    'theme.violet.name': "Atardecer Violeta",
+    'theme.violet.desc': "Crepúsculo violeta y neón índigo luminoso",
+    'theme.indigo.name': "Índigo Polar",
+    'theme.indigo.desc': "Azul noche profundo e índigo eléctrico de alto contraste",
+    'updater.checking': "Buscando actualizaciones...",
+    'updater.update_available': "¡Curry v{version} está disponible! Lista para instalar.",
+    'updater.downloading': "Descargando actualización ({progress}%)...",
+    'updater.verifying': "Verificando integridad del paquete y firma criptográfica...",
+    'updater.ready_to_install': "Actualización descargada y verificada. Lista para aplicar.",
+    'updater.installing': "Instalando paquete de actualización...",
+    'updater.restart_required': "Actualización instalada correctamente. Reinicia Curry para completar.",
+    'updater.restart_now': "Reiniciar Ahora",
+    'updater.server_error': "El servidor de actualización devolvió un error. Reintenta más tarde.",
+    'updater.signature_error': "Error de verificación de firma. Actualización rechazada por seguridad.",
+    'updater.cancel': "Cancelar",
+    'updater.retry': "Reintentar",
+    'installer.start_on_signin': "Iniciar Curry al iniciar sesión",
+    'errors.view_details': "Ver Detalles",
+    'errors.dismiss': "Descartar",
+    'errors.close': "Cerrar",
+    'errors.copy_diagnostics': "Copiar Diagnóstico",
+    'errors.copied': "Copiado al Portapapeles",
+    'errors.what_happened': "Qué Ocurrió",
+    'errors.recommended_action': "Acción Recomendada",
+    'errors.sanitized_diagnostics': "Diagnóstico Sanitizado",
+    'errors.redaction_note': "Las rutas personales, contraseñas y valores sensibles se ocultan automáticamente.",
+    'common.active': "Activo",
+    'common.select_option': "Seleccionar una opción",
+
     // Nav tabs
     'nav.dashboard': 'Panel',
     'nav.notifications': 'Notificaciones',
@@ -419,6 +492,42 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   },
 
   fr: {
+    'settings.theme_group_sapphire': "Saphir & Bleu Océan",
+    'theme.mocha.name': "Mousse Moka",
+    'theme.mocha.desc': "Espresso velouté riche, caramel chaud et cacao torréfié",
+    'theme.burgundy.name': "Vin de Bourgogne",
+    'theme.burgundy.desc': "Vin royal profond, pourpre sombre et prune veloutée",
+    'theme.sakura.name': "Aube de Sakura",
+    'theme.sakura.desc': "Aube douce de cerisiers en fleurs et quartz rose délicat",
+    'theme.violet.name': "Crépuscule Violet",
+    'theme.violet.desc': "Crépuscule violet mystique et néon indigo lumineux",
+    'theme.indigo.name': "Givre Indigo",
+    'theme.indigo.desc': "Nuit profonde et indigo électrique à haut contraste",
+    'updater.checking': "Recherche de mises à jour...",
+    'updater.update_available': "Curry v{version} est disponible ! Prêt à installer.",
+    'updater.downloading': "Téléchargement de la mise à jour ({progress}%)...",
+    'updater.verifying': "Vérification de l'intégrité du paquet et de la signature cryptographique...",
+    'updater.ready_to_install': "Mise à jour téléchargée et vérifiée. Prête à être appliquée.",
+    'updater.installing': "Installation de la mise à jour en cours...",
+    'updater.restart_required': "Mise à jour installée avec succès. Redémarrez Curry pour terminer.",
+    'updater.restart_now': "Redémarrer Maintenant",
+    'updater.server_error': "Le serveur de mise à jour a renvoyé une erreur. Veuillez réessayer plus tard.",
+    'updater.signature_error': "Échec de vérification de signature. Mise à jour rejetée par sécurité.",
+    'updater.cancel': "Annuler",
+    'updater.retry': "Réessayer",
+    'installer.start_on_signin': "Lancer Curry à la connexion",
+    'errors.view_details': "Voir les détails",
+    'errors.dismiss': "Ignorer",
+    'errors.close': "Fermer",
+    'errors.copy_diagnostics': "Copier le diagnostic",
+    'errors.copied': "Copié dans le presse-papiers",
+    'errors.what_happened': "Ce qui s'est passé",
+    'errors.recommended_action': "Action recommandée",
+    'errors.sanitized_diagnostics': "Diagnostics assainis",
+    'errors.redaction_note': "Les chemins personnels, mots de passe et jetons sensibles sont automatiquement masqués.",
+    'common.active': "Actif",
+    'common.select_option': "Sélectionner une option",
+
     // Nav tabs
     'nav.dashboard': 'Tableau de bord',
     'nav.notifications': 'Notifications',
@@ -620,6 +729,42 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   },
 
   de: {
+    'settings.theme_group_sapphire': "Saphir & Ozeanblau",
+    'theme.mocha.name': "Mokka Mousse",
+    'theme.mocha.desc': "Samtiger Espresso, warmes Karamell und gerösteter Kakao",
+    'theme.burgundy.name': "Burgunderwein",
+    'theme.burgundy.desc': "Tiefes Königsrot, dunkles Karminrot und samtige Pflaume",
+    'theme.sakura.name': "Sakura Morgengrauen",
+    'theme.sakura.desc': "Sanfte Kirschblüten und zartes Rosenquarz",
+    'theme.violet.name': "Violetter Abend",
+    'theme.violet.desc': "Dämmerungsviolett und leuchtendes Indigo-Neon",
+    'theme.indigo.name': "Indigofrost",
+    'theme.indigo.desc': "Tiefe Mitternachtsnacht und kontrastreiches Elektro-Indigo",
+    'updater.checking': "Suche nach Updates...",
+    'updater.update_available': "Curry v{version} ist verfügbar! Bereit zur Installation.",
+    'updater.downloading': "Update wird heruntergeladen ({progress}%)...",
+    'updater.verifying': "Paketintegrität und kryptografische Signatur werden überprüft...",
+    'updater.ready_to_install': "Update heruntergeladen und verifiziert. Bereit zur Installation.",
+    'updater.installing': "Update-Paket wird installiert...",
+    'updater.restart_required': "Update erfolgreich installiert. Starte Curry neu, um abzuschließen.",
+    'updater.restart_now': "Jetzt neu starten",
+    'updater.server_error': "Der Update-Server hat einen Fehler gemeldet. Bitte später erneut versuchen.",
+    'updater.signature_error': "Signaturprüfung fehlgeschlagen. Update aus Sicherheitsgründen abgelehnt.",
+    'updater.cancel': "Abbrechen",
+    'updater.retry': "Wiederholen",
+    'installer.start_on_signin': "Curry beim Anmelden starten",
+    'errors.view_details': "Details anzeigen",
+    'errors.dismiss': "Verwerfen",
+    'errors.close': "Schließen",
+    'errors.copy_diagnostics': "Diagnose kopieren",
+    'errors.copied': "In Zwischenablage kopiert",
+    'errors.what_happened': "Was ist passiert",
+    'errors.recommended_action': "Empfohlene Maßnahme",
+    'errors.sanitized_diagnostics': "Bereinigte Diagnose",
+    'errors.redaction_note': "Persönliche Pfade, Passwörter und sensible Token werden automatisch unkenntlich gemacht.",
+    'common.active': "Aktiv",
+    'common.select_option': "Option auswählen",
+
     // Nav tabs
     'nav.dashboard': 'Übersicht',
     'nav.notifications': 'Benachrichtigungen',
@@ -821,6 +966,42 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   },
 
   tr: {
+    'settings.theme_group_sapphire': "Safir ve Okyanus Mavisi",
+    'theme.mocha.name': "Moka Mus",
+    'theme.mocha.desc': "Yoğun kadifemsi espresso, sıcak karamel ve kavrulmuş kakao",
+    'theme.burgundy.name': "Bordo Şarap",
+    'theme.burgundy.desc': "Derin asil şarap rengi, koyu kızıl ve kadife erik",
+    'theme.sakura.name': "Sakura Şafağı",
+    'theme.sakura.desc': "Narin kiraz çiçeği şafağı ve zarif gül kuvars",
+    'theme.violet.name': "Alacakaranlık Menekşe",
+    'theme.violet.desc': "Alacakaranlık moru ve parlak çivit neonu",
+    'theme.indigo.name': "İndigo Ayazı",
+    'theme.indigo.desc': "Derin gece mavisi ve yüksek kontrastlı elektrikli çivit",
+    'updater.checking': "Güncellemeler denetleniyor...",
+    'updater.update_available': "Curry v{version} mevcut! Yüklemeye hazır.",
+    'updater.downloading': "Güncelleme indiriliyor (%{progress})...",
+    'updater.verifying': "Paket bütünlüğü ve şifreleme imzası doğrulanıyor...",
+    'updater.ready_to_install': "Güncelleme indirildi ve doğrulandı. Uygulanmaya hazır.",
+    'updater.installing': "Güncelleme paketi yükleniyor...",
+    'updater.restart_required': "Güncelleme başarıyla yüklendi. Tamamlamak için Curry'yi yeniden başlatın.",
+    'updater.restart_now': "Şimdi Yeniden Başlat",
+    'updater.server_error': "Güncelleme sunucusu bir hata döndürdü. Lütfen daha sonra tekrar deneyin.",
+    'updater.signature_error': "İmza doğrulama hatası. Güncelleme güvenlik nedeniyle reddedildi.",
+    'updater.cancel': "İptal",
+    'updater.retry': "Yeniden Dene",
+    'installer.start_on_signin': "Oturum açtığımda Curry'yi başlat",
+    'errors.view_details': "Ayrıntıları Gör",
+    'errors.dismiss': "Kapat",
+    'errors.close': "Kapat",
+    'errors.copy_diagnostics': "Tanı Kaydını Kopyala",
+    'errors.copied': "Panoya Kopyalandı",
+    'errors.what_happened': "Ne Oldu",
+    'errors.recommended_action': "Önerilen İşlem",
+    'errors.sanitized_diagnostics': "Güvenli Tanı Bilgileri",
+    'errors.redaction_note': "Kişisel dosya yolları, parolalar ve gizli belirteçler otomatik olarak sansürlenir.",
+    'common.active': "Aktif",
+    'common.select_option': "Bir seçenek belirleyin",
+
     // Nav tabs
     'nav.dashboard': 'Panel',
     'nav.notifications': 'Bildirimler',
@@ -1054,6 +1235,9 @@ export function getLanguage(): SupportedLanguage {
     const saved = localStorage.getItem('curry_language') as SupportedLanguage;
     if (saved && (saved in translations)) {
       _activeLang = saved;
+      try {
+        setReactiveLanguage(saved);
+      } catch {}
     }
   }
   return _activeLang;
@@ -1064,6 +1248,9 @@ export function setLanguage(lang: SupportedLanguage): void {
     lang = 'en';
   }
   _activeLang = lang;
+  try {
+    setReactiveLanguage(lang);
+  } catch {}
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem('curry_language', lang);
@@ -1096,7 +1283,12 @@ export function t(
   } else {
     fallback = fallbackOrLang;
   }
-  const current = lang || _activeLang;
+  let current: SupportedLanguage;
+  try {
+    current = lang || getReactiveLanguage() || _activeLang;
+  } catch {
+    current = lang || _activeLang;
+  }
   const langDict = translations[current] || translations.en;
   let text = langDict[key] ?? translations.en[key] ?? fallback ?? key;
 
