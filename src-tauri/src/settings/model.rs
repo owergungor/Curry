@@ -2,14 +2,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::glow::model::GlowSettings;
 
-/// User-selected visual theme for Curry inspired by 21st.dev Community Themes.
+/// User-selected visual theme for Curry inspired by 21st.dev Community Themes & NotiGlow canonical palettes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
 pub enum AppTheme {
-    #[serde(rename = "promotor-wow")]
-    #[default]
-    PromotorWow,
     #[serde(rename = "perpetuity")]
+    #[default]
     Perpetuity,
+    #[serde(rename = "promotor-wow")]
+    PromotorWow,
     #[serde(rename = "catppuccin")]
     Catppuccin,
     #[serde(rename = "zen-linen")]
@@ -24,6 +24,16 @@ pub enum AppTheme {
     Bubblegum,
     #[serde(rename = "amberstate")]
     Amberstate,
+    #[serde(rename = "indigo")]
+    Indigo,
+    #[serde(rename = "violet")]
+    Violet,
+    #[serde(rename = "sakura")]
+    Sakura,
+    #[serde(rename = "burgundy")]
+    Burgundy,
+    #[serde(rename = "mocha")]
+    Mocha,
 }
 
 impl<'de> Deserialize<'de> for AppTheme {
@@ -33,19 +43,24 @@ impl<'de> Deserialize<'de> for AppTheme {
     {
         let s = String::deserialize(deserializer)?;
         match s.to_lowercase().as_str() {
-            "promotor-wow" | "promotor_wow" | "promotorwow" => Ok(Self::PromotorWow),
             "perpetuity" | "standard" => Ok(Self::Perpetuity),
+            "promotor-wow" | "promotor_wow" | "promotorwow" | "sapphire" => Ok(Self::PromotorWow),
             "catppuccin" => Ok(Self::Catppuccin),
-            "zen-linen" | "zen_linen" | "zenlinen" => Ok(Self::ZenLinen),
+            "zen-linen" | "zen_linen" | "zenlinen" | "zen" => Ok(Self::ZenLinen),
             "neon-magenta" | "neon_magenta" | "neonmagenta" => Ok(Self::NeonMagenta),
             "amethyst-haze" | "amethyst_haze" | "amethyst" => Ok(Self::AmethystHaze),
-            "sage-mist" | "sage_mist" | "sagemist" => Ok(Self::SageMist),
+            "sage-mist" | "sage_mist" | "sagemist" | "nature" => Ok(Self::SageMist),
             "bubblegum" => Ok(Self::Bubblegum),
-            "amberstate" | "amber-slate" | "amberslate" | "amber_state" => Ok(Self::Amberstate),
-            // Migrations: matrix-green and vintage-paper silently map to default Promotor Wow without error
-            "matrix-green" | "matrix_green" | "matrixgreen" => Ok(Self::PromotorWow),
-            "vintage-paper" | "vintage_paper" | "vintagepaper" => Ok(Self::PromotorWow),
-            _ => Ok(Self::PromotorWow),
+            "amberstate" | "amber-slate" | "amberslate" | "amber_state" | "amber" => {
+                Ok(Self::Amberstate)
+            }
+            "indigo" => Ok(Self::Indigo),
+            "violet" => Ok(Self::Violet),
+            "sakura" => Ok(Self::Sakura),
+            "burgundy" => Ok(Self::Burgundy),
+            "mocha" => Ok(Self::Mocha),
+            // Safe fallback to Standard (Perpetuity) for unknown or legacy values
+            _ => Ok(Self::Perpetuity),
         }
     }
 }

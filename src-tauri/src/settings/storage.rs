@@ -74,6 +74,16 @@ impl SettingsStorage {
             AppSettings::default().sanitized()
         };
 
+        #[cfg(target_os = "windows")]
+        let mut initial_settings = initial_settings;
+        #[cfg(target_os = "windows")]
+        {
+            let actual_startup = StartupManager::is_enabled();
+            if actual_startup != initial_settings.startup_enabled {
+                initial_settings.startup_enabled = actual_startup;
+            }
+        }
+
         Self {
             settings: Mutex::new(Arc::new(initial_settings)),
             config_path,

@@ -343,6 +343,11 @@ fn restore_main_window(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn restart_app(app: AppHandle) {
+    app.restart();
+}
+
+#[tauri::command]
 fn get_pipeline_status(state: State<'_, AppState>) -> Result<PipelineStatus, String> {
     let engine = state
         .notification_engine()
@@ -714,25 +719,31 @@ fn sync_window_chrome(
         };
 
         let resolved_theme = match theme.as_deref() {
-            Some("promotor-wow") | Some("promotor_wow") | Some("promotorwow") => {
-                AppTheme::PromotorWow
-            }
             Some("perpetuity") | Some("standard") => AppTheme::Perpetuity,
+            Some("promotor-wow") | Some("promotor_wow") | Some("promotorwow")
+            | Some("sapphire") => AppTheme::PromotorWow,
             Some("catppuccin") => AppTheme::Catppuccin,
-            Some("zen-linen") | Some("zen_linen") | Some("zenlinen") => AppTheme::ZenLinen,
-            Some("matrix-green") | Some("matrix_green") | Some("matrixgreen") => {
-                AppTheme::PromotorWow
+            Some("zen-linen") | Some("zen_linen") | Some("zenlinen") | Some("zen") => {
+                AppTheme::ZenLinen
             }
             Some("neon-magenta") | Some("neon_magenta") | Some("neonmagenta") => {
                 AppTheme::NeonMagenta
             }
-            Some("amethyst-haze") | Some("amethyst_haze") => AppTheme::AmethystHaze,
-            Some("sage-mist") | Some("sage_mist") => AppTheme::SageMist,
-            Some("bubblegum") => AppTheme::Bubblegum,
-            Some("amberstate") | Some("amber-slate") | Some("amberslate") => AppTheme::Amberstate,
-            Some("vintage-paper") | Some("vintage_paper") | Some("vintagepaper") => {
-                AppTheme::PromotorWow
+            Some("amethyst-haze") | Some("amethyst_haze") | Some("amethyst") => {
+                AppTheme::AmethystHaze
             }
+            Some("sage-mist") | Some("sage_mist") | Some("sagemist") | Some("nature") => {
+                AppTheme::SageMist
+            }
+            Some("bubblegum") => AppTheme::Bubblegum,
+            Some("amberstate") | Some("amber-slate") | Some("amberslate") | Some("amber") => {
+                AppTheme::Amberstate
+            }
+            Some("indigo") => AppTheme::Indigo,
+            Some("violet") => AppTheme::Violet,
+            Some("sakura") => AppTheme::Sakura,
+            Some("burgundy") => AppTheme::Burgundy,
+            Some("mocha") => AppTheme::Mocha,
             _ => app_theme,
         };
 
@@ -913,6 +924,7 @@ pub fn run() {
             mark_notification_as_unread,
             toggle_notification_read,
             restore_main_window,
+            restart_app,
             get_pipeline_status,
             open_notification_settings,
             get_glow_settings,

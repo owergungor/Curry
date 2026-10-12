@@ -35,6 +35,36 @@ impl WindowChromeColors {
                     text_color: hex_to_colorref("#1c1b18").unwrap_or(0x00181B1C),
                     border_color: hex_to_colorref("#e8e6df").unwrap_or(0x00DFE6E8),
                 },
+                AppTheme::Perpetuity => Self {
+                    is_dark: false,
+                    caption_color: hex_to_colorref("#ffffff").unwrap_or(0x00FFFFFF),
+                    text_color: hex_to_colorref("#09090b").unwrap_or(0x000B0909),
+                    border_color: hex_to_colorref("#e4e4e7").unwrap_or(0x00E7E4E4),
+                },
+                AppTheme::Mocha => Self {
+                    is_dark: false,
+                    caption_color: hex_to_colorref("#fbf6f1").unwrap_or(0x00F1F6FB),
+                    text_color: hex_to_colorref("#332014").unwrap_or(0x00142033),
+                    border_color: hex_to_colorref("#e7d6c7").unwrap_or(0x00C7D6E7),
+                },
+                AppTheme::Sakura => Self {
+                    is_dark: false,
+                    caption_color: hex_to_colorref("#fff5f8").unwrap_or(0x00F8F5FF),
+                    text_color: hex_to_colorref("#3b1024").unwrap_or(0x0024103B),
+                    border_color: hex_to_colorref("#ffcce0").unwrap_or(0x00E0CCFF),
+                },
+                AppTheme::Burgundy => Self {
+                    is_dark: false,
+                    caption_color: hex_to_colorref("#fff1f4").unwrap_or(0x00F4F1FF),
+                    text_color: hex_to_colorref("#4c0519").unwrap_or(0x0019054C),
+                    border_color: hex_to_colorref("#ffccd9").unwrap_or(0x00D9CCFF),
+                },
+                AppTheme::Indigo => Self {
+                    is_dark: false,
+                    caption_color: hex_to_colorref("#f4f7fc").unwrap_or(0x00FCF7F4),
+                    text_color: hex_to_colorref("#0f172a").unwrap_or(0x002A170F),
+                    border_color: hex_to_colorref("#d4e0f2").unwrap_or(0x00F2E0D4),
+                },
                 _ => Self {
                     is_dark: false,
                     caption_color: hex_to_colorref("#f8fafc").unwrap_or(0x00FCFAF8),
@@ -45,17 +75,29 @@ impl WindowChromeColors {
         } else {
             // Dark appearance mode
             match theme {
+                AppTheme::Perpetuity => Self {
+                    is_dark: true,
+                    caption_color: hex_to_colorref("#0a0a0a").unwrap_or(0x000A0A0A),
+                    text_color: hex_to_colorref("#ededed").unwrap_or(0x00EDEDED),
+                    border_color: hex_to_colorref("#262626").unwrap_or(0x00262626),
+                },
                 AppTheme::PromotorWow => Self {
                     is_dark: true,
                     caption_color: hex_to_colorref("#0c0e14").unwrap_or(0x00140E0C),
                     text_color: hex_to_colorref("#f8fafc").unwrap_or(0x00FCFAF8),
                     border_color: hex_to_colorref("#1c2233").unwrap_or(0x0033221C),
                 },
-                AppTheme::Perpetuity => Self {
+                AppTheme::Indigo => Self {
                     is_dark: true,
-                    caption_color: hex_to_colorref("#121826").unwrap_or(0x00261812),
-                    text_color: hex_to_colorref("#f8fafc").unwrap_or(0x00FCFAF8),
-                    border_color: hex_to_colorref("#1e293b").unwrap_or(0x003B291E),
+                    caption_color: hex_to_colorref("#0b0f19").unwrap_or(0x00190F0B),
+                    text_color: hex_to_colorref("#f0f4ff").unwrap_or(0x00FFF4F0),
+                    border_color: hex_to_colorref("#22324f").unwrap_or(0x004F3222),
+                },
+                AppTheme::Violet => Self {
+                    is_dark: true,
+                    caption_color: hex_to_colorref("#0e0c1b").unwrap_or(0x001B0C0E),
+                    text_color: hex_to_colorref("#f3f1ff").unwrap_or(0x00FFF1F3),
+                    border_color: hex_to_colorref("#342e5e").unwrap_or(0x005E2E34),
                 },
                 AppTheme::Catppuccin => Self {
                     is_dark: true,
@@ -65,9 +107,9 @@ impl WindowChromeColors {
                 },
                 AppTheme::ZenLinen => Self {
                     is_dark: true,
-                    caption_color: hex_to_colorref("#23221e").unwrap_or(0x001E2223),
+                    caption_color: hex_to_colorref("#181714").unwrap_or(0x00141718),
                     text_color: hex_to_colorref("#f7f6f2").unwrap_or(0x00F2F6F7),
-                    border_color: hex_to_colorref("#3d3a33").unwrap_or(0x00333A3D),
+                    border_color: hex_to_colorref("#3b352e").unwrap_or(0x002E353B),
                 },
                 AppTheme::NeonMagenta => Self {
                     is_dark: true,
@@ -77,27 +119,45 @@ impl WindowChromeColors {
                 },
                 AppTheme::AmethystHaze => Self {
                     is_dark: true,
-                    caption_color: hex_to_colorref("#191329").unwrap_or(0x00291319),
-                    text_color: hex_to_colorref("#f5f0ff").unwrap_or(0x00FFF0F5),
-                    border_color: hex_to_colorref("#281c40").unwrap_or(0x00401C28),
-                },
-                AppTheme::SageMist => Self {
-                    is_dark: true,
-                    caption_color: hex_to_colorref("#121e18").unwrap_or(0x00181E12),
-                    text_color: hex_to_colorref("#ecfdf5").unwrap_or(0x00F5FDEC),
-                    border_color: hex_to_colorref("#1a2c24").unwrap_or(0x00242C1A),
+                    caption_color: hex_to_colorref("#11091a").unwrap_or(0x001A0911),
+                    text_color: hex_to_colorref("#faf5ff").unwrap_or(0x00FFF5FA),
+                    border_color: hex_to_colorref("#3e2360").unwrap_or(0x0060233E),
                 },
                 AppTheme::Bubblegum => Self {
                     is_dark: true,
-                    caption_color: hex_to_colorref("#221022").unwrap_or(0x00221022),
-                    text_color: hex_to_colorref("#fdf2f8").unwrap_or(0x00F8F2FD),
-                    border_color: hex_to_colorref("#321832").unwrap_or(0x00321832),
+                    caption_color: hex_to_colorref("#180b18").unwrap_or(0x00180B18),
+                    text_color: hex_to_colorref("#fff0fe").unwrap_or(0x00FEF0FF),
+                    border_color: hex_to_colorref("#4c244d").unwrap_or(0x004D244C),
+                },
+                AppTheme::Sakura => Self {
+                    is_dark: true,
+                    caption_color: hex_to_colorref("#180d13").unwrap_or(0x00130D18),
+                    text_color: hex_to_colorref("#fff0f6").unwrap_or(0x00F6F0FF),
+                    border_color: hex_to_colorref("#4a2a3e").unwrap_or(0x003E2A4A),
+                },
+                AppTheme::Burgundy => Self {
+                    is_dark: true,
+                    caption_color: hex_to_colorref("#15080c").unwrap_or(0x000C0815),
+                    text_color: hex_to_colorref("#fde8ef").unwrap_or(0x00EFE8FD),
+                    border_color: hex_to_colorref("#421d2c").unwrap_or(0x002C1D42),
                 },
                 AppTheme::Amberstate => Self {
                     is_dark: true,
-                    caption_color: hex_to_colorref("#161b22").unwrap_or(0x00221B16),
-                    text_color: hex_to_colorref("#f8fafc").unwrap_or(0x00FCFAF8),
-                    border_color: hex_to_colorref("#212833").unwrap_or(0x00332821),
+                    caption_color: hex_to_colorref("#171105").unwrap_or(0x00051117),
+                    text_color: hex_to_colorref("#fef9ee").unwrap_or(0x00EEF9FE),
+                    border_color: hex_to_colorref("#4a3816").unwrap_or(0x0016384A),
+                },
+                AppTheme::Mocha => Self {
+                    is_dark: true,
+                    caption_color: hex_to_colorref("#16110d").unwrap_or(0x000D1116),
+                    text_color: hex_to_colorref("#f9f0e8").unwrap_or(0x00E8F0F9),
+                    border_color: hex_to_colorref("#423227").unwrap_or(0x00273242),
+                },
+                AppTheme::SageMist => Self {
+                    is_dark: true,
+                    caption_color: hex_to_colorref("#0a130d").unwrap_or(0x000D130A),
+                    text_color: hex_to_colorref("#e8f8ee").unwrap_or(0x00EEF8E8),
+                    border_color: hex_to_colorref("#24412e").unwrap_or(0x002E4124),
                 },
             }
         }

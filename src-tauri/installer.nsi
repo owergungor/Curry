@@ -439,12 +439,15 @@ Function FinishShow
   IntOp $5 $5 / 96
   IntOp $6 $6 / 96
   IntOp $7 $7 / 96
-  System::Call 'user32::CreateWindowEx(i r3, w "${__NSD_CheckBox_CLASS}", w "Run Curry at startup", i ${__NSD_CheckBox_STYLE}, i r4, i r5, i r6, i r7, p r1, i 1205, i0, i0) i .s'
+  System::Call 'user32::CreateWindowEx(i r3, w "${__NSD_CheckBox_CLASS}", w "$(runAtStartup)", i ${__NSD_CheckBox_STYLE}, i r4, i r5, i r6, i r7, p r1, i 1205, i0, i0) i .s'
   Pop $RunAtStartupCheckbox
   SendMessage $HWNDPARENT ${WM_GETFONT} 0 0 $1
   SendMessage $RunAtStartupCheckbox ${WM_SETFONT} $1 1
 
   ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}"
+  ${If} $0 == ""
+    ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Curry"
+  ${EndIf}
   ${If} $0 != ""
     SendMessage $RunAtStartupCheckbox ${BM_SETCHECK} ${BST_CHECKED} 0
   ${ElseIf} $UpdateMode = 1
@@ -458,6 +461,7 @@ Function FinishLeave
   SendMessage $RunAtStartupCheckbox ${BM_GETCHECK} 0 0 $RunAtStartupCheckboxState
   ${If} $RunAtStartupCheckboxState = ${BST_CHECKED}
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}" '"$INSTDIR\${MAINBINARYNAME}.exe" --autostart'
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Curry" '"$INSTDIR\${MAINBINARYNAME}.exe" --autostart'
   ${Else}
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}"
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Curry"
@@ -521,6 +525,20 @@ FunctionEnd
 {{#each language_files}}
   !include "{{this}}"
 {{/each}}
+
+LangString runAtStartup ${LANG_ENGLISH} "Start Curry when I sign in"
+!ifdef LANG_TURKISH
+LangString runAtStartup ${LANG_TURKISH} "Oturum acildiginda Curry'yi baslat"
+!endif
+!ifdef LANG_GERMAN
+LangString runAtStartup ${LANG_GERMAN} "Curry beim Anmelden starten"
+!endif
+!ifdef LANG_FRENCH
+LangString runAtStartup ${LANG_FRENCH} "Lancer Curry a la connexion"
+!endif
+!ifdef LANG_SPANISH
+LangString runAtStartup ${LANG_SPANISH} "Iniciar Curry al iniciar sesion"
+!endif
 
 Function .onInit
   ${GetOptions} $CMDLINE "/P" $PassiveMode
@@ -917,6 +935,7 @@ Section Uninstall
   ; We do this when not updating (to preserve the registry value on updates)
   ${If} $UpdateMode <> 1
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}"
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Curry"
   ${EndIf}
 
   ; Delete app data if the checkbox is selected

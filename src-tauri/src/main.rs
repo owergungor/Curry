@@ -434,7 +434,7 @@ mod tests {
         assert_eq!(settings.glow.thickness, 8);
         assert_eq!(settings.glow.corner_radius, 24);
         assert_eq!(settings.glow.color, "#6366f1");
-        assert_eq!(settings.theme, curry_lib::settings::AppTheme::PromotorWow);
+        assert_eq!(settings.theme, curry_lib::settings::AppTheme::Perpetuity);
     }
 
     #[test]
@@ -1149,24 +1149,44 @@ mod tests {
             serde_json::from_str::<AppTheme>("\"amber-slate\"").unwrap(),
             AppTheme::Amberstate
         );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"indigo\"").unwrap(),
+            AppTheme::Indigo
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"violet\"").unwrap(),
+            AppTheme::Violet
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"sakura\"").unwrap(),
+            AppTheme::Sakura
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"burgundy\"").unwrap(),
+            AppTheme::Burgundy
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"mocha\"").unwrap(),
+            AppTheme::Mocha
+        );
     }
 
     #[test]
     fn test_matrix_green_silent_migration() {
         use curry_lib::settings::{AppSettings, AppTheme};
 
-        // matrix-green variants must deserialize silently to Promotor Wow
+        // matrix-green variants must deserialize silently to Standard (Perpetuity)
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"matrix-green\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"matrix_green\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"matrixgreen\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
 
         let legacy_json = r##"{
@@ -1190,7 +1210,7 @@ mod tests {
 
         let s: AppSettings = serde_json::from_str(legacy_json)
             .expect("Legacy matrix-green settings JSON must deserialize silently");
-        assert_eq!(s.theme, AppTheme::PromotorWow);
+        assert_eq!(s.theme, AppTheme::Perpetuity);
         assert!(s.enabled);
     }
 
@@ -1198,18 +1218,18 @@ mod tests {
     fn test_vintage_paper_silent_migration() {
         use curry_lib::settings::{AppSettings, AppTheme};
 
-        // Vintage Paper in any casing or delimiter silently migrates to Promotor Wow
+        // Vintage Paper in any casing or delimiter silently migrates to Standard (Perpetuity)
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"vintage-paper\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"vintage_paper\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"vintagepaper\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
 
         let legacy_json = r##"{
@@ -1233,7 +1253,7 @@ mod tests {
 
         let s: AppSettings = serde_json::from_str(legacy_json)
             .expect("Legacy vintage-paper settings JSON must deserialize silently");
-        assert_eq!(s.theme, AppTheme::PromotorWow);
+        assert_eq!(s.theme, AppTheme::Perpetuity);
         assert!(s.enabled);
     }
 
@@ -1241,8 +1261,8 @@ mod tests {
     fn test_prompt_section_11_all_seven_migration_scenarios() {
         use curry_lib::settings::{AppSettings, AppTheme};
 
-        // CASE 1: No saved theme => promotor-wow
-        assert_eq!(AppTheme::default(), AppTheme::PromotorWow);
+        // CASE 1: No saved theme => perpetuity (Standard)
+        assert_eq!(AppTheme::default(), AppTheme::Perpetuity);
 
         // CASE 2: Saved theme = zen-linen => zen-linen
         assert_eq!(
@@ -1250,10 +1270,10 @@ mod tests {
             AppTheme::ZenLinen
         );
 
-        // CASE 3: Saved theme = matrix-green => promotor-wow (Matrix Green removed in v2.0)
+        // CASE 3: Saved theme = matrix-green => perpetuity (Matrix Green removed in v2.0)
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"matrix-green\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
 
         // CASE 4: Saved theme = neon-magenta => neon-magenta
@@ -1262,16 +1282,16 @@ mod tests {
             AppTheme::NeonMagenta
         );
 
-        // CASE 5: Saved theme = vintage-paper => promotor-wow
+        // CASE 5: Saved theme = vintage-paper => perpetuity
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"vintage-paper\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
 
-        // CASE 6: Saved theme = unknown-theme => promotor-wow
+        // CASE 6: Saved theme = unknown-theme => perpetuity
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"unknown-theme\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
 
         // CASE 7: Existing valid themes => unchanged
@@ -1310,7 +1330,7 @@ mod tests {
             }"##,
         )
         .unwrap();
-        assert_eq!(s_vp.theme, AppTheme::PromotorWow);
+        assert_eq!(s_vp.theme, AppTheme::Perpetuity);
 
         let s_unknown: AppSettings = serde_json::from_str(
             r##"{
@@ -1333,7 +1353,7 @@ mod tests {
             }"##,
         )
         .unwrap();
-        assert_eq!(s_unknown.theme, AppTheme::PromotorWow);
+        assert_eq!(s_unknown.theme, AppTheme::Perpetuity);
 
         let s_zen: AppSettings = serde_json::from_str(
             r##"{
@@ -1363,18 +1383,18 @@ mod tests {
     fn test_unknown_theme_fallback() {
         use curry_lib::settings::{AppSettings, AppTheme};
 
-        // Unknown theme string falls back to Promotor Wow (canonical default)
+        // Unknown theme string falls back to Standard (Perpetuity, canonical default)
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"super-neon\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"random-invalid\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
 
         // In full settings JSON, an unknown theme does NOT reset or fail other fields
@@ -1399,7 +1419,7 @@ mod tests {
 
         let s: AppSettings =
             serde_json::from_str(json).expect("Deserialization of unknown theme should succeed");
-        assert_eq!(s.theme, AppTheme::PromotorWow);
+        assert_eq!(s.theme, AppTheme::Perpetuity);
         assert!(!s.enabled);
         assert!(s.startup_enabled);
         assert_eq!(s.history_limit, 300);
@@ -1441,7 +1461,7 @@ mod tests {
     fn test_theme_serialization_deserialization() {
         use curry_lib::settings::{AppSettings, AppTheme};
         let mut settings = AppSettings::default();
-        assert_eq!(settings.theme, AppTheme::PromotorWow);
+        assert_eq!(settings.theme, AppTheme::Perpetuity);
 
         settings.theme = AppTheme::Amberstate;
         let json = serde_json::to_string(&settings).expect("Serialization failed");
@@ -2621,7 +2641,7 @@ mod tests {
         // Light mode resolution
         let light_default = WindowChromeColors::resolve(AppTheme::Perpetuity, false);
         assert!(!light_default.is_dark);
-        assert_eq!(light_default.caption_color, 0x00FCFAF8); // #f8fafc
+        assert_eq!(light_default.caption_color, 0x00FFFFFF); // #ffffff
 
         let light_zen = WindowChromeColors::resolve(AppTheme::ZenLinen, false);
         assert!(!light_zen.is_dark);
@@ -2634,11 +2654,11 @@ mod tests {
 
         let dark_perpetuity = WindowChromeColors::resolve(AppTheme::Perpetuity, true);
         assert!(dark_perpetuity.is_dark);
-        assert_eq!(dark_perpetuity.caption_color, 0x00261812); // #121826
+        assert_eq!(dark_perpetuity.caption_color, 0x000A0A0A); // #0a0a0a
 
         let dark_zen = WindowChromeColors::resolve(AppTheme::ZenLinen, true);
         assert!(dark_zen.is_dark);
-        assert_eq!(dark_zen.caption_color, 0x001E2223); // #23221e
+        assert_eq!(dark_zen.caption_color, 0x00141718); // #181714
 
         let dark_neon = WindowChromeColors::resolve(AppTheme::NeonMagenta, true);
         assert!(dark_neon.is_dark);
