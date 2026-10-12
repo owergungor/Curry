@@ -163,10 +163,9 @@ jobs:
           fi
           if [ "$HAS_VALID_KEY" = "true" ]; then
             echo "Valid Tauri updater signing key detected. Enabling updater artifacts generation."
-            node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); c.bundle.createUpdaterArtifacts=true; fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(c,null,2));"
             echo "SIGNING_ENABLED=true" >> "$GITHUB_ENV"
           elif [ "$IS_TEST_BUILD" = "true" ]; then
-            echo "Notice: Test build mode. Tauri updater signing key not provided; continuing without updater artifacts."
+            echo "Notice: Test build mode. Disabling updater artifacts and pubkey for unsigned test build."
             echo "SIGNING_ENABLED=false" >> "$GITHUB_ENV"
           else
             echo "::error::Official release requires TAURI_SIGNING_PRIVATE_KEY secret for updater security! Official releases cannot be published without updater artifacts."
@@ -218,6 +217,7 @@ jobs:
 
       - name: Build Tauri macOS Apple Silicon App & DMG
         env:
+          IS_TEST_BUILD: ${{ needs.validate-tag.outputs.is_test_build }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -227,6 +227,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
+          trap 'rm -f tauri.build-override.json' EXIT
+          if [ "$SIGNING_ENABLED" = "true" ]; then
+            node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: true } }));"
+          elif [ "$IS_TEST_BUILD" = "true" ]; then
+            node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: false }, plugins: { updater: { pubkey: null } } }));"
+          fi
           if [ -z "$APPLE_CERTIFICATE" ]; then
             unset APPLE_CERTIFICATE
             unset APPLE_CERTIFICATE_PASSWORD
@@ -239,7 +245,7 @@ jobs:
             unset TAURI_SIGNING_PRIVATE_KEY
             unset TAURI_SIGNING_PRIVATE_KEY_PASSWORD
           fi
-          npx tauri build --target aarch64-apple-darwin
+          npx tauri build --target aarch64-apple-darwin -c tauri.build-override.json
 
       - name: Stage and Package macOS Artifacts
         run: |
@@ -361,24 +367,29 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          $hasValidKey = $false
-          if (-not [string]::IsNullOrEmpty($env:TAURI_SIGNING_PRIVATE_KEY)) {
-            if ($env:TAURI_SIGNING_PRIVATE_KEY -match "untrusted comment:") {
-              $hasValidKey = $true
+          try {
+            $hasValidKey = $false
+            if (-not [string]::IsNullOrEmpty($env:TAURI_SIGNING_PRIVATE_KEY)) {
+              if ($env:TAURI_SIGNING_PRIVATE_KEY -match "untrusted comment:") {
+                $hasValidKey = $true
+              }
             }
+            if ($hasValidKey) {
+              Write-Host "Valid Tauri updater signing private key detected. Enabling updater artifacts generation."
+              node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: true } }));"
+            } elseif ($env:IS_TEST_BUILD -eq "true") {
+              Write-Host "Test build mode: Disabling updater artifacts and pubkey for unsigned test build."
+              Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY -ErrorAction SilentlyContinue
+              Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue
+              node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: false }, plugins: { updater: { pubkey: null } } }));"
+            } else {
+              Write-Error "Official release requires TAURI_SIGNING_PRIVATE_KEY for Windows updater artifacts!"
+              exit 1
+            }
+            npx tauri build -c tauri.build-override.json
+          } finally {
+            Remove-Item -Force tauri.build-override.json -ErrorAction SilentlyContinue
           }
-          if ($hasValidKey) {
-            Write-Host "Valid Tauri updater signing private key detected. Enabling updater artifacts generation."
-            node -e "const fs=require('fs'); const c=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); c.bundle.createUpdaterArtifacts=true; fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(c,null,2));"
-          } elseif ($env:IS_TEST_BUILD -eq "true") {
-            Write-Host "Test build mode: Tauri updater signing key is missing; continuing without updater artifacts."
-            Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY -ErrorAction SilentlyContinue
-            Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue
-          } else {
-            Write-Error "Official release requires TAURI_SIGNING_PRIVATE_KEY for Windows updater artifacts!"
-            exit 1
-          }
-          npx tauri build
 
       - name: Stage and Package Windows Artifacts
         shell: pwsh
