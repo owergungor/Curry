@@ -257,7 +257,11 @@ jobs:
             zip -r -y "$GITHUB_WORKSPACE/dist_release/Curry_${TAG_NAME}_mac-arm64.app.zip" Curry.app
             cd -
           fi
-          # Stage updater artifacts if created
+          # Stage updater artifacts if created (.tar.gz and .sig)
+          if compgen -G "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.tar.gz" > /dev/null; then
+            cp src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.tar.gz "$GITHUB_WORKSPACE/dist_release/"
+            cp src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.tar.gz.sig "$GITHUB_WORKSPACE/dist_release/" 2>/dev/null || true
+          fi
           if [ -d "src-tauri/target/aarch64-apple-darwin/release/bundle/updater" ]; then
             cp -r src-tauri/target/aarch64-apple-darwin/release/bundle/updater/* "$GITHUB_WORKSPACE/dist_release/" 2>/dev/null || true
           fi
@@ -300,16 +304,18 @@ jobs:
               xcrun notarytool submit "$DMG_FILE" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
               echo "Stapling notarization ticket to DMG..."
               xcrun stapler staple "$DMG_FILE"
-              echo "Verifying Gatekeeper assessment on DMG..."
-              spctl -a -t open --context context:primary-signature -v "$DMG_FILE" || true
+              echo "Strict Gatekeeper assessment on notarized DMG..."
+              spctl -a -t open --context context:primary-signature -v "$DMG_FILE"
             fi
             APP_PATH="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app"
             if [ -d "$APP_PATH" ]; then
               echo "Stapling notarization ticket to app bundle..."
-              xcrun stapler staple "$APP_PATH" || true
+              xcrun stapler staple "$APP_PATH"
+              echo "Strict Gatekeeper assessment on notarized App bundle..."
+              spctl --assess --type execute --verbose=4 "$APP_PATH"
             fi
           elif [ "$IS_TEST_BUILD" = "true" ]; then
-            echo "Notice: Test build mode without Apple notarization credentials."
+            echo "Notice: Test build mode without Apple notarization credentials. Gatekeeper will reject this unsigned artifact until quarantined attribute is cleared manually."
           else
             echo "::error::Notarization failed: credentials missing in official release flow."
             exit 1
@@ -386,6 +392,9 @@ jobs:
             Copy-Item $nsisExe.FullName "dist_release\Curry_${tag}_win-x64-setup.exe"
           }
           
+          # Stage standalone Curry.exe directly into dist_release
+          Copy-Item "src-tauri\target\release\curry.exe" "dist_release\Curry.exe"
+
           # Zip packaging containing installer and standalone binary
           $stage = "dist_release\staging"
           New-Item -ItemType Directory -Path $stage -Force | Out-Null
@@ -396,7 +405,11 @@ jobs:
           Compress-Archive -Path "$stage\*" -DestinationPath "dist_release\Curry_${tag}_win-x64.zip" -Force
           Remove-Item -Recurse -Force $stage
 
-          # Stage updater artifacts if created
+          # Stage updater artifacts if created (.nsis.zip, .zip, and .sig)
+          $updaterFiles = Get-ChildItem -Path "src-tauri\target\release\bundle\nsis" -Include "*.nsis.zip","*.nsis.zip.sig","*.zip.sig" -Recurse
+          if ($updaterFiles) {
+            $updaterFiles | Copy-Item -Destination "dist_release\" -Force
+          }
           if (Test-Path "src-tauri\target\release\bundle\updater\*") {
             Copy-Item "src-tauri\target\release\bundle\updater\*" "dist_release\" -Recurse -Force
           }
@@ -412,6 +425,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate-tag, release-mac, release-windows]
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-tag.outputs.commit_sha }}
+
+      - name: Install Minisign Verification Tool
+        run: sudo apt-get update && sudo apt-get install -y minisign
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -431,23 +452,118 @@ jobs:
             cp -r staged_artifacts/windows-x64-artifacts/* dist_release/
           fi
 
-          # Safely merge multi-platform latest.json updater manifests if both were generated
-          MAC_LATEST="staged_artifacts/macos-arm64-artifacts/latest.json"
-          WIN_LATEST="staged_artifacts/windows-x64-artifacts/latest.json"
-          if [ -f "$MAC_LATEST" ] && [ -f "$WIN_LATEST" ]; then
-            echo "Merging macOS and Windows updater manifests into unified multi-platform latest.json..."
-            node -e "
-              const fs = require('fs');
-              const mac = JSON.parse(fs.readFileSync('$MAC_LATEST', 'utf8'));
-              const win = JSON.parse(fs.readFileSync('$WIN_LATEST', 'utf8'));
-              const merged = { ...mac, ...win, platforms: { ...(mac.platforms || {}), ...(win.platforms || {}) } };
-              fs.writeFileSync('dist_release/latest.json', JSON.stringify(merged, null, 2));
-            "
-          elif [ -f "$MAC_LATEST" ]; then
-            cp "$MAC_LATEST" dist_release/latest.json
-          elif [ -f "$WIN_LATEST" ]; then
-            cp "$WIN_LATEST" dist_release/latest.json
+          # Extract public key from tauri.conf.json for cryptographic verification
+          node -e "
+            const fs = require('fs');
+            const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+            const b64 = conf?.plugins?.updater?.pubkey;
+            if (!b64) {
+              console.error('::error::Missing plugins.updater.pubkey in src-tauri/tauri.conf.json!');
+              process.exit(1);
+            }
+            fs.writeFileSync('dist_release/curry_updater.pub', Buffer.from(b64, 'base64').toString('utf8'));
+          "
+
+          # Cryptographic Minisign verification of updater archives against signatures
+          if [ "$IS_TEST" != "true" ]; then
+            echo "=== Cryptographic Minisign Verification ==="
+            MAC_ARCHIVE=$(find dist_release -maxdepth 1 -name "*.tar.gz" ! -name "*.sig" | head -n 1)
+            MAC_SIG=$(find dist_release -maxdepth 1 -name "*.tar.gz.sig" | head -n 1)
+            WIN_ARCHIVE=$(find dist_release -maxdepth 1 -name "*.nsis.zip" ! -name "*.sig" | head -n 1)
+            WIN_SIG=$(find dist_release -maxdepth 1 -name "*.nsis.zip.sig" | head -n 1)
+
+            if [ -z "$MAC_ARCHIVE" ] || [ -z "$MAC_SIG" ]; then
+              echo "::error::Official release requires macOS updater archive and signature file!"
+              exit 1
+            fi
+            if [ -z "$WIN_ARCHIVE" ] || [ -z "$WIN_SIG" ]; then
+              echo "::error::Official release requires Windows updater archive and signature file!"
+              exit 1
+            fi
+
+            echo "Verifying macOS updater archive with Minisign ($MAC_ARCHIVE)..."
+            minisign -Vm "$MAC_ARCHIVE" -x "$MAC_SIG" -p dist_release/curry_updater.pub
+            echo "macOS updater archive cryptographically verified against public key."
+
+            echo "Verifying Windows updater archive with Minisign ($WIN_ARCHIVE)..."
+            minisign -Vm "$WIN_ARCHIVE" -x "$WIN_SIG" -p dist_release/curry_updater.pub
+            echo "Windows updater archive cryptographically verified against public key."
+          else
+            echo "Notice: Test build mode (allow_unsigned=true). Cryptographic signature verification bypassed."
           fi
+
+          # Clean up temporary public key before hashing
+          rm -f dist_release/curry_updater.pub
+
+          # Safely generate multi-platform latest.json updater manifest from verified updater artifacts
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+
+            const isTest = '${{ needs.validate-tag.outputs.is_test_build }}' === 'true';
+            const tag = '${{ needs.validate-tag.outputs.tag }}';
+            const releaseTag = '${{ needs.validate-tag.outputs.release_tag }}';
+            const expectedTech = require('./package.json').version;
+
+            console.log('Building latest.json updater manifest for version:', expectedTech);
+
+            const files = fs.readdirSync('dist_release');
+            const macArchive = files.find(f => f.endsWith('.tar.gz') && !f.endsWith('.sig'));
+            const macSigFile = macArchive ? files.find(f => f === macArchive + '.sig' || (f.endsWith('.tar.gz.sig') && f.startsWith(macArchive.replace('.tar.gz', '')))) : null;
+
+            const winArchive = files.find(f => (f.endsWith('.nsis.zip') || (f.endsWith('.zip') && f.includes('setup'))) && !f.endsWith('.sig'));
+            const winSigFile = winArchive ? files.find(f => f === winArchive + '.sig' || f.endsWith('.nsis.zip.sig')) : null;
+
+            let macSig = '';
+            let winSig = '';
+
+            if (macSigFile && fs.existsSync(path.join('dist_release', macSigFile))) {
+              macSig = fs.readFileSync(path.join('dist_release', macSigFile), 'utf8').trim();
+            }
+            if (winSigFile && fs.existsSync(path.join('dist_release', winSigFile))) {
+              winSig = fs.readFileSync(path.join('dist_release', winSigFile), 'utf8').trim();
+            }
+
+            console.log('macOS updater archive:', macArchive, 'sig file:', macSigFile);
+            console.log('Windows updater archive:', winArchive, 'sig file:', winSigFile);
+
+            if (!isTest) {
+              if (!macArchive || !macSig) {
+                console.error('::error::Official release requires signed macOS updater archive (.tar.gz and .sig)!');
+                process.exit(1);
+              }
+              if (!winArchive || !winSig) {
+                console.error('::error::Official release requires signed Windows updater archive (.nsis.zip and .sig)!');
+                process.exit(1);
+              }
+            }
+
+            if (macArchive && winArchive && macSig && winSig) {
+              const manifest = {
+                version: expectedTech,
+                notes: 'Curry ' + tag + ' release',
+                pub_date: new Date().toISOString(),
+                platforms: {
+                  'darwin-aarch64': {
+                    signature: macSig,
+                    url: 'https://github.com/owergungor/Curry/releases/download/' + releaseTag + '/' + macArchive
+                  },
+                  'windows-x86_64': {
+                    signature: winSig,
+                    url: 'https://github.com/owergungor/Curry/releases/download/' + releaseTag + '/' + winArchive
+                  }
+                }
+              };
+              fs.writeFileSync('dist_release/latest.json', JSON.stringify(manifest, null, 2));
+              console.log('Generated unified multi-platform latest.json:');
+              console.log(JSON.stringify(manifest, null, 2));
+            } else if (isTest) {
+              console.log('Notice: Test build without complete signatures. Skipping latest.json generation.');
+            } else {
+              console.error('::error::Failed to generate latest.json updater manifest for official release!');
+              process.exit(1);
+            }
+          "
 
           echo "=== Staged Release Assets for $TAG ==="
           ls -lh dist_release/
@@ -455,6 +571,7 @@ jobs:
           REQUIRED_ASSETS=(
             "dist_release/Curry_${TAG}_win-x64-setup.exe"
             "dist_release/Curry_${TAG}_win-x64.zip"
+            "dist_release/Curry.exe"
             "dist_release/Curry_${TAG}_mac-arm64.dmg"
             "dist_release/Curry_${TAG}_mac-arm64.app.zip"
           )
@@ -475,15 +592,27 @@ jobs:
             node -e "
               const fs = require('fs');
               const m = JSON.parse(fs.readFileSync('dist_release/latest.json', 'utf8'));
-              if (!m.platforms || !m.platforms['darwin-aarch64'] || !m.platforms['windows-x86_64']) {
-                console.error('::error::latest.json is missing required platform keys (darwin-aarch64 and windows-x86_64)!');
+
+              // Validate strict Tier 1 platforms: ONLY darwin-aarch64 and windows-x86_64
+              const platformKeys = Object.keys(m.platforms || {});
+              const allowedKeys = ['darwin-aarch64', 'windows-x86_64'];
+              if (platformKeys.length !== 2 || !allowedKeys.every(k => platformKeys.includes(k))) {
+                console.error('::error::latest.json must contain exactly darwin-aarch64 and windows-x86_64 platforms! Found:', platformKeys);
                 process.exit(1);
               }
-              if (!m.platforms['darwin-aarch64'].signature || !m.platforms['windows-x86_64'].signature) {
-                console.error('::error::latest.json is missing platform updater signatures!');
-                process.exit(1);
+
+              for (const plat of allowedKeys) {
+                const p = m.platforms[plat];
+                if (!p.signature || !p.signature.startsWith('untrusted comment:')) {
+                  console.error('::error::Invalid or empty signature for platform:', plat);
+                  process.exit(1);
+                }
+                if (!p.url || !p.url.startsWith('https://github.com/owergungor/Curry/releases/download/')) {
+                  console.error('::error::Invalid download URL for platform:', plat, p.url);
+                  process.exit(1);
+                }
               }
-              console.log('Unified latest.json verified with valid platforms and signatures.');
+              console.log('Unified latest.json verified with exact platforms, valid signatures, and correct asset URLs.');
             "
           fi
 
@@ -514,6 +643,9 @@ jobs:
             dist_release/Curry_*_mac-arm64.app.zip
             dist_release/SHA256SUMS.txt
             dist_release/*.tar.gz
+            dist_release/*.tar.gz.sig
+            dist_release/*.nsis.zip
+            dist_release/*.nsis.zip.sig
             dist_release/*.sig
             dist_release/latest.json
         env:
