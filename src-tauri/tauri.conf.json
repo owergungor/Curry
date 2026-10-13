@@ -77,7 +77,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDExMjIzMzQ0NTU2Njc3ODgKUldSMC91L003ZzMwdk9yK1J2QXZsL0d2d3NQTUR5UWtYQk5xZ05wMStXcz0=",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc2ODEzNDdEMTk2MEQ4NjMKUldSajJHQVpmVFNCZG16d3JtUUNHOUE2OWJyOURQaVNETkVEOXlJb0lMKzdheVIxL2R5ZXhwcFgK",
       "endpoints": [
         "https://github.com/owergungor/Curry/releases/latest/download/latest.json"
       ]
