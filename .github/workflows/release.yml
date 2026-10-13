@@ -256,24 +256,38 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/dist_release"
           TAG_NAME="${{ needs.validate-tag.outputs.tag }}"
 
+          BUNDLE_DIR=""
+          for candidate in "target/aarch64-apple-darwin/release/bundle" "src-tauri/target/aarch64-apple-darwin/release/bundle"; do
+            if [ -d "$candidate" ]; then
+              BUNDLE_DIR="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$BUNDLE_DIR" ]; then
+            echo "::error::Could not find macOS bundle directory in target/ or src-tauri/target/!"
+            exit 1
+          fi
+          echo "Found macOS bundle directory: $BUNDLE_DIR"
+
           # Rename and package DMG
-          if compgen -G "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg" > /dev/null; then
-            cp src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg "$GITHUB_WORKSPACE/dist_release/Curry_${TAG_NAME}_mac-arm64.dmg"
+          if compgen -G "$BUNDLE_DIR/dmg/*.dmg" > /dev/null; then
+            cp $BUNDLE_DIR/dmg/*.dmg "$GITHUB_WORKSPACE/dist_release/Curry_${TAG_NAME}_mac-arm64.dmg"
           fi
           # Verify architecture and package .app bundle into zip preserving symlinks (-y is critical for Gatekeeper)
-          if [ -d "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app" ]; then
-            cd src-tauri/target/aarch64-apple-darwin/release/bundle/macos
+          if [ -d "$BUNDLE_DIR/macos/Curry.app" ]; then
+            cd "$BUNDLE_DIR/macos"
             file Curry.app/Contents/MacOS/*
             zip -r -y "$GITHUB_WORKSPACE/dist_release/Curry_${TAG_NAME}_mac-arm64.app.zip" Curry.app
             cd -
           fi
           # Stage updater artifacts if created (.tar.gz and .sig)
-          if compgen -G "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.tar.gz" > /dev/null; then
-            cp src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.tar.gz "$GITHUB_WORKSPACE/dist_release/"
-            cp src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.tar.gz.sig "$GITHUB_WORKSPACE/dist_release/" 2>/dev/null || true
+          if compgen -G "$BUNDLE_DIR/macos/*.tar.gz" > /dev/null; then
+            cp $BUNDLE_DIR/macos/*.tar.gz "$GITHUB_WORKSPACE/dist_release/"
+            cp $BUNDLE_DIR/macos/*.tar.gz.sig "$GITHUB_WORKSPACE/dist_release/" 2>/dev/null || true
           fi
-          if [ -d "src-tauri/target/aarch64-apple-darwin/release/bundle/updater" ]; then
-            cp -r src-tauri/target/aarch64-apple-darwin/release/bundle/updater/* "$GITHUB_WORKSPACE/dist_release/" 2>/dev/null || true
+          if [ -d "$BUNDLE_DIR/updater" ]; then
+            cp -r $BUNDLE_DIR/updater/* "$GITHUB_WORKSPACE/dist_release/" 2>/dev/null || true
           fi
 
       - name: Sign DMG Container (if signing identity present)
@@ -290,9 +304,15 @@ jobs:
 
       - name: Verify Code Signing and Gatekeeper Assessment
         run: |
-          APP_PATH="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app"
-          if [ -d "$APP_PATH" ]; then
-            echo "=== Codesign Verification ==="
+          APP_PATH=""
+          for candidate in "target/aarch64-apple-darwin/release/bundle/macos/Curry.app" "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app"; do
+            if [ -d "$candidate" ]; then
+              APP_PATH="$candidate"
+              break
+            fi
+          done
+          if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
+            echo "=== Codesign Verification ($APP_PATH) ==="
             codesign -dv --verbose=4 "$APP_PATH" || true
             echo "=== Deep Codesign Check ==="
             codesign --verify --deep --strict --verbose=2 "$APP_PATH" || echo "Notice: Ad-hoc/unsigned build (no Apple Developer ID signature present)"
@@ -317,8 +337,14 @@ jobs:
               echo "Strict Gatekeeper assessment on notarized DMG..."
               spctl -a -t open --context context:primary-signature -v "$DMG_FILE"
             fi
-            APP_PATH="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app"
-            if [ -d "$APP_PATH" ]; then
+            APP_PATH=""
+            for candidate in "target/aarch64-apple-darwin/release/bundle/macos/Curry.app" "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Curry.app"; do
+              if [ -d "$candidate" ]; then
+                APP_PATH="$candidate"
+                break
+              fi
+            done
+            if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
               echo "Stapling notarization ticket to app bundle..."
               xcrun stapler staple "$APP_PATH"
               echo "Strict Gatekeeper assessment on notarized App bundle..."
@@ -401,19 +427,30 @@ jobs:
           New-Item -ItemType Directory -Path dist_release -Force | Out-Null
           $tag = "${{ needs.validate-tag.outputs.tag }}"
           
+          # Locate release target directory in either workspace root target or src-tauri/target
+          $targetDir = "target\release"
+          if (-not (Test-Path $targetDir) -and (Test-Path "src-tauri\target\release")) {
+            $targetDir = "src-tauri\target\release"
+          }
+          Write-Host "Found Windows target directory: $targetDir"
+
           # Copy NSIS setup installer as Curry_vX.Y_win-x64-setup.exe
-          $nsisExe = Get-ChildItem -Path "src-tauri\target\release\bundle\nsis\*.exe" | Select-Object -First 1
+          $nsisExe = Get-ChildItem -Path "$targetDir\bundle\nsis\*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($nsisExe) {
             Copy-Item $nsisExe.FullName "dist_release\Curry_${tag}_win-x64-setup.exe"
           }
           
           # Stage standalone Curry.exe directly into dist_release
-          Copy-Item "src-tauri\target\release\curry.exe" "dist_release\Curry.exe"
+          if (Test-Path "$targetDir\curry.exe") {
+            Copy-Item "$targetDir\curry.exe" "dist_release\Curry.exe"
+          }
 
           # Zip packaging containing installer and standalone binary
           $stage = "dist_release\staging"
           New-Item -ItemType Directory -Path $stage -Force | Out-Null
-          Copy-Item "src-tauri\target\release\curry.exe" "$stage\Curry.exe"
+          if (Test-Path "$targetDir\curry.exe") {
+            Copy-Item "$targetDir\curry.exe" "$stage\Curry.exe"
+          }
           if ($nsisExe) {
             Copy-Item $nsisExe.FullName "$stage\Curry_${tag}_win-x64-setup.exe"
           }
@@ -421,12 +458,12 @@ jobs:
           Remove-Item -Recurse -Force $stage
 
           # Stage updater artifacts if created (.nsis.zip, .zip, and .sig)
-          $updaterFiles = Get-ChildItem -Path "src-tauri\target\release\bundle\nsis" -Include "*.nsis.zip","*.nsis.zip.sig","*.zip.sig" -Recurse
+          $updaterFiles = Get-ChildItem -Path "$targetDir\bundle\nsis" -Include "*.nsis.zip","*.nsis.zip.sig","*.zip.sig" -Recurse -ErrorAction SilentlyContinue
           if ($updaterFiles) {
             $updaterFiles | Copy-Item -Destination "dist_release\" -Force
           }
-          if (Test-Path "src-tauri\target\release\bundle\updater\*") {
-            Copy-Item "src-tauri\target\release\bundle\updater\*" "dist_release\" -Recurse -Force
+          if (Test-Path "$targetDir\bundle\updater\*") {
+            Copy-Item "$targetDir\bundle\updater\*" "dist_release\" -Recurse -Force
           }
 
       - name: Upload Windows Artifacts to Actions
