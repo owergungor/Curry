@@ -51,8 +51,12 @@ jobs:
               IS_TEST="true"
             fi
             if git rev-parse -q --verify "refs/tags/${TAG}^{commit}" >/dev/null 2>&1; then
-              echo "Existing tag '$TAG' found in repository. Checking out tagged commit."
-              git checkout -q "refs/tags/${TAG}"
+              if [ "$IS_TEST" = "true" ]; then
+                echo "Notice: Test build mode enabled (allow_unsigned=true). Proceeding with current branch HEAD commit."
+              else
+                echo "Existing tag '$TAG' found in repository. Checking out tagged commit."
+                git checkout -q "refs/tags/${TAG}"
+              fi
             else
               if [ "$IS_TEST" != "true" ]; then
                 echo "::error::Tag '$TAG' does not exist in repository git tags! Official release via workflow_dispatch requires an existing git tag."
@@ -161,12 +165,12 @@ jobs:
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] && printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | grep -q "untrusted comment:"; then
             HAS_VALID_KEY=true
           fi
-          if [ "$HAS_VALID_KEY" = "true" ]; then
-            echo "Valid Tauri updater signing key detected. Enabling updater artifacts generation."
-            echo "SIGNING_ENABLED=true" >> "$GITHUB_ENV"
-          elif [ "$IS_TEST_BUILD" = "true" ]; then
+          if [ "$IS_TEST_BUILD" = "true" ]; then
             echo "Notice: Test build mode. Disabling updater artifacts and pubkey for unsigned test build."
             echo "SIGNING_ENABLED=false" >> "$GITHUB_ENV"
+          elif [ "$HAS_VALID_KEY" = "true" ]; then
+            echo "Valid Tauri updater signing key detected. Enabling updater artifacts generation."
+            echo "SIGNING_ENABLED=true" >> "$GITHUB_ENV"
           else
             echo "::error::Official release requires TAURI_SIGNING_PRIVATE_KEY secret for updater security! Official releases cannot be published without updater artifacts."
             exit 1
@@ -374,14 +378,14 @@ jobs:
                 $hasValidKey = $true
               }
             }
-            if ($hasValidKey) {
-              Write-Host "Valid Tauri updater signing private key detected. Enabling updater artifacts generation."
-              node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: true } }));"
-            } elseif ($env:IS_TEST_BUILD -eq "true") {
+            if ($env:IS_TEST_BUILD -eq "true") {
               Write-Host "Test build mode: Disabling updater artifacts and pubkey for unsigned test build."
               Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY -ErrorAction SilentlyContinue
               Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue
               node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: false }, plugins: { updater: { pubkey: null } } }));"
+            } elseif ($hasValidKey) {
+              Write-Host "Valid Tauri updater signing private key detected. Enabling updater artifacts generation."
+              node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: true } }));"
             } else {
               Write-Error "Official release requires TAURI_SIGNING_PRIVATE_KEY for Windows updater artifacts!"
               exit 1
