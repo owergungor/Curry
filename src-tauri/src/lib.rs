@@ -945,5 +945,6 @@ pub fn run() {
 
     if let Err(err) = app.run(tauri::generate_context!()) {
         eprintln!("[Curry] Fatal error while running application: {}", err);
+        std::process::exit(1);
     }
 }

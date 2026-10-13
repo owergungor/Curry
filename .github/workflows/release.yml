@@ -166,7 +166,7 @@ jobs:
             HAS_VALID_KEY=true
           fi
           if [ "$IS_TEST_BUILD" = "true" ]; then
-            echo "Notice: Test build mode. Disabling updater artifacts and pubkey for unsigned test build."
+            echo "Notice: Test build mode. Disabling updater artifacts for unsigned test build."
             echo "SIGNING_ENABLED=false" >> "$GITHUB_ENV"
           elif [ "$HAS_VALID_KEY" = "true" ]; then
             echo "Valid Tauri updater signing key detected. Enabling updater artifacts generation."
@@ -235,7 +235,7 @@ jobs:
           if [ "$SIGNING_ENABLED" = "true" ]; then
             node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: true } }));"
           elif [ "$IS_TEST_BUILD" = "true" ]; then
-            node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: false }, plugins: { updater: { pubkey: null } } }));"
+            node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: false } }));"
           fi
           if [ -z "$APPLE_CERTIFICATE" ]; then
             unset APPLE_CERTIFICATE
@@ -405,10 +405,10 @@ jobs:
               }
             }
             if ($env:IS_TEST_BUILD -eq "true") {
-              Write-Host "Test build mode: Disabling updater artifacts and pubkey for unsigned test build."
+              Write-Host "Test build mode: Disabling updater artifacts for unsigned test build."
               Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY -ErrorAction SilentlyContinue
               Remove-Item Env:\TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue
-              node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: false }, plugins: { updater: { pubkey: null } } }));"
+              node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: false } }));"
             } elseif ($hasValidKey) {
               Write-Host "Valid Tauri updater signing private key detected. Enabling updater artifacts generation."
               node -e "fs.writeFileSync('tauri.build-override.json', JSON.stringify({ bundle: { createUpdaterArtifacts: true } }));"

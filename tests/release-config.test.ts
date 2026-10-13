@@ -27,17 +27,12 @@ test("test build override correctly isolates bundle configuration without modify
 
   const testOverride = {
     bundle: { createUpdaterArtifacts: false },
-    plugins: { updater: { pubkey: null } },
   };
 
   // Simulate Tauri config deep merge
   const merged = {
     ...baseConf,
     bundle: { ...baseConf.bundle, ...testOverride.bundle },
-    plugins: {
-      ...baseConf.plugins,
-      updater: { ...baseConf.plugins.updater, ...testOverride.plugins.updater },
-    },
   };
 
   assert.equal(
@@ -45,10 +40,9 @@ test("test build override correctly isolates bundle configuration without modify
     false,
     "createUpdaterArtifacts must be false in test override"
   );
-  assert.equal(
-    merged.plugins.updater.pubkey,
-    null,
-    "updater pubkey must be null in test override to avoid private key requirement"
+  assert.ok(
+    merged.plugins?.updater?.pubkey,
+    "updater pubkey must remain intact in test override so the client can initialize the plugin"
   );
   // Base configuration file must remain untouched
   assert.ok(baseConf.plugins.updater.pubkey, "base tauri.conf.json pubkey must remain intact");
