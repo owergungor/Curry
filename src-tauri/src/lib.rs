@@ -721,7 +721,8 @@ fn sync_window_chrome(
         let resolved_theme = match theme.as_deref() {
             Some("perpetuity") | Some("standard") => AppTheme::Perpetuity,
             Some("promotor-wow") | Some("promotor_wow") | Some("promotorwow")
-            | Some("sapphire") => AppTheme::PromotorWow,
+            | Some("sapphire") => AppTheme::Perpetuity,
+            Some("bubblegum") => AppTheme::Perpetuity,
             Some("catppuccin") => AppTheme::Catppuccin,
             Some("zen-linen") | Some("zen_linen") | Some("zenlinen") | Some("zen") => {
                 AppTheme::ZenLinen
@@ -735,7 +736,6 @@ fn sync_window_chrome(
             Some("sage-mist") | Some("sage_mist") | Some("sagemist") | Some("nature") => {
                 AppTheme::SageMist
             }
-            Some("bubblegum") => AppTheme::Bubblegum,
             Some("amberstate") | Some("amber-slate") | Some("amberslate") | Some("amber") => {
                 AppTheme::Amberstate
             }

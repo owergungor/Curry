@@ -8,8 +8,6 @@ pub enum AppTheme {
     #[serde(rename = "perpetuity")]
     #[default]
     Perpetuity,
-    #[serde(rename = "promotor-wow")]
-    PromotorWow,
     #[serde(rename = "catppuccin")]
     Catppuccin,
     #[serde(rename = "zen-linen")]
@@ -20,8 +18,6 @@ pub enum AppTheme {
     AmethystHaze,
     #[serde(rename = "sage-mist")]
     SageMist,
-    #[serde(rename = "bubblegum")]
-    Bubblegum,
     #[serde(rename = "amberstate")]
     Amberstate,
     #[serde(rename = "indigo")]
@@ -44,13 +40,14 @@ impl<'de> Deserialize<'de> for AppTheme {
         let s = String::deserialize(deserializer)?;
         match s.to_lowercase().as_str() {
             "perpetuity" | "standard" => Ok(Self::Perpetuity),
-            "promotor-wow" | "promotor_wow" | "promotorwow" | "sapphire" => Ok(Self::PromotorWow),
+            // Gracefully migrate removed themes to Standard (Perpetuity)
+            "promotor-wow" | "promotor_wow" | "promotorwow" | "sapphire" => Ok(Self::Perpetuity),
+            "bubblegum" => Ok(Self::Perpetuity),
             "catppuccin" => Ok(Self::Catppuccin),
             "zen-linen" | "zen_linen" | "zenlinen" | "zen" => Ok(Self::ZenLinen),
             "neon-magenta" | "neon_magenta" | "neonmagenta" => Ok(Self::NeonMagenta),
             "amethyst-haze" | "amethyst_haze" | "amethyst" => Ok(Self::AmethystHaze),
             "sage-mist" | "sage_mist" | "sagemist" | "nature" => Ok(Self::SageMist),
-            "bubblegum" => Ok(Self::Bubblegum),
             "amberstate" | "amber-slate" | "amberslate" | "amber_state" | "amber" => {
                 Ok(Self::Amberstate)
             }

@@ -81,12 +81,6 @@ impl WindowChromeColors {
                     text_color: hex_to_colorref("#ededed").unwrap_or(0x00EDEDED),
                     border_color: hex_to_colorref("#262626").unwrap_or(0x00262626),
                 },
-                AppTheme::PromotorWow => Self {
-                    is_dark: true,
-                    caption_color: hex_to_colorref("#0c0e14").unwrap_or(0x00140E0C),
-                    text_color: hex_to_colorref("#f8fafc").unwrap_or(0x00FCFAF8),
-                    border_color: hex_to_colorref("#1c2233").unwrap_or(0x0033221C),
-                },
                 AppTheme::Indigo => Self {
                     is_dark: true,
                     caption_color: hex_to_colorref("#0b0f19").unwrap_or(0x00190F0B),
@@ -122,12 +116,6 @@ impl WindowChromeColors {
                     caption_color: hex_to_colorref("#11091a").unwrap_or(0x001A0911),
                     text_color: hex_to_colorref("#faf5ff").unwrap_or(0x00FFF5FA),
                     border_color: hex_to_colorref("#3e2360").unwrap_or(0x0060233E),
-                },
-                AppTheme::Bubblegum => Self {
-                    is_dark: true,
-                    caption_color: hex_to_colorref("#180b18").unwrap_or(0x00180B18),
-                    text_color: hex_to_colorref("#fff0fe").unwrap_or(0x00FEF0FF),
-                    border_color: hex_to_colorref("#4c244d").unwrap_or(0x004D244C),
                 },
                 AppTheme::Sakura => Self {
                     is_dark: true,
@@ -239,10 +227,12 @@ pub fn sync_window_chrome(window: &WebviewWindow, appearance: AppearanceMode, th
     let colors = WindowChromeColors::resolve(theme, is_dark);
 
     // 1. Tauri theme synchronization
-    let tauri_theme = if is_dark {
-        Some(tauri::Theme::Dark)
-    } else {
-        Some(tauri::Theme::Light)
+    // When appearance is System, passing None allows the webview to follow the OS theme naturally
+    // without injecting artificial synthetic changes that trigger feedback loops.
+    let tauri_theme = match appearance {
+        AppearanceMode::System => None,
+        AppearanceMode::Dark => Some(tauri::Theme::Dark),
+        AppearanceMode::Light => Some(tauri::Theme::Light),
     };
     let _ = window.set_theme(tauri_theme);
 

@@ -1,4 +1,4 @@
-import { getReactiveLanguage, setReactiveLanguage } from './store.svelte';
+import { getReactiveLanguage, setReactiveLanguage } from './store.svelte.ts';
 export type SupportedLanguage = 'en' | 'es' | 'fr' | 'de' | 'tr';
 
 export interface LanguageOption {
@@ -10,14 +10,24 @@ export interface LanguageOption {
 
 export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: 'en', name: 'English', flag: '🇬🇧', label: '🇬🇧 English' },
-  { code: 'es', name: 'Español', flag: '🇪🇸', label: '🇪🇸 Español' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷', label: '🇫🇷 Français' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪', label: '🇩🇪 Deutsch' },
   { code: 'tr', name: 'Türkçe', flag: '🇹🇷', label: '🇹🇷 Türkçe' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪', label: '🇩🇪 Deutsch' },
+  { code: 'fr', name: 'Français', flag: '🇫🇷', label: '🇫🇷 Français' },
+  { code: 'es', name: 'Español', flag: '🇪🇸', label: '🇪🇸 Español' },
 ];
 
 export const translations: Record<SupportedLanguage, Record<string, string>> = {
   en: {
+    'apps.view_grid': "Grid View",
+    'apps.view_list': "List View",
+    'apps.view_mode': "View Layout",
+    'apps.preview_btn': "Preview",
+    'apps.confirm_delete_title': "Delete Application Profile?",
+    'apps.confirm_delete_msg': "Are you sure you want to remove the glow profile for {name}? This cannot be undone.",
+    'apps.fullscreen_suppressed': "Fullscreen Suppressed",
+    'installer.start_on_startup': "Start Curry when Windows starts",
+    'updater.cancelled': "Update check was cancelled.",
+    'updater.status_checking': "Checking for updates...",
     'settings.theme_group_sapphire': "Sapphire & Ocean Blue",
     'theme.mocha.name': "Mocha Mousse",
     'theme.mocha.desc': "Rich velvety espresso, warm caramel & toasted cocoa",
@@ -116,21 +126,21 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     // Theme names & descriptions
     'theme.promotor-wow.name': 'Promotor Wow',
     'theme.promotor-wow.desc': 'Deep obsidian navy & electric vibrant orange-coral aura (Default)',
-    'theme.amberstate.name': 'Amber Slate',
+    'theme.amberstate.name': 'Amber',
     'theme.amberstate.desc': 'Molten warm amber & industrial slate steel granite',
-    'theme.perpetuity.name': 'Standard (Vercel)',
+    'theme.perpetuity.name': 'Standard',
     'theme.perpetuity.desc': 'Precision monochrome obsidian & electric cyan-indigo glow',
-    'theme.amethyst-haze.name': 'Amethyst Haze',
+    'theme.amethyst-haze.name': 'Amethyst',
     'theme.amethyst-haze.desc': 'Mystical violet aura, void purple & vivid amethyst',
     'theme.catppuccin.name': 'Catppuccin',
     'theme.catppuccin.desc': 'Soothing pastel lavender, mocha crust & soft mauve',
-    'theme.neon-magenta.name': 'Neon Magenta',
+    'theme.neon-magenta.name': 'Magenta',
     'theme.neon-magenta.desc': 'Cyberpunk midnight void & high-voltage neon magenta radiance',
     'theme.bubblegum.name': 'Bubblegum',
     'theme.bubblegum.desc': 'Vibrant cyber-pop neon rose, velvet berry & berry noir',
-    'theme.sage-mist.name': 'Sage Mist',
+    'theme.sage-mist.name': 'Sage',
     'theme.sage-mist.desc': 'Calm botanical forest, evergreen tones & sage mint',
-    'theme.zen-linen.name': 'Zen Linen',
+    'theme.zen-linen.name': 'Zen',
     'theme.zen-linen.desc': 'Calm organic linen, airy warm stone & refined sage-moss accents',
 
     // System Preferences
@@ -255,6 +265,16 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   },
 
   es: {
+    'apps.view_grid': "Vista de Cuadrícula",
+    'apps.view_list': "Vista de Lista",
+    'apps.view_mode': "Diseño de Vista",
+    'apps.preview_btn': "Vista Previa",
+    'apps.confirm_delete_title': "¿Eliminar perfil de aplicación?",
+    'apps.confirm_delete_msg': "¿Seguro que deseas eliminar el perfil de {name}? Esta acción no se puede deshacer.",
+    'apps.fullscreen_suppressed': "Suprimido en pantalla completa",
+    'installer.start_on_startup': "Iniciar Curry cuando Windows se inicie",
+    'updater.cancelled': "Se canceló la comprobación de actualizaciones.",
+    'updater.status_checking': "Buscando actualizaciones...",
     'settings.theme_group_sapphire': "Zafiro y Azul Océano",
     'theme.mocha.name': "Moca Terciopelo",
     'theme.mocha.desc': "Café espresso intenso, caramelo cálido y cacao tostado",
@@ -353,21 +373,21 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     // Theme names & descriptions
     'theme.promotor-wow.name': 'Promotor Wow',
     'theme.promotor-wow.desc': 'Azul marino obsidiana y aura vibrante coral anaranjado (Predeterminado)',
-    'theme.amberstate.name': 'Pizarra Ámbar',
+    'theme.amberstate.name': 'Ámbar',
     'theme.amberstate.desc': 'Ámbar fundido y granito de acero gris industrial',
-    'theme.perpetuity.name': 'Estándar (Vercel)',
+    'theme.perpetuity.name': 'Estándar',
     'theme.perpetuity.desc': 'Obsidiana monocromática y brillo cian-índigo futurista',
-    'theme.amethyst-haze.name': 'Bruma de Amatista',
+    'theme.amethyst-haze.name': 'Amatista',
     'theme.amethyst-haze.desc': 'Aura violeta mística, púrpura profundo y amatista brillante',
     'theme.catppuccin.name': 'Catppuccin',
     'theme.catppuccin.desc': 'Lavanda pastel relajante, corteza moca y malva suave',
-    'theme.neon-magenta.name': 'Magenta Neón',
+    'theme.neon-magenta.name': 'Magenta',
     'theme.neon-magenta.desc': 'Vacío nocturno ciberpunk y resplandor magenta de alto voltaje',
     'theme.bubblegum.name': 'Chicle Pop',
     'theme.bubblegum.desc': 'Rosa neón ciber-pop vibrante, bayas de terciopelo y mora negra',
-    'theme.sage-mist.name': 'Niebla de Salvia',
+    'theme.sage-mist.name': 'Salvia',
     'theme.sage-mist.desc': 'Bosque botánico sereno, tonos perennes y menta salvia',
-    'theme.zen-linen.name': 'Lino Zen',
+    'theme.zen-linen.name': 'Zen',
     'theme.zen-linen.desc': 'Lino orgánico tranquilo, piedra cálida y detalles de salvia-musgo',
 
     // System Preferences
@@ -492,6 +512,16 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   },
 
   fr: {
+    'apps.view_grid': "Vue Grille",
+    'apps.view_list': "Vue Liste",
+    'apps.view_mode': "Disposition d'affichage",
+    'apps.preview_btn': "Aperçu",
+    'apps.confirm_delete_title': "Supprimer le profil d'application ?",
+    'apps.confirm_delete_msg': "Voulez-vous vraiment supprimer le profil de {name} ? Cette action est irréversible.",
+    'apps.fullscreen_suppressed': "Masqué en plein écran",
+    'installer.start_on_startup': "Démarrer Curry au lancement de Windows",
+    'updater.cancelled': "La vérification des mises à jour a été annulée.",
+    'updater.status_checking': "Recherche de mises à jour...",
     'settings.theme_group_sapphire': "Saphir & Bleu Océan",
     'theme.mocha.name': "Mousse Moka",
     'theme.mocha.desc': "Espresso velouté riche, caramel chaud et cacao torréfié",
@@ -590,9 +620,9 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     // Theme names & descriptions
     'theme.promotor-wow.name': 'Promotor Wow',
     'theme.promotor-wow.desc': 'Bleu nuit obsidienne & aura éclatante corail orangé (Par défaut)',
-    'theme.amberstate.name': 'Ardoise Ambrée',
+    'theme.amberstate.name': 'Ambre',
     'theme.amberstate.desc': 'Ambre incandescent & acier ardoisé industriel',
-    'theme.perpetuity.name': 'Standard (Vercel)',
+    'theme.perpetuity.name': 'Standard',
     'theme.perpetuity.desc': 'Obsidienne monochrome & halo cyan-indigo futuriste',
     'theme.amethyst-haze.name': 'Brume d\'Améthyste',
     'theme.amethyst-haze.desc': 'Aura violette mystique, pourpre profond & améthyste vive',
@@ -729,6 +759,16 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   },
 
   de: {
+    'apps.view_grid': "Rasteransicht",
+    'apps.view_list': "Listenansicht",
+    'apps.view_mode': "Ansichtslayout",
+    'apps.preview_btn': "Vorschau",
+    'apps.confirm_delete_title': "Anwendungsprofil löschen?",
+    'apps.confirm_delete_msg': "Möchtest du das Profil für {name} wirklich löschen? Dies kann nicht rückgängig gemacht werden.",
+    'apps.fullscreen_suppressed': "Im Vollbild unterdrückt",
+    'installer.start_on_startup': "Curry beim Start von Windows ausführen",
+    'updater.cancelled': "Die Update-Prüfung wurde abgebrochen.",
+    'updater.status_checking': "Suche nach Updates...",
     'settings.theme_group_sapphire': "Saphir & Ozeanblau",
     'theme.mocha.name': "Mokka Mousse",
     'theme.mocha.desc': "Samtiger Espresso, warmes Karamell und gerösteter Kakao",
@@ -827,15 +867,15 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     // Theme names & descriptions
     'theme.promotor-wow.name': 'Promotor Wow',
     'theme.promotor-wow.desc': 'Tiefes Obsidian-Navy & elektrisierendes Orange-Korallen-Aura (Standard)',
-    'theme.amberstate.name': 'Bernsteinschiefer',
+    'theme.amberstate.name': 'Bernstein',
     'theme.amberstate.desc': 'Glühender Bernstein & industrieller Schieferstahl',
-    'theme.perpetuity.name': 'Standard (Vercel)',
+    'theme.perpetuity.name': 'Standard',
     'theme.perpetuity.desc': 'Präzises monochromes Obsidian & futuristisches Cyan-Indigo-Leuchten',
     'theme.amethyst-haze.name': 'Amethystdunst',
     'theme.amethyst-haze.desc': 'Mystische violette Aura, tiefes Purpur & lebendiger Amethyst',
     'theme.catppuccin.name': 'Catppuccin',
     'theme.catppuccin.desc': 'Sanftes Pastell-Lavendel, Mokka-Kruste & zartes Mauve',
-    'theme.neon-magenta.name': 'Neon Magenta',
+    'theme.neon-magenta.name': 'Magenta',
     'theme.neon-magenta.desc': 'Cyberpunk-Mitternachtsleere & pulsierendes Hochvolt-Magenta',
     'theme.bubblegum.name': 'Bubblegum',
     'theme.bubblegum.desc': 'Lebendiges Cyber-Pop-Neonrosa, samtige Beere & Brombeerschwarz',
@@ -966,6 +1006,16 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   },
 
   tr: {
+    'apps.view_grid': "Izgara Görünümü",
+    'apps.view_list': "Liste Görünümü",
+    'apps.view_mode': "Görünüm Düzeni",
+    'apps.preview_btn': "Önizle",
+    'apps.confirm_delete_title': "Uygulama Profili Silinsin mi?",
+    'apps.confirm_delete_msg': "{name} için ışıklandırma profilini kaldırmak istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+    'apps.fullscreen_suppressed': "Tam Ekranda Bastırılır",
+    'installer.start_on_startup': "Windows başladığında Curry'yi başlat",
+    'updater.cancelled': "Güncelleme denetimi iptal edildi.",
+    'updater.status_checking': "Güncellemeler denetleniyor...",
     'settings.theme_group_sapphire': "Safir ve Okyanus Mavisi",
     'theme.mocha.name': "Moka Mus",
     'theme.mocha.desc': "Yoğun kadifemsi espresso, sıcak karamel ve kavrulmuş kakao",
@@ -1064,9 +1114,9 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     // Theme names & descriptions
     'theme.promotor-wow.name': 'Promotor Wow',
     'theme.promotor-wow.desc': 'Derin obsidyen lacivert & elektrikli canlı turuncu-mercan aurası (Varsayılan)',
-    'theme.amberstate.name': 'Kehribar Arduvaz',
+    'theme.amberstate.name': 'Kehribar',
     'theme.amberstate.desc': 'Erimiş sıcak kehribar ve endüstriyel arduvaz çelik graniti',
-    'theme.perpetuity.name': 'Standart (Vercel)',
+    'theme.perpetuity.name': 'Standart',
     'theme.perpetuity.desc': 'Hassas monokrom obsidyen ve fütüristik camgöbeği-çivit ışıması',
     'theme.amethyst-haze.name': 'Ametist Pusu',
     'theme.amethyst-haze.desc': 'Mistik menekşe aurası, derin mor ve canlı ametist',
@@ -1207,10 +1257,10 @@ export type SupportedLocale = SupportedLanguage;
 
 export const LANGUAGE_DROPDOWN_OPTIONS = [
   { value: 'en', label: '🇬🇧 English' },
-  { value: 'es', label: '🇪🇸 Español' },
-  { value: 'fr', label: '🇫🇷 Français' },
-  { value: 'de', label: '🇩🇪 Deutsch' },
   { value: 'tr', label: '🇹🇷 Türkçe' },
+  { value: 'de', label: '🇩🇪 Deutsch' },
+  { value: 'fr', label: '🇫🇷 Français' },
+  { value: 'es', label: '🇪🇸 Español' },
 ];
 
 export const currentLanguage = {

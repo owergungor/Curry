@@ -104,6 +104,21 @@
     isOpen = !isOpen;
   }
 
+  let isInvalidHex = $derived(
+    hexInput.length > 0 && !/^#?[0-9A-Fa-f]{6}$/.test(hexInput)
+  );
+
+  function handleHexKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (!isInvalidHex) {
+        updateColor(hexInput);
+        isOpen = false;
+        triggerRef?.focus();
+      }
+    }
+  }
+
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Escape" && isOpen) {
       e.preventDefault();
@@ -199,7 +214,7 @@
         <!-- Controls: HEX / RGB Inputs -->
         <div class="color-controls">
           {#if mode === "hex"}
-            <div class="hex-input-wrap">
+            <div class="hex-input-wrap {isInvalidHex ? 'invalid' : ''}">
               <span class="hash-symbol" aria-hidden="true">#</span>
               <input
                 type="text"
@@ -209,9 +224,11 @@
                   const target = e.target as HTMLInputElement;
                   handleHexInput({ target: { value: "#" + target.value } } as any);
                 }}
+                onkeydown={handleHexKeydown}
                 maxlength={6}
                 spellcheck="false"
                 aria-label="Hex color value"
+                aria-invalid={isInvalidHex}
               />
             </div>
           {:else}
@@ -465,6 +482,12 @@
     padding: 0 8px;
     height: 34px;
     flex: 1;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .hex-input-wrap.invalid {
+    border-color: var(--danger, #ef4444);
+    box-shadow: 0 0 0 1px var(--danger, #ef4444);
   }
 
   .hash-symbol {

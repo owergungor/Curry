@@ -107,26 +107,6 @@
     is_enabled: boolean;
   }
 
-  const GLOW_ANIMATION_OPTIONS: DropdownItem[] = [
-    { value: "pulse", label: "Pulse", description: "Periodic rhythmic pulse" },
-    { value: "sweep", label: "Sweep", description: "Dynamic continuous perimeter travel" },
-    { value: "ambient", label: "Ambient", description: "Harmonic low-frequency border glow" },
-    { value: "comet", label: "Comet", description: "High-intensity orbiting segment with fading tail" },
-    { value: "ripple", label: "Ripple", description: "Expanding wave radiating outward" },
-  ];
-
-  const MONITOR_TARGET_OPTIONS: DropdownItem[] = [
-    { value: "primary", label: "Primary Display", description: "Target primary desktop screen" },
-    { value: "active", label: "Active Window Display", description: "Target monitor with current cursor/active window" },
-    { value: "all", label: "All Displays", description: "Simultaneous ambient glow across all monitors" },
-  ];
-
-  const FULLSCREEN_BEHAVIOR_OPTIONS: DropdownItem[] = [
-    { value: "always_show", label: "Always Show", description: "Display overlay even during fullscreen" },
-    { value: "suppress_in_fullscreen", label: "Suppress in Fullscreen", description: "Hide overlay during fullscreen windows" },
-    { value: "suppress_gaming", label: "Suppress Gaming", description: "Automatically suppress during gaming & fullscreen" },
-  ];
-
   function getAppInitial(name: string | undefined): string {
     if (!name || !name.trim()) return "N";
     return name.trim().charAt(0).toUpperCase();
@@ -144,7 +124,7 @@
     return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
 
-  // Theme Management (Defaults to Promotor Wow)
+  // Theme Management (Defaults to Standard)
   let selectedTheme = $state<ThemeId>(DEFAULT_THEME);
   let currentGlowPalette = $derived(getThemeGlowPalette(selectedTheme));
 
@@ -161,7 +141,9 @@
       const mql = window.matchMedia("(prefers-color-scheme: dark)");
       osPrefersDark = mql.matches;
       const handler = (e: MediaQueryListEvent) => {
-        osPrefersDark = e.matches;
+        if (osPrefersDark !== e.matches) {
+          osPrefersDark = e.matches;
+        }
       };
       mql.addEventListener("change", handler);
       return () => mql.removeEventListener("change", handler);
@@ -199,9 +181,24 @@
     }
   });
 
+  let lastSyncedChrome = {
+    appearance: "" as Appearance,
+    theme: "" as ThemeId,
+    isDark: null as boolean | null,
+  };
+
   // Synchronize native window chrome (caption bar & buttons) whenever theme or appearance changes
+  // Guarded to prevent cyclical event storms or OS feedback loops
   $effect(() => {
     const isDark = effectiveAppearance === "dark";
+    if (
+      lastSyncedChrome.appearance === appearance &&
+      lastSyncedChrome.theme === selectedTheme &&
+      lastSyncedChrome.isDark === isDark
+    ) {
+      return;
+    }
+    lastSyncedChrome = { appearance, theme: selectedTheme, isDark };
     invoke("sync_window_chrome", {
       appearance,
       theme: selectedTheme,
@@ -229,12 +226,12 @@
     saveAppSettings();
   }
 
-  const AUTO_UPDATE_FREQUENCY_OPTIONS: DropdownItem[] = [
-    { value: "startup", label: "At Startup", description: "Check every time Curry opens" },
-    { value: "daily", label: "Once a Day", description: "Check automatically every 24 hours" },
-    { value: "weekly", label: "Every Week", description: "Check automatically every 7 days" },
-    { value: "monthly", label: "Every Month", description: "Check automatically every 30 days" },
-  ];
+  let AUTO_UPDATE_FREQUENCY_OPTIONS = $derived<DropdownItem[]>([
+    { value: "startup", label: t("settings.frequency_startup"), description: t("settings.frequency_startup_desc") },
+    { value: "daily", label: t("settings.frequency_daily"), description: t("settings.frequency_daily_desc") },
+    { value: "weekly", label: t("settings.frequency_weekly"), description: t("settings.frequency_weekly_desc") },
+    { value: "monthly", label: t("settings.frequency_monthly"), description: t("settings.frequency_monthly_desc") },
+  ]);
 
   type UpdateLifecycleState =
     | "idle"
@@ -458,25 +455,25 @@
     }
   }
 
-  const ANIMATION_OPTIONS: DropdownItem[] = [
-    { value: "pulse", label: "Pulse", description: "Periodic rhythmic pulse" },
-    { value: "sweep", label: "Sweep", description: "Dynamic continuous perimeter travel" },
-    { value: "ambient", label: "Ambient", description: "Harmonic low-frequency border glow" },
-    { value: "comet", label: "Comet", description: "High-intensity moving segment with fading tail" },
-    { value: "ripple", label: "Ripple", description: "Expanding wave radiating outward" },
-  ];
+  let ANIMATION_OPTIONS = $derived<DropdownItem[]>([
+    { value: "pulse", label: t("anim.pulse"), description: t("anim.pulse_desc") },
+    { value: "sweep", label: t("anim.sweep"), description: t("anim.sweep_desc") },
+    { value: "ambient", label: t("anim.ambient"), description: t("anim.ambient_desc") },
+    { value: "comet", label: t("anim.comet"), description: t("anim.comet_desc") },
+    { value: "ripple", label: t("anim.ripple"), description: t("anim.ripple_desc") },
+  ]);
 
-  const MONITOR_OPTIONS: DropdownItem[] = [
-    { value: "primary", label: "Primary Display", description: "Render on primary monitor only" },
-    { value: "active", label: "Active Window Display", description: "Follow foreground window monitor" },
-    { value: "all", label: "All Displays", description: "Simultaneous illumination on all displays" },
-  ];
+  let MONITOR_OPTIONS = $derived<DropdownItem[]>([
+    { value: "primary", label: t("glow.monitor_primary"), description: t("glow.monitor_primary_desc") },
+    { value: "active", label: t("glow.monitor_active"), description: t("glow.monitor_active_desc") },
+    { value: "all", label: t("glow.monitor_all"), description: t("glow.monitor_all_desc") },
+  ]);
 
-  const FULLSCREEN_OPTIONS: DropdownItem[] = [
-    { value: "always_show", label: "Always Show", description: "Display overlay even during fullscreen" },
-    { value: "suppress_in_fullscreen", label: "Suppress in Fullscreen", description: "Hide overlay during fullscreen windows" },
-    { value: "suppress_gaming", label: "Suppress Gaming", description: "Automatically suppress during gaming & fullscreen" },
-  ];
+  let FULLSCREEN_OPTIONS = $derived<DropdownItem[]>([
+    { value: "always_show", label: t("fullscreen.always_show"), description: t("fullscreen.always_show_desc") },
+    { value: "suppress_in_fullscreen", label: t("fullscreen.suppress_in_fullscreen"), description: t("fullscreen.suppress_in_fullscreen_desc") },
+    { value: "suppress_gaming", label: t("fullscreen.suppress_gaming"), description: t("fullscreen.suppress_gaming_desc") },
+  ]);
 
   // Loading and skeleton state
   let showNotificationsSkeleton = $state(false);
@@ -572,6 +569,34 @@
   let isCreatingNewProfile = $state(false);
   let isPreviewingProfile = $state(false);
   let profileActionError = $state<string | null>(null);
+
+  // Apps View Mode: "grid" vs "list"
+  let appsViewMode = $state<"grid" | "list">("grid");
+  let profileToDelete = $state<ApplicationProfile | null>(null);
+
+  function setAppsViewMode(mode: "grid" | "list") {
+    appsViewMode = mode;
+    try {
+      localStorage.setItem("curry_apps_view_mode", mode);
+    } catch (err) {
+      console.warn("Failed to persist apps view mode:", err);
+    }
+  }
+
+  function requestDeleteProfile(profile: ApplicationProfile) {
+    profileToDelete = profile;
+  }
+
+  function confirmDeleteProfile() {
+    if (profileToDelete) {
+      deleteProfile(profileToDelete.id);
+      profileToDelete = null;
+    }
+  }
+
+  function cancelDeleteProfile() {
+    profileToDelete = null;
+  }
 
   let filteredProfiles = $derived.by(() => {
     const q = appSearchQuery.trim().toLowerCase();
@@ -950,27 +975,27 @@
   let recentNotifications = $derived(notifications.slice(0, 4));
 
   function getStatusLabel(st: ProviderStatus | undefined): { label: string; kind: "ok" | "warn" | "err" } {
-    if (!st) return { label: "Unknown", kind: "warn" };
+    if (!st) return { label: t("header.status_paused") || "Unknown", kind: "warn" };
     if (typeof st === "string") {
       switch (st) {
         case "listening":
-          return { label: "Active", kind: "ok" };
+          return { label: t("header.status_active") || "Listening", kind: "ok" };
         case "permission_required":
-          return { label: "Permission Required", kind: "warn" };
+          return { label: t("header.status_permission") || "Permission Req", kind: "warn" };
         case "permission_denied":
-          return { label: "Permission Denied", kind: "err" };
+          return { label: t("header.status_error") || "Permission Denied", kind: "err" };
         case "unsupported":
-          return { label: "Unsupported OS", kind: "err" };
+          return { label: t("header.status_error") || "Unsupported OS", kind: "err" };
         case "idle":
-          return { label: "Idle", kind: "warn" };
+          return { label: t("header.status_paused") || "Idle", kind: "warn" };
         default:
           return { label: st, kind: "warn" };
       }
     }
     if ("error" in st) {
-      return { label: `Error: ${st.error}`, kind: "err" };
+      return { label: t("header.status_error") || "Service Error", kind: "err" };
     }
-    return { label: "Unknown", kind: "warn" };
+    return { label: t("header.status_paused") || "Unknown", kind: "warn" };
   }
 
   async function checkConnection() {
@@ -1328,6 +1353,12 @@
           localStorage.setItem("curry_selected_theme", DEFAULT_THEME);
         } catch {}
       }
+
+      // Restore persisted Apps view mode (grid vs list)
+      const savedAppsView = localStorage.getItem("curry_apps_view_mode");
+      if (savedAppsView === "grid" || savedAppsView === "list") {
+        appsViewMode = savedAppsView;
+      }
     } catch {
       selectedTheme = DEFAULT_THEME;
       initLanguage();
@@ -1462,6 +1493,9 @@
 <svelte:window
   onkeydown={(e) => {
     if (e.key === "Escape") {
+      if (profileToDelete) {
+        profileToDelete = null;
+      }
       if (showClearConfirm) {
         showClearConfirm = false;
       }
@@ -1490,20 +1524,21 @@
       <div class="brand-text">
         <div class="brand-row">
           <h1 class="brand-title">Curry</h1>
-          <span class="brand-version-pill">v{formatUserVersion(connectionInfo?.version ?? '1.9')}</span>
+          <span class="brand-version-pill">v{formatUserVersion(connectionInfo?.version ?? '2.1')}</span>
         </div>
       </div>
     </div>
 
     <!-- Center Top Navigation Tabs (Resizable Glass Navbar) -->
     <div class="header-center-wrap">
-      <nav class="header-center-tabs" aria-label="Main Navigation">
+      <nav class="header-center-tabs" aria-label={t('nav.dashboard')}>
         <button
           id="tab-dashboard-btn"
           class="nav-tab {activeTab === 'dashboard' ? 'active' : ''}"
           onclick={() => navigateToTab("dashboard")}
           onkeydown={(e) => handleTabKeyDown(e, "dashboard")}
           aria-current={activeTab === 'dashboard' ? 'page' : undefined}
+          title={t('nav.dashboard')}
         >
           <span class="nav-tab-glow" aria-hidden="true"></span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
@@ -1512,7 +1547,7 @@
             <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
             <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
           </svg>
-          <span class="nav-label">Dashboard</span>
+          <span class="nav-label">{t('nav.dashboard')}</span>
         </button>
 
         <button
@@ -1521,13 +1556,14 @@
           onclick={() => navigateToTab("notifications")}
           onkeydown={(e) => handleTabKeyDown(e, "notifications")}
           aria-current={activeTab === 'notifications' ? 'page' : undefined}
+          title={t('nav.notifications')}
         >
           <span class="nav-tab-glow" aria-hidden="true"></span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
           </svg>
-          <span class="nav-label">Notifications</span>
+          <span class="nav-label">{t('nav.notifications')}</span>
           {#if unreadCount > 0}
             <span class="nav-badge">{unreadCount}</span>
           {/if}
@@ -1539,8 +1575,8 @@
           onclick={() => navigateToTab("applications")}
           onkeydown={(e) => handleTabKeyDown(e, "applications")}
           aria-current={activeTab === 'applications' ? 'page' : undefined}
-          aria-label="Apps"
-          title="Apps"
+          aria-label={t('nav.apps')}
+          title={t('nav.apps')}
         >
           <span class="nav-tab-glow" aria-hidden="true"></span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
@@ -1548,7 +1584,7 @@
             <line x1="8" y1="21" x2="16" y2="21"></line>
             <line x1="12" y1="17" x2="12" y2="21"></line>
           </svg>
-          <span class="nav-label">Apps</span>
+          <span class="nav-label">{t('nav.apps')}</span>
         </button>
 
         <button
@@ -1557,12 +1593,13 @@
           onclick={() => navigateToTab("glow")}
           onkeydown={(e) => handleTabKeyDown(e, "glow")}
           aria-current={activeTab === 'glow' ? 'page' : undefined}
+          title={t('nav.glow')}
         >
           <span class="nav-tab-glow" aria-hidden="true"></span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
           </svg>
-          <span class="nav-label">Glow</span>
+          <span class="nav-label">{t('nav.glow')}</span>
         </button>
 
         <button
@@ -1571,13 +1608,14 @@
           onclick={() => navigateToTab("settings")}
           onkeydown={(e) => handleTabKeyDown(e, "settings")}
           aria-current={activeTab === 'settings' ? 'page' : undefined}
+          title={t('nav.settings')}
         >
           <span class="nav-tab-glow" aria-hidden="true"></span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
           </svg>
-          <span class="nav-label">Settings</span>
+          <span class="nav-label">{t('nav.settings')}</span>
         </button>
       </nav>
     </div>
@@ -1597,7 +1635,7 @@
         <span class="status-dot-pulse {isEnabled ? statusInfo.kind : 'paused'}"></span>
         <span class="status-text-label">
           {#if !isEnabled}
-            Paused
+            {t('header.status_paused')}
           {:else}
             {statusInfo.label}
           {/if}
@@ -1609,13 +1647,13 @@
         class="header-glow-btn"
         onclick={previewDefaultGlow}
         disabled={isPreviewingGlow || !appSettings.glow.enabled}
-        title="Preview default screen-edge glow"
-        aria-label="Preview default screen-edge glow"
+        title={t('header.test_glow')}
+        aria-label={t('header.test_glow')}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-glow-icon {isPreviewingGlow ? 'pulse' : ''}">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
         </svg>
-        <span>Glow</span>
+        <span>{isPreviewingGlow ? t('header.testing') : t('header.test_glow')}</span>
       </button>
     </div>
   </header>
@@ -2061,22 +2099,60 @@
           <div class="view-container applications-view">
             <div class="view-hero-header view-header-row">
               <div>
-                <span class="hero-eyebrow">Per-App Customization</span>
-                <h2 class="view-title">Apps</h2>
-                <p class="view-subtitle">Customize unique edge colors, animations, and fullscreen suppression rules for specific apps</p>
+                <span class="hero-eyebrow">{t('apps.eyebrow')}</span>
+                <div class="apps-title-with-toggle">
+                  <h2 class="view-title">{t('apps.title')}</h2>
+                  <div class="apps-view-toggle ghost-toggle-group" role="group" aria-label={t('apps.view_mode')}>
+                    <button
+                      type="button"
+                      id="apps-view-grid-btn"
+                      class="ghost-icon-btn {appsViewMode === 'grid' ? 'active' : ''}"
+                      onclick={() => setAppsViewMode('grid')}
+                      title={t('apps.view_grid')}
+                      aria-label={t('apps.view_grid')}
+                      aria-pressed={appsViewMode === 'grid'}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="view-toggle-icon">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                        <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                        <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                        <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      id="apps-view-list-btn"
+                      class="ghost-icon-btn {appsViewMode === 'list' ? 'active' : ''}"
+                      onclick={() => setAppsViewMode('list')}
+                      title={t('apps.view_list')}
+                      aria-label={t('apps.view_list')}
+                      aria-pressed={appsViewMode === 'list'}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="view-toggle-icon">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <p class="view-subtitle">{t('apps.desc')}</p>
               </div>
 
               <button
                 id="add-application-btn"
                 class="primary-btn"
                 onclick={openAddProfileModal}
-                title="Add new app profile"
+                title={t('apps.add_profile')}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                <span>+ Add App</span>
+                <span>+ {t('apps.add_profile')}</span>
               </button>
             </div>
 
@@ -2089,7 +2165,7 @@
               <input
                 type="text"
                 bind:value={appSearchQuery}
-                placeholder="Search apps (e.g. Discord, Spotify, steam.exe)..."
+                placeholder={t('apps.search_placeholder')}
                 class="app-search-input"
               />
               {#if appSearchQuery}
@@ -2099,8 +2175,8 @@
               {/if}
             </div>
 
-            <!-- Profiles Grid / List -->
-            <div class="applications-grid">
+            <!-- Profiles Container (Grid vs List) -->
+            <div class="apps-container view-mode-{appsViewMode}">
               {#if filteredProfiles.length === 0}
                 <div class="empty-state-card card">
                   <div class="empty-state-icon">
@@ -2110,110 +2186,213 @@
                       <line x1="12" y1="17" x2="12" y2="21"></line>
                     </svg>
                   </div>
-                  <h3>{appSearchQuery ? "No Matching Profiles" : "No apps configured yet"}</h3>
-                  <p>{appSearchQuery ? `No apps match "${appSearchQuery}".` : "Add an app to customize its notification glow."}</p>
+                  <h3>{appSearchQuery ? "No Matching Profiles" : t('apps.no_profiles')}</h3>
+                  <p>{appSearchQuery ? `No apps match "${appSearchQuery}".` : t('apps.no_profiles_desc')}</p>
                   <button class="primary-btn" onclick={openAddProfileModal}>
-                    <span>+ Add App</span>
+                    <span>+ {t('apps.add_profile')}</span>
                   </button>
                 </div>
-              {:else}
-                {#each filteredProfiles as profile (profile.id)}
-                  <div class="app-profile-card card {profile.enabled ? '' : 'disabled'}">
-                    <div class="app-profile-left">
-                      <div
-                        class="app-avatar-box"
-                        style:--app-glow-color={profile.color || appSettings.glow.color}
-                        style:border-color={profile.color || appSettings.glow.color}
-                      >
-                        <span class="app-avatar-letter">{getAppInitial(profile.applicationName)}</span>
-                      </div>
-                      <div class="app-info">
-                        <div class="app-name-row">
-                          <h4 class="app-name">{profile.applicationName}</h4>
-                          <span class="custom-profile-badge">Custom profile</span>
-                          {#if !profile.enabled}
-                            <span class="suppressed-badge">Disabled</span>
-                          {/if}
+              {:else if appsViewMode === "grid"}
+                <div class="applications-grid">
+                  {#each filteredProfiles as profile (profile.id)}
+                    <div class="app-profile-card card {profile.enabled ? '' : 'disabled'}">
+                      <div class="app-profile-left">
+                        <div
+                          class="app-avatar-box"
+                          style:--app-glow-color={profile.color || appSettings.glow.color}
+                          style:border-color={profile.color || appSettings.glow.color}
+                        >
+                          <span class="app-avatar-letter">{getAppInitial(profile.applicationName)}</span>
                         </div>
-                        <span class="app-executable-text" title={profile.executablePath || profile.executableName}>
-                          {profile.executableName}
-                          {#if profile.executablePath}
-                            <span class="app-path-hint" title={profile.executablePath}>• {profile.executablePath}</span>
-                          {/if}
-                        </span>
-                        <div class="app-tags-row">
-                          <span class="app-tag anim">
-                            {(profile.animation || appSettings.glow.animation_style).toUpperCase()}
+                        <div class="app-info">
+                          <div class="app-name-row">
+                            <h4 class="app-name">{profile.applicationName}</h4>
+                            <span class="custom-profile-badge">Custom profile</span>
+                            {#if !profile.enabled}
+                              <span class="suppressed-badge">Disabled</span>
+                            {/if}
+                          </div>
+                          <span class="app-executable-text" title={profile.executablePath || profile.executableName}>
+                            {profile.executableName}
+                            {#if profile.executablePath}
+                              <span class="app-path-hint" title={profile.executablePath}>• {profile.executablePath}</span>
+                            {/if}
                           </span>
-                          <span class="app-tag">
-                            {Math.round((profile.intensity ?? appSettings.glow.intensity) * 100)}%
-                          </span>
-                          <span class="app-tag">
-                            {profile.duration ? `${profile.duration}s` : `${appSettings.glow.duration_ms / 1000}s`}
-                          </span>
-                          {#if profile.suppressInFullscreen}
-                            <span class="app-tag fs-suppressed">Fullscreen Suppressed</span>
-                          {/if}
-                          {#if profile.borderThickness != null}
-                            <span class="app-tag">{profile.borderThickness}px border</span>
-                          {/if}
-                          {#if profile.cornerRounding != null}
-                            <span class="app-tag">{profile.cornerRounding}px radius</span>
-                          {/if}
-                          {#if profile.monitorTarget && profile.monitorTarget !== 'primary'}
-                            <span class="app-tag monitor">
-                              {profile.monitorTarget === 'all' ? 'All Displays' : 'Active Window'}
+                          <div class="app-tags-row">
+                            <span class="app-tag anim">
+                              {(profile.animation || appSettings.glow.animation_style).toUpperCase()}
                             </span>
-                          {/if}
+                            <span class="app-tag">
+                              {Math.round((profile.intensity ?? appSettings.glow.intensity) * 100)}%
+                            </span>
+                            <span class="app-tag">
+                              {profile.duration ? `${profile.duration}s` : `${appSettings.glow.duration_ms / 1000}s`}
+                            </span>
+                            {#if profile.suppressInFullscreen}
+                              <span class="app-tag fs-suppressed">{t('apps.fullscreen_suppressed')}</span>
+                            {/if}
+                            {#if profile.borderThickness != null}
+                              <span class="app-tag">{profile.borderThickness}px border</span>
+                            {/if}
+                            {#if profile.cornerRounding != null}
+                              <span class="app-tag">{profile.cornerRounding}px radius</span>
+                            {/if}
+                            {#if profile.monitorTarget && profile.monitorTarget !== 'primary'}
+                              <span class="app-tag monitor">
+                                {profile.monitorTarget === 'all' ? 'All Displays' : 'Active Window'}
+                              </span>
+                            {/if}
+                          </div>
                         </div>
                       </div>
+
+                      <div class="app-profile-actions">
+                        <button
+                          class="icon-action-btn"
+                          onclick={() => previewProfileGlow(profile)}
+                          title={t('apps.preview_btn')}
+                          disabled={isPreviewingProfile}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon {isPreviewingProfile ? 'pulse' : ''}">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                          </svg>
+                          <span>{t('apps.preview_btn')}</span>
+                        </button>
+
+                        <AppleSwitch
+                          checked={profile.enabled}
+                          onchange={() => toggleProfile(profile)}
+                          ariaLabel={profile.enabled ? `Disable profile ${profile.applicationName}` : `Enable profile ${profile.applicationName}`}
+                          size="sm"
+                        />
+
+                        <button
+                          class="secondary-btn edit-btn"
+                          onclick={() => openEditProfileModal(profile)}
+                          title={t('apps.edit')}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                          <span>{t('apps.edit')}</span>
+                        </button>
+
+                        <button
+                          class="danger-icon-btn"
+                          onclick={() => requestDeleteProfile(profile)}
+                          title={t('apps.delete')}
+                          aria-label={`Delete ${profile.applicationName} profile`}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
+                  {/each}
+                </div>
+              {:else}
+                <!-- LIST VIEW: Strict Order: Switch -> Preview -> Edit -> Delete -->
+                <div class="applications-list" role="list">
+                  {#each filteredProfiles as profile (profile.id)}
+                    <div class="app-profile-list-item card {profile.enabled ? '' : 'disabled'}" role="listitem">
+                      <div class="app-profile-left">
+                        <div
+                          class="app-avatar-box"
+                          style:--app-glow-color={profile.color || appSettings.glow.color}
+                          style:border-color={profile.color || appSettings.glow.color}
+                        >
+                          <span class="app-avatar-letter">{getAppInitial(profile.applicationName)}</span>
+                        </div>
+                        <div class="app-info">
+                          <div class="app-name-row">
+                            <h4 class="app-name">{profile.applicationName}</h4>
+                            {#if !profile.enabled}
+                              <span class="suppressed-badge">Disabled</span>
+                            {/if}
+                          </div>
+                          <span class="app-executable-text" title={profile.executablePath || profile.executableName}>
+                            {profile.executableName}
+                            {#if profile.executablePath}
+                              <span class="app-path-hint" title={profile.executablePath}>• {profile.executablePath}</span>
+                            {/if}
+                          </span>
+                          <div class="app-tags-row">
+                            <span class="app-tag anim">
+                              {(profile.animation || appSettings.glow.animation_style).toUpperCase()}
+                            </span>
+                            <span class="app-tag">
+                              {Math.round((profile.intensity ?? appSettings.glow.intensity) * 100)}%
+                            </span>
+                            <span class="app-tag">
+                              {profile.duration ? `${profile.duration}s` : `${appSettings.glow.duration_ms / 1000}s`}
+                            </span>
+                            {#if profile.suppressInFullscreen}
+                              <span class="app-tag fs-suppressed">{t('apps.fullscreen_suppressed')}</span>
+                            {/if}
+                          </div>
+                        </div>
+                      </div>
 
-                    <div class="app-profile-actions">
-                      <button
-                        class="icon-action-btn"
-                        onclick={() => previewProfileGlow(profile)}
-                        title="Preview glow for this app"
-                        disabled={isPreviewingProfile}
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon {isPreviewingProfile ? 'pulse' : ''}">
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                          <circle cx="12" cy="12" r="3"></circle>
-                        </svg>
-                        <span>Preview</span>
-                      </button>
+                      <!-- STRICT ORDER: Switch -> Preview (ghost) -> Edit (ghost) -> Delete -->
+                      <div class="app-profile-list-actions">
+                        <!-- 1. Switch -->
+                        <AppleSwitch
+                          checked={profile.enabled}
+                          onchange={() => toggleProfile(profile)}
+                          ariaLabel={profile.enabled ? `Disable profile ${profile.applicationName}` : `Enable profile ${profile.applicationName}`}
+                          size="sm"
+                        />
 
-                      <AppleSwitch
-                        checked={profile.enabled}
-                        onchange={() => toggleProfile(profile)}
-                        ariaLabel={profile.enabled ? `Disable profile ${profile.applicationName}` : `Enable profile ${profile.applicationName}`}
-                        size="sm"
-                      />
+                        <!-- 2. Preview (Ghost button) -->
+                        <button
+                          type="button"
+                          class="ghost-action-btn"
+                          onclick={() => previewProfileGlow(profile)}
+                          title={t('apps.preview_btn')}
+                          disabled={isPreviewingProfile}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon {isPreviewingProfile ? 'pulse' : ''}">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                          </svg>
+                          <span>{t('apps.preview_btn')}</span>
+                        </button>
 
-                      <button
-                        class="secondary-btn edit-btn"
-                        onclick={() => openEditProfileModal(profile)}
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                        <span>Edit</span>
-                      </button>
+                        <!-- 3. Edit (Ghost button) -->
+                        <button
+                          type="button"
+                          class="ghost-action-btn"
+                          onclick={() => openEditProfileModal(profile)}
+                          title={t('apps.edit')}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                          <span>{t('apps.edit')}</span>
+                        </button>
 
-                      <button
-                        class="danger-icon-btn"
-                        onclick={() => deleteProfile(profile.id)}
-                        title="Delete app profile"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                      </button>
+                        <!-- 4. Delete (Danger button with confirmation flow) -->
+                        <button
+                          type="button"
+                          class="danger-icon-btn"
+                          onclick={() => requestDeleteProfile(profile)}
+                          title={t('apps.delete')}
+                          aria-label={`Delete ${profile.applicationName} profile`}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                {/each}
+                  {/each}
+                </div>
               {/if}
             </div>
           </div>
@@ -3072,6 +3251,52 @@
             disabled={isClearing}
           >
             {isClearing ? "Deleting..." : "Yes, Delete All"}
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Delete Profile Confirmation Modal Dialog -->
+  {#if profileToDelete}
+    <div class="modal-backdrop">
+      <button
+        type="button"
+        class="modal-backdrop-dismiss"
+        onclick={cancelDeleteProfile}
+        aria-label="Close dialog"
+      ></button>
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-profile-dialog-title"
+        tabindex="-1"
+      >
+        <div class="modal-icon-circle danger">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </div>
+
+        <h3 id="delete-profile-dialog-title" class="modal-title">{t('apps.confirm_delete_title')}</h3>
+        <p class="modal-body">
+          {t('apps.confirm_delete_msg', { name: profileToDelete.applicationName })}
+        </p>
+
+        <div class="modal-footer-btns">
+          <button
+            class="secondary-btn"
+            onclick={cancelDeleteProfile}
+          >
+            {t('common.cancel')}
+          </button>
+          <button
+            class="danger-btn"
+            onclick={confirmDeleteProfile}
+          >
+            {t('common.delete')}
           </button>
         </div>
       </div>
@@ -4570,6 +4795,7 @@
     animation-duration: 220ms;
     animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     animation-fill-mode: both;
+    will-change: transform, opacity;
   }
 
   .hero-page-container.page-forward {
@@ -4588,40 +4814,147 @@
   @keyframes hero-enter-forward {
     0% {
       opacity: 0;
-      transform: translate3d(20px, 0, 0);
-      filter: blur(3px);
+      transform: translate3d(16px, 0, 0);
     }
     100% {
       opacity: 1;
       transform: translate3d(0, 0, 0);
-      filter: blur(0);
     }
   }
 
   @keyframes hero-enter-backward {
     0% {
       opacity: 0;
-      transform: translate3d(-20px, 0, 0);
-      filter: blur(3px);
+      transform: translate3d(-16px, 0, 0);
     }
     100% {
       opacity: 1;
       transform: translate3d(0, 0, 0);
-      filter: blur(0);
     }
   }
 
   @keyframes hero-enter-none {
     0% {
       opacity: 0;
-      transform: translateY(10px);
-      filter: blur(3px);
+      transform: translateY(8px);
     }
     100% {
       opacity: 1;
       transform: translateY(0);
-      filter: blur(0);
     }
+  }
+
+  /* Apps View Toggle & List Mode Styling */
+  .apps-title-with-toggle {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 4px;
+  }
+
+  .apps-view-toggle {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface-elevated, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+    border-radius: 8px;
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .ghost-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted, #888);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .ghost-icon-btn:hover {
+    color: var(--text, #ededed);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .ghost-icon-btn.active {
+    color: var(--accent, #6366f1);
+    background: var(--surface-hover, rgba(255, 255, 255, 0.12));
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  }
+
+  .ghost-icon-btn:focus-visible {
+    outline: 2px solid var(--accent, #6366f1);
+    outline-offset: 1px;
+  }
+
+  .ghost-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+    color: var(--text, #ededed);
+    padding: 6px 12px;
+    border-radius: 7px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .ghost-action-btn:hover:not(:disabled) {
+    background: var(--surface-hover, rgba(255, 255, 255, 0.08));
+    border-color: var(--border-strong, rgba(255, 255, 255, 0.22));
+    transform: translateY(-1px);
+  }
+
+  .ghost-action-btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .ghost-action-btn:focus-visible {
+    outline: 2px solid var(--accent, #6366f1);
+    outline-offset: 2px;
+  }
+
+  .ghost-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .applications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .app-profile-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-radius: 10px;
+    background: var(--surface, #111);
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+    transition: all 0.15s ease;
+  }
+
+  .app-profile-list-item:hover {
+    border-color: var(--border-strong, rgba(255, 255, 255, 0.18));
+    background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+  }
+
+  .app-profile-list-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
   }
 
   .view-container {

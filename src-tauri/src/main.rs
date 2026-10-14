@@ -1111,10 +1111,14 @@ mod tests {
 
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"promotor-wow\"").unwrap(),
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         );
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"perpetuity\"").unwrap(),
+            AppTheme::Perpetuity
+        );
+        assert_eq!(
+            serde_json::from_str::<AppTheme>("\"standard\"").unwrap(),
             AppTheme::Perpetuity
         );
         assert_eq!(
@@ -1139,7 +1143,7 @@ mod tests {
         );
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"bubblegum\"").unwrap(),
-            AppTheme::Bubblegum
+            AppTheme::Perpetuity
         );
         assert_eq!(
             serde_json::from_str::<AppTheme>("\"amberstate\"").unwrap(),
@@ -2648,10 +2652,6 @@ mod tests {
         assert_eq!(light_zen.caption_color, 0x00F2F6F7); // #f7f6f2
 
         // Dark mode resolution
-        let dark_promotor = WindowChromeColors::resolve(AppTheme::PromotorWow, true);
-        assert!(dark_promotor.is_dark);
-        assert_eq!(dark_promotor.caption_color, 0x00140E0C); // #0c0e14
-
         let dark_perpetuity = WindowChromeColors::resolve(AppTheme::Perpetuity, true);
         assert!(dark_perpetuity.is_dark);
         assert_eq!(dark_perpetuity.caption_color, 0x000A0A0A); // #0a0a0a
@@ -2677,7 +2677,7 @@ mod tests {
         // Explicit Dark always returns true
         assert!(is_effective_dark_mode(
             AppearanceMode::Dark,
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         ));
         assert!(is_effective_dark_mode(
             AppearanceMode::Dark,
@@ -2687,7 +2687,7 @@ mod tests {
         // Explicit Light always returns false
         assert!(!is_effective_dark_mode(
             AppearanceMode::Light,
-            AppTheme::PromotorWow
+            AppTheme::Perpetuity
         ));
         assert!(!is_effective_dark_mode(
             AppearanceMode::Light,

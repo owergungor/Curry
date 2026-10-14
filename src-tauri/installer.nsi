@@ -526,18 +526,18 @@ FunctionEnd
   !include "{{this}}"
 {{/each}}
 
-LangString runAtStartup ${LANG_ENGLISH} "Start Curry when I sign in"
+LangString runAtStartup ${LANG_ENGLISH} "Start Curry when Windows starts"
 !ifdef LANG_TURKISH
-LangString runAtStartup ${LANG_TURKISH} "Oturum acildiginda Curry'yi baslat"
+LangString runAtStartup ${LANG_TURKISH} "Windows basladiginda Curry'yi baslat"
 !endif
 !ifdef LANG_GERMAN
-LangString runAtStartup ${LANG_GERMAN} "Curry beim Anmelden starten"
+LangString runAtStartup ${LANG_GERMAN} "Curry beim Windows-Start ausfuehren"
 !endif
 !ifdef LANG_FRENCH
-LangString runAtStartup ${LANG_FRENCH} "Lancer Curry a la connexion"
+LangString runAtStartup ${LANG_FRENCH} "Demarrer Curry au demarrage de Windows"
 !endif
 !ifdef LANG_SPANISH
-LangString runAtStartup ${LANG_SPANISH} "Iniciar Curry al iniciar sesion"
+LangString runAtStartup ${LANG_SPANISH} "Iniciar Curry cuando Windows se inicie"
 !endif
 
 Function .onInit

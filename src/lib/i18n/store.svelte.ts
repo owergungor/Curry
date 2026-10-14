@@ -1,7 +1,11 @@
 import type { SupportedLanguage } from './index';
 
+if (typeof (globalThis as any).$state === 'undefined') {
+  (globalThis as any).$state = <T>(init: T) => init;
+}
+
 class LanguageState {
-  value = $state<SupportedLanguage>('en');
+  value: SupportedLanguage = $state('en');
 }
 
 export const languageState = new LanguageState();

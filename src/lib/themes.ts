@@ -1,12 +1,10 @@
 export type ThemeId =
   | 'perpetuity'
-  | 'promotor-wow'
   | 'indigo'
   | 'violet'
   | 'amethyst-haze'
   | 'catppuccin'
   | 'neon-magenta'
-  | 'bubblegum'
   | 'sakura'
   | 'burgundy'
   | 'amberstate'
@@ -42,18 +40,18 @@ export interface ThemeDefinition {
   lightColors?: ThemeColors;
 }
 
-/** Standard (Vercel Monochrome Precision) is the first and default theme */
+/** Standard is the first and default theme */
 export const DEFAULT_THEME: ThemeId = 'perpetuity';
 
 export const THEMES: ThemeDefinition[] = [
   // ---------------------------------------------------------------------------
-  // GROUP 1: MONOCHROME PRECISION (Standard - Vercel Design Language)
+  // 1. Standard (Default)
   // ---------------------------------------------------------------------------
   {
     id: 'perpetuity',
-    name: 'Standard (Vercel)',
+    name: 'Standard',
     label: 'Standard',
-    description: 'Precision monochrome obsidian & electric cyan-indigo glow (Default)',
+    description: 'Precision monochrome obsidian & electric cyan-indigo glow',
     colorFamily: 'monochrome',
     familyLabel: 'Monochrome Precision',
     swatches: ['#000000', '#111111', '#0070f3', '#ffffff'],
@@ -89,36 +87,12 @@ export const THEMES: ThemeDefinition[] = [
   },
 
   // ---------------------------------------------------------------------------
-  // GROUP 2: SAPPHIRE & OCEAN BLUE FAMILY (Deep Obsidian Navy & Electric Aura)
+  // 2. Indigo
   // ---------------------------------------------------------------------------
   {
-    id: 'promotor-wow',
-    name: 'Promotor Wow',
-    label: 'Promotor Wow',
-    description: 'Deep obsidian navy & electric vibrant orange-coral aura',
-    colorFamily: 'sapphire',
-    familyLabel: 'Sapphire & Ocean Blue',
-    swatches: ['#0c0e14', '#131722', '#ff5c00', '#ff8a00'],
-    glowPalette: ['#ff5c00', '#ff8a00', '#ffaa33', '#f97316', '#ea580c', '#fdba74'],
-    colors: {
-      background: '#0c0e14',
-      backgroundSecondary: '#07080c',
-      surface: '#131722',
-      surfaceElevated: '#1c2233',
-      text: '#f8fafc',
-      textMuted: '#94a3b8',
-      border: 'rgba(255, 255, 255, 0.08)',
-      accent: '#ff5c00',
-      accentSecondary: '#ff8a00',
-      success: '#10b981',
-      warning: '#f59e0b',
-      danger: '#ef4444',
-    },
-  },
-  {
     id: 'indigo',
-    name: 'Indigo Frost',
-    label: 'Indigo Frost',
+    name: 'Indigo',
+    label: 'Indigo',
     description: 'Deep midnight navy & high-contrast electric indigo aura',
     colorFamily: 'sapphire',
     familyLabel: 'Sapphire & Ocean Blue',
@@ -257,30 +231,7 @@ export const THEMES: ThemeDefinition[] = [
       danger: '#e11488',
     },
   },
-  {
-    id: 'bubblegum',
-    name: 'Bubblegum',
-    label: 'Bubblegum',
-    description: 'Vibrant cyber-pop neon rose, velvet berry & berry noir',
-    colorFamily: 'vibrant',
-    familyLabel: 'Electric Magenta & Rose',
-    swatches: ['#140a14', '#221022', '#f43f5e', '#c084fc'],
-    glowPalette: ['#f43f5e', '#c084fc', '#fb7185', '#e11d48', '#ec4899', '#f472b6', '#fda4af'],
-    colors: {
-      background: '#140a14',
-      backgroundSecondary: '#0c050c',
-      surface: '#221022',
-      surfaceElevated: '#321832',
-      text: '#fdf2f8',
-      textMuted: '#fda4af',
-      border: 'rgba(244, 63, 94, 0.22)',
-      accent: '#f43f5e',
-      accentSecondary: '#c084fc',
-      success: '#4ade80',
-      warning: '#facc15',
-      danger: '#e11d48',
-    },
-  },
+
   {
     id: 'sakura',
     name: 'Sakura Dawn',
