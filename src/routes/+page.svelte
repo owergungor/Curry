@@ -210,7 +210,7 @@
 
   // Software Update Management (v2.0)
   function formatUserVersion(v: string | undefined | null): string {
-    if (!v) return "2.0";
+    if (!v) return "2.1";
     const clean = v.replace(/^v/, "");
     const parts = clean.split(".");
     if (parts.length >= 2) {
@@ -289,7 +289,7 @@
         pendingUpdateObj = null;
         updateState = "uptodate";
         updateStatusMessage = t("updater.up_to_date", {
-          version: formatUserVersion(connectionInfo?.version ?? "2.0"),
+          version: formatUserVersion(connectionInfo?.version ?? "2.1"),
         });
       }
     } catch (err: unknown) {

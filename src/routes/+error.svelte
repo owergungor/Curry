@@ -21,7 +21,7 @@
       severity: "fatal",
       timestamp: new Date().toISOString(),
       platform: typeof navigator !== "undefined" ? navigator.userAgent : "desktop",
-      appVersion: "2.0",
+      appVersion: "2.1",
       sanitizedMessage: "Fatal application error rendered at root error boundary.",
       technicalDetails: rawMessage,
     });
