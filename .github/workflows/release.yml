@@ -494,8 +494,15 @@ jobs:
           Compress-Archive -Path "$stage\*" -DestinationPath "dist_release\Curry_${tag}_win-x64.zip" -Force
           Remove-Item -Recurse -Force $stage
 
-          # Stage updater artifacts if created (.nsis.zip, .zip, and .sig)
-          $updaterFiles = Get-ChildItem -Path "$targetDir\bundle\nsis" -Include "*.nsis.zip","*.nsis.zip.sig","*.zip.sig" -Recurse -ErrorAction SilentlyContinue
+          # Stage updater artifacts and signatures (.sig, .nsis.zip, and installer signatures)
+          $sigFiles = Get-ChildItem -Path "$targetDir\bundle" -Filter "*.sig" -Recurse -ErrorAction SilentlyContinue
+          if ($sigFiles) {
+            $sigFiles | Copy-Item -Destination "dist_release\" -Force
+          }
+          if ($nsisExe -and (Test-Path "$($nsisExe.FullName).sig")) {
+            Copy-Item "$($nsisExe.FullName).sig" "dist_release\Curry_${tag}_win-x64-setup.exe.sig" -Force
+          }
+          $updaterFiles = Get-ChildItem -Path "$targetDir\bundle" -Include "*.nsis.zip","*.nsis.zip.sig","*.zip.sig" -Recurse -ErrorAction SilentlyContinue
           if ($updaterFiles) {
             $updaterFiles | Copy-Item -Destination "dist_release\" -Force
           }
@@ -562,8 +569,8 @@ jobs:
           # Cryptographic Minisign verification of updater archives against signatures
           if [ "$IS_TEST" != "true" ]; then
             echo "=== Cryptographic Minisign Verification ==="
-            WIN_ARCHIVE=$(find dist_release -maxdepth 1 -name "*.nsis.zip" ! -name "*.sig" | head -n 1)
-            WIN_SIG=$(find dist_release -maxdepth 1 -name "*.nsis.zip.sig" | head -n 1)
+            WIN_ARCHIVE=$(find dist_release -maxdepth 1 \( -name "*.nsis.zip" -o -name "*_win-x64-setup.exe" -o -name "*setup.exe" \) ! -name "*.sig" | head -n 1)
+            WIN_SIG=$(find dist_release -maxdepth 1 \( -name "*.nsis.zip.sig" -o -name "*_win-x64-setup.exe.sig" -o -name "*setup.exe.sig" \) | head -n 1)
 
             if [ "$TARGET_PLATFORM" != "windows-only" ]; then
               MAC_ARCHIVE=$(find dist_release -maxdepth 1 -name "*.tar.gz" ! -name "*.sig" | head -n 1)
@@ -584,7 +591,7 @@ jobs:
               exit 1
             fi
 
-            echo "Verifying Windows updater archive with Minisign ($WIN_ARCHIVE)..."
+            echo "Verifying Windows updater archive with Minisign ($WIN_ARCHIVE with $WIN_SIG)..."
             minisign -Vm "$WIN_ARCHIVE" -x "$WIN_SIG" -p dist_release/curry_updater.pub
             echo "Windows updater archive cryptographically verified against public key."
           else
@@ -611,8 +618,8 @@ jobs:
             const macArchive = files.find(f => f.endsWith('.tar.gz') && !f.endsWith('.sig'));
             const macSigFile = macArchive ? files.find(f => f === macArchive + '.sig' || (f.endsWith('.tar.gz.sig') && f.startsWith(macArchive.replace('.tar.gz', '')))) : null;
 
-            const winArchive = files.find(f => (f.endsWith('.nsis.zip') || (f.endsWith('.zip') && f.includes('setup'))) && !f.endsWith('.sig'));
-            const winSigFile = winArchive ? files.find(f => f === winArchive + '.sig' || f.endsWith('.nsis.zip.sig')) : null;
+            const winArchive = files.find(f => (f.endsWith('.nsis.zip') || f.endsWith('_win-x64-setup.exe') || (f.endsWith('.exe') && f.includes('setup'))) && !f.endsWith('.sig'));
+            const winSigFile = winArchive ? (files.find(f => f === winArchive + '.sig') || files.find(f => f.endsWith('.nsis.zip.sig') || f.endsWith('setup.exe.sig') || f.endsWith('.sig'))) : null;
 
             let macSig = '';
             let winSig = '';

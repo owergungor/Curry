@@ -195,6 +195,18 @@ test("latest.json validator strictly enforces dual-platform in 'all' mode and si
     () => validateManifest(badSigManifest, "windows-only"),
     /Invalid or empty signature/
   );
+
+  // Accepts signed NSIS setup installer URL directly
+  const installerManifest = {
+    ...windowsOnlyManifest,
+    platforms: {
+      "windows-x86_64": {
+        signature: "untrusted comment: minisign signature\nsig_win_exe",
+        url: "https://github.com/owergungor/Curry/releases/download/v2.1/Curry_v2.1_win-x64-setup.exe",
+      },
+    },
+  };
+  assert.equal(validateManifest(installerManifest, "windows-only"), true);
 });
 
 test("release.yml defines target_platform with safe defaults and conditional job gating", () => {
