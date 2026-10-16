@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1] - 2026-10-16
+
+### Added
+- Comprehensive 5-language internationalization (`en`, `tr`, `de`, `fr`, `es`) with reactive language switching across all dashboard views.
+- Dual Apps layout modes: responsive card Grid view and streamlined List view with persistent user preference (`curry_apps_view_mode`).
+- Application profile deletion confirmation modal dialog with localized name interpolation.
+- Reusable `$derived` translation binding for theme and appearance mode selection tabs.
+
+### Fixed
+- Parameterized translation interpolation in application search empty state (`apps.no_matching_desc`).
+- Appearance mode tab labels now dynamically reflect the active language without requiring application restart.
+
+---
+
 ## [2.0] - 2026-10-11
 
 ### Added

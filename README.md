@@ -25,10 +25,14 @@ Curry captures incoming desktop notifications in real time and illuminates your 
 - **Real-Time Notification Capture**: Captures desktop notifications locally via native APIs (WinRT on Windows).
 - **Searchable History**: In-memory ring buffer with full-text search, filtering, and read/unread states.
 - **Application Profiles**: Custom glow colors, animations, monitor targets, and duration overrides per application.
+- **Apps Grid & List View Modes**: Toggle between high-density card grid and streamlined list view for application profiles, with persistent layout preference.
+- **Profile Deletion Safety**: Interactive confirmation modal dialog protecting against accidental deletion of application profiles.
+- **Multilingual Support (i18n)**: Fully localized across 5 languages (English 🇬🇧, Türkçe 🇹🇷, Deutsch 🇩🇪, Français 🇫🇷, Español 🇪🇸) with instant reactive switching.
 - **Fullscreen & Gaming Suppression**: Automatically suppresses ambient glow overlays during full-screen games and media playback.
 - **OLED Mode Optimization**: Caps peak brightness and narrows border spread to preserve panel longevity and reduce power consumption.
 - **Modern Desktop UI**: Refined interface with tactile controls, smooth transitions, and keyboard accessibility.
 - **Appearance Modes**: Seamless switching between System, Light, and Dark appearance.
+- **Start with Windows**: Native background startup option configurable during installation and in settings.
 - **Multi-Display Support**: Route ambient glow to primary display, active window display, or all connected monitors.
 - **System Tray & Single Instance**: Runs quietly in the system tray with global single-instance process protection.
 - **Automatic Updates**: Integrated update delivery powered by Tauri's updater.
@@ -36,22 +40,22 @@ Curry captures incoming desktop notifications in real time and illuminates your 
 
 ## Themes
 
-Curry features 10 curated color themes designed for optimal contrast and visual clarity:
+Curry features curated color themes designed for optimal contrast and visual clarity:
 
-- **Promotor Wow** *(Default)* — Deep obsidian navy with electric vibrant orange-coral aura
+- **Standard (Perpetuity)** *(Default)* — Precision monochrome obsidian slate with electric cyan-indigo glow
 - **Zen Linen** — Calm organic linen, airy warm stone, and refined sage-moss accents
 - **Matrix Green** — High-contrast cyber terminal aesthetic with luminous emerald glow
 - **Neon Magenta** — Midnight void with high-voltage neon magenta radiance
-- **Perpetuity** — Precision obsidian slate with cyan-indigo glow
 - **Catppuccin** — Soothing pastel lavender and mocha crust
 - **Amethyst Haze** — Deep violet aura with vivid amethyst accents
 - **Sage Mist** — Botanical evergreen tones with soft mint highlights
-- **Bubblegum** — Vibrant cyber-pop neon rose with electric cyan
+- **Sakura Dawn** — Soft cherry blossom dawn with delicate rose quartz
+- **Mocha Mousse** — Rich velvety espresso, warm caramel, and toasted cocoa
 - **Amber Slate** — Molten warm amber and industrial slate steel
 
 ## Installation
 
-Download the latest release (**v2.0**) from [GitHub Releases](https://github.com/owergungor/Curry/releases).
+Download the latest release (**v2.0**, with **v2.1** enhancements in development) from [GitHub Releases](https://github.com/owergungor/Curry/releases).
 
 ### Windows
 
