@@ -113,14 +113,14 @@
   }
 
   function formatTimestamp(ts: number): string {
-    if (!ts || isNaN(ts)) return "Just now";
+    if (!ts || isNaN(ts)) return t("common.just_now");
     const elapsedSecs = Math.floor((Date.now() - ts) / 1000);
-    if (elapsedSecs < 10) return "Just now";
-    if (elapsedSecs < 60) return `${elapsedSecs}s ago`;
+    if (elapsedSecs < 10) return t("common.just_now");
+    if (elapsedSecs < 60) return t("common.seconds_ago", { n: elapsedSecs });
     const elapsedMins = Math.floor(elapsedSecs / 60);
-    if (elapsedMins < 60) return `${elapsedMins}m ago`;
+    if (elapsedMins < 60) return t("common.minutes_ago", { n: elapsedMins });
     const elapsedHours = Math.floor(elapsedMins / 60);
-    if (elapsedHours < 24) return `${elapsedHours}h ago`;
+    if (elapsedHours < 24) return t("common.hours_ago", { n: elapsedHours });
     return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
 
@@ -1358,9 +1358,12 @@
       const savedAppsView = localStorage.getItem("curry_apps_view_mode");
       if (savedAppsView === "grid" || savedAppsView === "list") {
         appsViewMode = savedAppsView;
+      } else {
+        appsViewMode = "grid";
       }
     } catch {
       selectedTheme = DEFAULT_THEME;
+      appsViewMode = "grid";
       initLanguage();
     }
 
@@ -1660,7 +1663,7 @@
 
   <!-- Main Viewport with Directional Hero Page Transition -->
   <main class="main-viewport" id="main-content">
-    {#key activeTab}
+    {#key `${activeTab}_${$currentLanguage}`}
       <div class="hero-page-container page-{navDirection}">
         {#if activeTab === "dashboard"}
           <!-- ============================================================= -->
@@ -1668,16 +1671,16 @@
           <!-- ============================================================= -->
           <div class="view-container dashboard-view">
             <div class="view-hero-header">
-              <span class="hero-eyebrow">Windows 11 Desktop Engine</span>
-              <h2 class="view-title">Dashboard Overview</h2>
-              <p class="view-subtitle">Real-time status of your Windows notification listener and ambient glow engine.</p>
+              <span class="hero-eyebrow">{t('dashboard.eyebrow')}</span>
+              <h2 class="view-title">{t('dashboard.title')}</h2>
+              <p class="view-subtitle">{t('dashboard.desc')}</p>
             </div>
 
             <!-- 4 Metric Cards (Using actual live data) -->
             <div class="metrics-grid">
               <div class="metric-card">
                 <div class="metric-top">
-                  <span class="metric-label">Total Captured</span>
+                  <span class="metric-label">{t('dashboard.stat_total')}</span>
                   <div class="metric-icon-wrap total">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <rect x="2" y="3" width="20" height="14" rx="2"></rect>
@@ -1687,12 +1690,12 @@
                   </div>
                 </div>
                 <div class="metric-value">{notifications.length}</div>
-                <span class="metric-foot">Stored in local history</span>
+                <span class="metric-foot">{t('dashboard.total_sub')}</span>
               </div>
 
               <div class="metric-card">
                 <div class="metric-top">
-                  <span class="metric-label">Unread Alerts</span>
+                  <span class="metric-label">{t('dashboard.stat_unread')}</span>
                   <div class="metric-icon-wrap unread">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
@@ -1701,12 +1704,12 @@
                   </div>
                 </div>
                 <div class="metric-value">{unreadCount}</div>
-                <span class="metric-foot">Awaiting user review</span>
+                <span class="metric-foot">{t('dashboard.unread_sub')}</span>
               </div>
 
               <div class="metric-card">
                 <div class="metric-top">
-                  <span class="metric-label">Critical Alerts</span>
+                  <span class="metric-label">{t('dashboard.stat_critical')}</span>
                   <div class="metric-icon-wrap critical">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
@@ -1716,12 +1719,12 @@
                   </div>
                 </div>
                 <div class="metric-value">{criticalCount}</div>
-                <span class="metric-foot">High urgency visual glow</span>
+                <span class="metric-foot">{t('dashboard.critical_sub')}</span>
               </div>
 
               <div class="metric-card">
                 <div class="metric-top">
-                  <span class="metric-label">High Priority</span>
+                  <span class="metric-label">{t('dashboard.stat_priority')}</span>
                   <div class="metric-icon-wrap high">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
@@ -1729,7 +1732,7 @@
                   </div>
                 </div>
                 <div class="metric-value">{highCount}</div>
-                <span class="metric-foot">Priority alert level</span>
+                <span class="metric-foot">{t('dashboard.priority_sub')}</span>
               </div>
             </div>
 
@@ -1744,8 +1747,8 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="panel-title">System & Listener Diagnostics</h3>
-                      <p class="panel-desc">Tauri backend health and Windows UserNotificationListener pipeline</p>
+                      <h3 class="panel-title">{t('dashboard.diagnostics_title')}</h3>
+                      <p class="panel-desc">{t('dashboard.diagnostics_desc')}</p>
                     </div>
                   </div>
 
@@ -1754,13 +1757,13 @@
                       class="secondary-btn"
                       onclick={sendTestNotification}
                       disabled={isSendingTest}
-                      title="Send test desktop notification toast"
+                      title={t('dashboard.test_toast')}
                     >
                       <svg class="btn-icon {isSendingTest ? 'spin' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="22" y1="2" x2="11" y2="13"></line>
                         <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                       </svg>
-                      <span>{isSendingTest ? "Sending..." : "Test Toast"}</span>
+                      <span>{isSendingTest ? t('dashboard.sending') : t('dashboard.test_toast')}</span>
                     </button>
 
                     <button
@@ -1768,14 +1771,14 @@
                       class="secondary-btn"
                       onclick={checkConnection}
                       disabled={isPinging}
-                      aria-label="Ping backend"
+                      aria-label={t('dashboard.test_ipc')}
                     >
                       <svg class="btn-icon {isPinging ? 'spin' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="23 4 23 10 17 10"></polyline>
                         <polyline points="1 20 1 14 7 14"></polyline>
                         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                       </svg>
-                      <span>{isPinging ? "Checking..." : "Test IPC"}</span>
+                      <span>{isPinging ? t('dashboard.checking') : t('dashboard.test_ipc')}</span>
                     </button>
                   </div>
                 </div>
@@ -1783,19 +1786,19 @@
                 {#if connectionInfo}
                   <div class="system-meta-grid">
                     <div class="meta-box">
-                      <span class="meta-box-label">Application</span>
+                      <span class="meta-box-label">{t('dashboard.meta_app')}</span>
                       <span class="meta-box-val">{connectionInfo.app_name} v{formatUserVersion(connectionInfo.version)}</span>
                     </div>
                     <div class="meta-box">
-                      <span class="meta-box-label">Target OS & Arch</span>
+                      <span class="meta-box-label">{t('dashboard.meta_os_arch')}</span>
                       <span class="meta-box-val">{connectionInfo.target_os} ({connectionInfo.target_arch})</span>
                     </div>
                     <div class="meta-box">
-                      <span class="meta-box-label">Notification Provider</span>
+                      <span class="meta-box-label">{t('dashboard.meta_provider')}</span>
                       <span class="meta-box-val">{pipelineStatus?.provider_name ?? "Windows Native"}</span>
                     </div>
                     <div class="meta-box">
-                      <span class="meta-box-label">Listener Pipeline</span>
+                      <span class="meta-box-label">{t('dashboard.meta_pipeline')}</span>
                       <span class="status-chip {statusInfo.kind}">
                         {statusInfo.label}
                       </span>
@@ -1805,9 +1808,9 @@
 
                 {#if pipelineStatus?.provider_status === "permission_required" || pipelineStatus?.provider_status === "permission_denied"}
                   <div class="permission-warning-banner">
-                    <span>Windows Notification Listener permissions are required to capture incoming alerts.</span>
+                    <span>{t('dashboard.perm_warning')}</span>
                     <button class="settings-link-btn" onclick={openWindowsSettings}>
-                      Open Windows Settings
+                      {t('dashboard.open_settings')}
                     </button>
                   </div>
                 {/if}
@@ -1819,12 +1822,12 @@
               <div class="card panel-card recent-feed-panel">
                 <div class="panel-header">
                   <div>
-                    <h3 class="panel-title">Recent Notifications</h3>
-                    <p class="panel-desc">Latest desktop alerts captured by Curry</p>
+                    <h3 class="panel-title">{t('dashboard.recent_feed')}</h3>
+                    <p class="panel-desc">{t('dashboard.recent_desc')}</p>
                   </div>
                   {#if notifications.length > 0}
                     <button class="text-link-btn" onclick={() => navigateToTab("notifications")}>
-                      View All ({notifications.length}) &rarr;
+                      {t('dashboard.view_all', { count: notifications.length })}
                     </button>
                   {/if}
                 </div>
@@ -1837,10 +1840,10 @@
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                       </svg>
                     </div>
-                    <h4 class="empty-heading">No notifications captured yet</h4>
-                    <p class="empty-paragraph">Windows desktop alerts captured by Curry will appear here in real time.</p>
+                    <h4 class="empty-heading">{t('dashboard.no_notifications')}</h4>
+                    <p class="empty-paragraph">{t('dashboard.no_notifications_desc')}</p>
                     <button class="primary-btn" onclick={sendTestNotification} disabled={isSendingTest}>
-                      Send Sample Alert
+                      {t('dashboard.send_sample')}
                     </button>
                   </div>
                 {:else}
@@ -1869,13 +1872,13 @@
 
                         <div class="recent-actions">
                           {#if !item.read}
-                            <button class="tiny-action-btn" onclick={() => markAsRead(item.id)} title="Mark Read">
+                            <button class="tiny-action-btn" onclick={() => markAsRead(item.id)} title={t('notifications.mark_read')}>
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                               </svg>
                             </button>
                           {/if}
-                          <button class="tiny-action-btn danger" onclick={() => removeNotification(item.id)} title="Dismiss">
+                          <button class="tiny-action-btn danger" onclick={() => removeNotification(item.id)} title={t('notifications.dismiss')}>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                               <line x1="18" y1="6" x2="6" y2="18"></line>
                               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -1897,31 +1900,31 @@
           <div class="view-container notifications-view">
             <div class="view-hero-header view-header-row">
               <div>
-                <span class="hero-eyebrow">Local Archive</span>
-                <h2 class="view-title">Notification Feed</h2>
-                <p class="view-subtitle">Captured Windows toast alerts, local history, and filter tools</p>
+                <span class="hero-eyebrow">{t('notifications.eyebrow')}</span>
+                <h2 class="view-title">{t('notifications.title')}</h2>
+                <p class="view-subtitle">{t('notifications.desc')}</p>
               </div>
 
               <div class="feed-header-controls">
                 <!-- Filter Segmented Tabs -->
-                <div class="segmented-control" role="radiogroup" aria-label="Filter notifications">
+                <div class="segmented-control" role="radiogroup" aria-label={t('notifications.filter_all')}>
                   <button
                     class="segment-btn {feedFilter === 'all' ? 'active' : ''}"
                     onclick={() => (feedFilter = "all")}
                   >
-                    All ({notifications.length})
+                    {t('notifications.filter_all')} ({notifications.length})
                   </button>
                   <button
                     class="segment-btn {feedFilter === 'unread' ? 'active' : ''}"
                     onclick={() => (feedFilter = "unread")}
                   >
-                    Unread ({unreadCount})
+                    {t('notifications.filter_unread')} ({unreadCount})
                   </button>
                   <button
                     class="segment-btn {feedFilter === 'critical' ? 'active' : ''}"
                     onclick={() => (feedFilter = "critical")}
                   >
-                    Priority ({criticalCount + highCount})
+                    {t('notifications.filter_priority')} ({criticalCount + highCount})
                   </button>
                 </div>
 
@@ -1931,13 +1934,13 @@
                   class="secondary-btn"
                   onclick={markAllNotificationsAsRead}
                   disabled={unreadCount === 0 || isMarkingAllRead}
-                  aria-label="Mark all notifications as read"
-                  title="Mark all notifications as read"
+                  aria-label={t('notifications.mark_all_read')}
+                  title={t('notifications.mark_all_read')}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
-                  <span>{isMarkingAllRead ? "Marking..." : "Mark All as Read"}</span>
+                  <span>{isMarkingAllRead ? t('notifications.marking') : t('notifications.mark_all_read')}</span>
                 </button>
 
                 <!-- Clear All Button -->
@@ -1946,13 +1949,13 @@
                   class="danger-btn"
                   onclick={() => (showClearConfirm = true)}
                   disabled={notifications.length === 0 || isClearing}
-                  aria-label="Clear all notifications"
+                  aria-label={t('notifications.clear_all')}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
                     <polyline points="3 6 5 6 21 6"></polyline>
                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                   </svg>
-                  <span>Clear All</span>
+                  <span>{t('notifications.clear_all')}</span>
                 </button>
               </div>
             </div>
@@ -1992,21 +1995,21 @@
                   </div>
                   <h4 class="empty-heading">
                     {feedFilter === "unread"
-                      ? "No unread notifications"
+                      ? t('notifications.empty_unread_title')
                       : feedFilter === "critical"
-                      ? "No priority notifications"
-                      : "No notifications in history"}
+                      ? t('notifications.empty_priority_title')
+                      : t('notifications.empty_history_title')}
                   </h4>
                   <p class="empty-paragraph">
                     {feedFilter === "unread"
-                      ? "You are all caught up! All captured alerts are marked as read."
+                      ? t('notifications.empty_unread_desc')
                       : feedFilter === "critical"
-                      ? "No critical or high-priority notifications have been recorded."
-                      : "Notifications captured from Windows will automatically appear here."}
+                      ? t('notifications.empty_priority_desc')
+                      : t('notifications.empty_history_desc')}
                   </p>
                   {#if feedFilter === "all"}
                     <button class="primary-btn" onclick={sendTestNotification} disabled={isSendingTest}>
-                      Send Sample Alert
+                      {t('notifications.send_sample')}
                     </button>
                   {/if}
                 </div>
@@ -2041,8 +2044,8 @@
                           </time>
                         </div>
 
-                        <h4 class="card-title">{item.title || "(No Title)"}</h4>
-                        <p class="card-text">{item.body || item.message || "(No message body)"}</p>
+                        <h4 class="card-title">{item.title || t('notifications.no_title')}</h4>
+                        <p class="card-text">{item.body || item.message || t('notifications.no_body')}</p>
 
                         <div class="card-footer-line">
                           <span class="card-id-code">ID: {item.id}</span>
@@ -2051,36 +2054,36 @@
                               <button
                                 class="item-action-btn read"
                                 onclick={() => markAsRead(item.id)}
-                                aria-label="Mark notification as read"
+                                aria-label={t('notifications.mark_read')}
                               >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
                                   <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
-                                <span>Mark Read</span>
+                                <span>{t('notifications.mark_read')}</span>
                               </button>
                             {:else}
                               <button
                                 class="item-action-btn unread"
                                 onclick={() => markAsUnread(item.id)}
-                                aria-label="Mark notification as unread"
+                                aria-label={t('notifications.mark_unread')}
                               >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
                                   <circle cx="12" cy="12" r="4"></circle>
                                 </svg>
-                                <span>Mark Unread</span>
+                                <span>{t('notifications.mark_unread')}</span>
                               </button>
                             {/if}
 
                             <button
-                              class="item-action-btn dismiss"
-                              onclick={() => removeNotification(item.id)}
-                              aria-label="Dismiss notification"
-                            >
+                                class="item-action-btn dismiss"
+                                onclick={() => removeNotification(item.id)}
+                                aria-label={t('notifications.dismiss')}
+                              >
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
                                 <line x1="6" y1="6" x2="18" y2="18"></line>
                               </svg>
-                              <span>Dismiss</span>
+                              <span>{t('notifications.dismiss')}</span>
                             </button>
                           </div>
                         </div>
@@ -2186,8 +2189,8 @@
                       <line x1="12" y1="17" x2="12" y2="21"></line>
                     </svg>
                   </div>
-                  <h3>{appSearchQuery ? "No Matching Profiles" : t('apps.no_profiles')}</h3>
-                  <p>{appSearchQuery ? `No apps match "${appSearchQuery}".` : t('apps.no_profiles_desc')}</p>
+                  <h3>{appSearchQuery ? t('apps.no_matching') : t('apps.no_profiles')}</h3>
+                  <p>{appSearchQuery ? t('apps.no_matching_desc', { query: appSearchQuery }) : t('apps.no_profiles_desc')}</p>
                   <button class="primary-btn" onclick={openAddProfileModal}>
                     <span>+ {t('apps.add_profile')}</span>
                   </button>
@@ -2196,7 +2199,7 @@
                 <div class="applications-grid">
                   {#each filteredProfiles as profile (profile.id)}
                     <div class="app-profile-card card {profile.enabled ? '' : 'disabled'}">
-                      <div class="app-profile-left">
+                      <div class="app-card-header">
                         <div
                           class="app-avatar-box"
                           style:--app-glow-color={profile.color || appSettings.glow.color}
@@ -2204,50 +2207,64 @@
                         >
                           <span class="app-avatar-letter">{getAppInitial(profile.applicationName)}</span>
                         </div>
-                        <div class="app-info">
+                        <div class="app-card-title-col">
                           <div class="app-name-row">
                             <h4 class="app-name">{profile.applicationName}</h4>
-                            <span class="custom-profile-badge">Custom profile</span>
+                            <span class="custom-profile-badge">{t('apps.custom_profile')}</span>
                             {#if !profile.enabled}
-                              <span class="suppressed-badge">Disabled</span>
+                              <span class="suppressed-badge">{t('apps.disabled')}</span>
                             {/if}
                           </div>
                           <span class="app-executable-text" title={profile.executablePath || profile.executableName}>
                             {profile.executableName}
-                            {#if profile.executablePath}
-                              <span class="app-path-hint" title={profile.executablePath}>• {profile.executablePath}</span>
-                            {/if}
                           </span>
-                          <div class="app-tags-row">
-                            <span class="app-tag anim">
-                              {(profile.animation || appSettings.glow.animation_style).toUpperCase()}
-                            </span>
-                            <span class="app-tag">
-                              {Math.round((profile.intensity ?? appSettings.glow.intensity) * 100)}%
-                            </span>
-                            <span class="app-tag">
-                              {profile.duration ? `${profile.duration}s` : `${appSettings.glow.duration_ms / 1000}s`}
-                            </span>
-                            {#if profile.suppressInFullscreen}
-                              <span class="app-tag fs-suppressed">{t('apps.fullscreen_suppressed')}</span>
-                            {/if}
-                            {#if profile.borderThickness != null}
-                              <span class="app-tag">{profile.borderThickness}px border</span>
-                            {/if}
-                            {#if profile.cornerRounding != null}
-                              <span class="app-tag">{profile.cornerRounding}px radius</span>
-                            {/if}
-                            {#if profile.monitorTarget && profile.monitorTarget !== 'primary'}
-                              <span class="app-tag monitor">
-                                {profile.monitorTarget === 'all' ? 'All Displays' : 'Active Window'}
-                              </span>
-                            {/if}
-                          </div>
                         </div>
                       </div>
 
-                      <div class="app-profile-actions">
+                      <div class="app-card-body">
+                        {#if profile.executablePath}
+                          <div class="app-path-hint" title={profile.executablePath}>{profile.executablePath}</div>
+                        {/if}
+                        <div class="app-tags-row">
+                          <span class="app-tag anim">
+                            {(profile.animation || appSettings.glow.animation_style).toUpperCase()}
+                          </span>
+                          <span class="app-tag">
+                            {Math.round((profile.intensity ?? appSettings.glow.intensity) * 100)}%
+                          </span>
+                          <span class="app-tag">
+                            {profile.duration ? `${profile.duration}s` : `${appSettings.glow.duration_ms / 1000}s`}
+                          </span>
+                          {#if profile.suppressInFullscreen}
+                            <span class="app-tag fs-suppressed">{t('apps.fullscreen_suppressed')}</span>
+                          {/if}
+                          {#if profile.borderThickness != null}
+                            <span class="app-tag">{profile.borderThickness}px {t('glow.thickness')}</span>
+                          {/if}
+                          {#if profile.cornerRounding != null}
+                            <span class="app-tag">{profile.cornerRounding}px {t('glow.corner_radius')}</span>
+                          {/if}
+                          {#if profile.monitorTarget && profile.monitorTarget !== 'primary'}
+                            <span class="app-tag monitor">
+                              {profile.monitorTarget === 'all' ? t('apps.all_displays') : t('apps.active_window')}
+                            </span>
+                          {/if}
+                        </div>
+                      </div>
+
+                      <div class="app-profile-actions app-card-actions">
+                        <!-- STRICT ORDER: Switch -> Preview -> Edit -> Delete -->
+                        <!-- 1. Switch -->
+                        <AppleSwitch
+                          checked={profile.enabled}
+                          onchange={() => toggleProfile(profile)}
+                          ariaLabel={profile.enabled ? `Disable profile ${profile.applicationName}` : `Enable profile ${profile.applicationName}`}
+                          size="sm"
+                        />
+
+                        <!-- 2. Preview -->
                         <button
+                          type="button"
                           class="icon-action-btn"
                           onclick={() => previewProfileGlow(profile)}
                           title={t('apps.preview_btn')}
@@ -2260,14 +2277,9 @@
                           <span>{t('apps.preview_btn')}</span>
                         </button>
 
-                        <AppleSwitch
-                          checked={profile.enabled}
-                          onchange={() => toggleProfile(profile)}
-                          ariaLabel={profile.enabled ? `Disable profile ${profile.applicationName}` : `Enable profile ${profile.applicationName}`}
-                          size="sm"
-                        />
-
+                        <!-- 3. Edit -->
                         <button
+                          type="button"
                           class="secondary-btn edit-btn"
                           onclick={() => openEditProfileModal(profile)}
                           title={t('apps.edit')}
@@ -2279,7 +2291,9 @@
                           <span>{t('apps.edit')}</span>
                         </button>
 
+                        <!-- 4. Delete (Confirmation flow preserved) -->
                         <button
+                          type="button"
                           class="danger-icon-btn"
                           onclick={() => requestDeleteProfile(profile)}
                           title={t('apps.delete')}
@@ -2311,7 +2325,7 @@
                           <div class="app-name-row">
                             <h4 class="app-name">{profile.applicationName}</h4>
                             {#if !profile.enabled}
-                              <span class="suppressed-badge">Disabled</span>
+                              <span class="suppressed-badge">{t('apps.disabled')}</span>
                             {/if}
                           </div>
                           <span class="app-executable-text" title={profile.executablePath || profile.executableName}>
@@ -2404,9 +2418,9 @@
           <div class="view-container glow-view">
             <div class="view-hero-header view-header-row">
               <div>
-                <span class="hero-eyebrow">Visual Illumination</span>
-                <h2 class="view-title">Screen-Edge Glow Experience</h2>
-                <p class="view-subtitle">Ambient border illumination triggered during incoming desktop notifications</p>
+                <span class="hero-eyebrow">{t('glow.eyebrow')}</span>
+                <h2 class="view-title">{t('glow.title')}</h2>
+                <p class="view-subtitle">{t('glow.desc')}</p>
               </div>
 
               <button
@@ -2419,7 +2433,7 @@
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
-                <span>{isPreviewingGlow ? "Previewing..." : "Preview Glow"}</span>
+                <span>{isPreviewingGlow ? t('glow.previewing') : t('glow.preview_btn')}</span>
               </button>
             </div>
 
@@ -2435,8 +2449,8 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="panel-title">Glow Activation & Style</h3>
-                      <p class="panel-desc">Enable edge illumination and choose the visual motion style</p>
+                      <h3 class="panel-title">{t('glow.activation_title')}</h3>
+                      <p class="panel-desc">{t('glow.activation_desc')}</p>
                     </div>
                   </div>
                 </div>
@@ -2444,8 +2458,8 @@
                 <div class="controls-list">
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Enable Screen-Edge Glow</span>
-                      <span class="control-sub">Render ambient edge glow on incoming desktop notifications</span>
+                      <span class="control-title">{t('glow.global_switch')}</span>
+                      <span class="control-sub">{t('glow.global_switch_desc')}</span>
                     </div>
                     <AppleSwitch
                       id="glow-enabled-switch"
@@ -2460,8 +2474,8 @@
 
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Animation Dynamic</span>
-                      <span class="control-sub">Wave dynamic used during notification display</span>
+                      <span class="control-title">{t('glow.animation_style')}</span>
+                      <span class="control-sub">{t('glow.animation_desc')}</span>
                     </div>
                     <div class="dropdown-control-wrapper">
                       <Dropdown
@@ -2487,8 +2501,8 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="panel-title">Edge Geometry & Sizing</h3>
-                      <p class="panel-desc">Configure screen border outline thickness and corner curvature</p>
+                      <h3 class="panel-title">{t('glow.geometry_title')}</h3>
+                      <p class="panel-desc">{t('glow.geometry_desc')}</p>
                     </div>
                   </div>
                 </div>
@@ -2496,8 +2510,8 @@
                 <div class="controls-list">
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Border Thickness</span>
-                      <span class="control-sub">Outline width ({appSettings.glow.thickness} px)</span>
+                      <span class="control-title">{t('glow.thickness')}</span>
+                      <span class="control-sub">{t('glow.thickness_sub', { thickness: appSettings.glow.thickness })}</span>
                     </div>
                     <div class="slider-box">
                       <input
@@ -2516,8 +2530,8 @@
 
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Corner Rounding</span>
-                      <span class="control-sub">Screen edge curvature radius ({appSettings.glow.corner_radius} px)</span>
+                      <span class="control-title">{t('glow.corner_radius')}</span>
+                      <span class="control-sub">{t('glow.corner_radius_sub', { radius: appSettings.glow.corner_radius })}</span>
                     </div>
                     <div class="slider-box">
                       <input
@@ -2547,8 +2561,8 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="panel-title">Timing & Peak Intensity</h3>
-                      <p class="panel-desc">Length of notification illumination and peak brightness level</p>
+                      <h3 class="panel-title">{t('glow.timing_title')}</h3>
+                      <p class="panel-desc">{t('glow.timing_desc')}</p>
                     </div>
                   </div>
                 </div>
@@ -2556,8 +2570,8 @@
                 <div class="controls-list">
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Glow Duration</span>
-                      <span class="control-sub">Display length ({appSettings.glow.duration_ms} ms)</span>
+                      <span class="control-title">{t('glow.duration')}</span>
+                      <span class="control-sub">{t('glow.duration_sub', { duration: appSettings.glow.duration_ms })}</span>
                     </div>
                     <div class="slider-box">
                       <input
@@ -2576,8 +2590,8 @@
 
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Peak Opacity</span>
-                      <span class="control-sub">Maximum brightness ({Math.round(appSettings.glow.intensity * 100)}%)</span>
+                      <span class="control-title">{t('glow.intensity')}</span>
+                      <span class="control-sub">{t('glow.intensity_sub', { intensity: Math.round(appSettings.glow.intensity * 100) })}</span>
                     </div>
                     <div class="slider-box">
                       <input
@@ -2608,8 +2622,8 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="panel-title">Display Targeting & Color</h3>
-                      <p class="panel-desc">Select screen target and default notification illumination hue</p>
+                      <h3 class="panel-title">{t('glow.targeting_title')}</h3>
+                      <p class="panel-desc">{t('glow.targeting_desc')}</p>
                     </div>
                   </div>
                 </div>
@@ -2617,8 +2631,8 @@
                 <div class="controls-list">
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Monitor Target</span>
-                      <span class="control-sub">Display monitor where the glow overlay is rendered</span>
+                      <span class="control-title">{t('glow.monitor_target')}</span>
+                      <span class="control-sub">{t('glow.monitor_sub')}</span>
                     </div>
                     <div class="dropdown-control-wrapper">
                       <Dropdown
@@ -2634,8 +2648,8 @@
 
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Default Glow Color</span>
-                      <span class="control-sub">Standard hue (Urgency overrides: Critical = Red, High = Amber)</span>
+                      <span class="control-title">{t('glow.default_color')}</span>
+                      <span class="control-sub">{t('glow.default_color_desc')}</span>
                     </div>
                     <ColorPicker
                       color={appSettings.glow.color}
@@ -2660,8 +2674,8 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="panel-title">Fullscreen & OLED Optimization</h3>
-                      <p class="panel-desc">Configure gaming suppression and display panel burn-in protection</p>
+                      <h3 class="panel-title">{t('glow.optimization_title')}</h3>
+                      <p class="panel-desc">{t('glow.optimization_desc')}</p>
                     </div>
                   </div>
                 </div>
@@ -2669,8 +2683,8 @@
                 <div class="controls-list">
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Fullscreen Behavior</span>
-                      <span class="control-sub">Overlay display behavior when games or fullscreen apps are active</span>
+                      <span class="control-title">{t('glow.fullscreen_title')}</span>
+                      <span class="control-sub">{t('glow.fullscreen_sub')}</span>
                     </div>
                     <div class="dropdown-control-wrapper">
                       <Dropdown
@@ -2686,8 +2700,8 @@
 
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">OLED Mode Optimization</span>
-                      <span class="control-sub">Caps peak brightness to 60%, narrows border spread, and limits duration to prevent burn-in</span>
+                      <span class="control-title">{t('settings.oled_title')}</span>
+                      <span class="control-sub">{t('glow.oled_sub')}</span>
                     </div>
                     <AppleSwitch
                       id="oled-mode-switch"
@@ -2702,8 +2716,8 @@
 
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Reduced Motion</span>
-                      <span class="control-sub">Minimize UI transitions and motion across all application views</span>
+                      <span class="control-title">{t('glow.reduced_motion')}</span>
+                      <span class="control-sub">{t('glow.reduced_motion_desc')}</span>
                     </div>
                     <AppleSwitch
                       id="reduced-motion-switch"
@@ -2726,9 +2740,9 @@
           <!-- ============================================================= -->
           <div class="view-container settings-view">
             <div class="view-hero-header">
-              <span class="hero-eyebrow">Configuration & Personalization</span>
-              <h2 class="view-title">Application Settings</h2>
-              <p class="view-subtitle">Appearance, themes, Windows autostart, sound alerts, and retention policies</p>
+              <span class="hero-eyebrow">{t('settings.eyebrow')}</span>
+              <h2 class="view-title">{t('settings.title')}</h2>
+              <p class="view-subtitle">{t('settings.desc')}</p>
             </div>
 
             {#if settingsError}
@@ -2821,7 +2835,7 @@
                   </div>
                 </div>
 
-                <div class="themes-grid" role="radiogroup" aria-label="Visual Themes">
+                <div class="themes-grid" role="radiogroup" aria-label={t('settings.themes')}>
                   {#each THEMES as theme}
                     <button
                       type="button"
@@ -2884,8 +2898,8 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="panel-title">Windows Integration & Startup</h3>
-                      <p class="panel-desc">Desktop lifecycle, background tray behavior, and startup toggles</p>
+                      <h3 class="panel-title">{t('settings.windows_title')}</h3>
+                      <p class="panel-desc">{t('settings.windows_desc')}</p>
                     </div>
                   </div>
                 </div>
@@ -2893,21 +2907,21 @@
                 <div class="controls-list">
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Start with Windows</span>
-                      <span class="control-sub">Launch Curry automatically in the system tray upon Windows login</span>
+                      <span class="control-title">{t('settings.startup_title')}</span>
+                      <span class="control-sub">{t('settings.startup_desc')}</span>
                     </div>
                     <AppleSwitch
                       id="startup-enabled-switch"
                       checked={appSettings.startup_enabled}
                       onchange={toggleStartup}
-                      ariaLabel="Toggle start with Windows"
+                      ariaLabel={t('settings.startup_title')}
                     />
                   </div>
 
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Master Monitoring Switch</span>
-                      <span class="control-sub">Global kill-switch for notification capture and edge illumination</span>
+                      <span class="control-title">{t('settings.master_title')}</span>
+                      <span class="control-sub">{t('settings.master_desc')}</span>
                     </div>
                     <AppleSwitch
                       id="master-monitoring-switch"
@@ -2916,7 +2930,7 @@
                         appSettings.enabled = val;
                         saveAppSettings();
                       }}
-                      ariaLabel="Toggle master monitoring switch"
+                      ariaLabel={t('settings.master_title')}
                     />
                   </div>
                 </div>
@@ -2933,8 +2947,8 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="panel-title">Audio Chime Alerts</h3>
-                      <p class="panel-desc">Play native Windows desktop chime concurrently with the edge glow</p>
+                      <h3 class="panel-title">{t('settings.sound_chime_title')}</h3>
+                      <p class="panel-desc">{t('settings.sound_chime_desc')}</p>
                     </div>
                   </div>
                 </div>
@@ -2942,8 +2956,8 @@
                 <div class="controls-list">
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Enable Sound Chime</span>
-                      <span class="control-sub">Trigger native sound alert when notifications are captured</span>
+                      <span class="control-title">{t('settings.sound_chime_enable')}</span>
+                      <span class="control-sub">{t('settings.sound_chime_enable_sub')}</span>
                     </div>
                     <AppleSwitch
                       id="sound-enabled-switch"
@@ -2952,14 +2966,14 @@
                         appSettings.sound_enabled = val;
                         saveAppSettings();
                       }}
-                      ariaLabel="Toggle sound chime"
+                      ariaLabel={t('settings.sound_chime_enable')}
                     />
                   </div>
 
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Test Audio Chime</span>
-                      <span class="control-sub">Play a test chime through the default Windows audio endpoint</span>
+                      <span class="control-title">{t('settings.sound_test_title')}</span>
+                      <span class="control-sub">{t('settings.sound_test_sub')}</span>
                     </div>
                     <button
                       class="secondary-btn"
@@ -2970,7 +2984,7 @@
                         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
                         <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
                       </svg>
-                      <span>{isPlayingSound ? "Playing..." : "Play Sample Chime"}</span>
+                      <span>{isPlayingSound ? t('settings.sound_playing') : t('settings.sound_play')}</span>
                     </button>
                   </div>
                 </div>
@@ -2989,8 +3003,8 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="panel-title">History Storage & Retention</h3>
-                      <p class="panel-desc">Atomic local persistence with bounded memory and disk usage</p>
+                      <h3 class="panel-title">{t('settings.history_storage_title')}</h3>
+                      <p class="panel-desc">{t('settings.history_storage_desc')}</p>
                     </div>
                   </div>
                 </div>
@@ -2998,8 +3012,8 @@
                 <div class="controls-list">
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Show Notifications Feed</span>
-                      <span class="control-sub">Display captured desktop alerts inside the UI</span>
+                      <span class="control-title">{t('settings.show_feed_title')}</span>
+                      <span class="control-sub">{t('settings.show_feed_sub')}</span>
                     </div>
                     <AppleSwitch
                       id="show-notifications-switch"
@@ -3008,14 +3022,14 @@
                         appSettings.show_notifications = val;
                         saveAppSettings();
                       }}
-                      ariaLabel="Toggle show notifications feed"
+                      ariaLabel={t('settings.show_feed_title')}
                     />
                   </div>
 
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">History Item Limit</span>
-                      <span class="control-sub">Maximum notifications stored locally ({appSettings.history_limit} items)</span>
+                      <span class="control-title">{t('settings.history_limit')}</span>
+                      <span class="control-sub">{t('settings.history_limit_sub', { limit: appSettings.history_limit })}</span>
                     </div>
                     <div class="slider-box">
                       <input
@@ -3028,7 +3042,7 @@
                         onchange={saveAppSettings}
                         class="native-slider"
                       />
-                      <span class="slider-val-badge">{appSettings.history_limit} items</span>
+                      <span class="slider-val-badge">{appSettings.history_limit}</span>
                     </div>
                   </div>
                 </div>
@@ -3044,8 +3058,8 @@
                       </svg>
                     </div>
                     <div>
-                      <h3 class="panel-title">Software Updates</h3>
-                      <p class="panel-desc">Check for signed official releases and auto-install updates</p>
+                      <h3 class="panel-title">{t('updater.title')}</h3>
+                      <p class="panel-desc">{t('updater.desc')}</p>
                     </div>
                   </div>
                 </div>
@@ -3054,8 +3068,8 @@
                   <!-- Auto Update Enable / Disable Toggle -->
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Automatic Updates</span>
-                      <span class="control-sub">Periodically check for official signed updates in the background</span>
+                      <span class="control-title">{t('updater.auto_updates')}</span>
+                      <span class="control-sub">{t('updater.auto_updates_desc')}</span>
                     </div>
                     <AppleSwitch
                       id="auto-update-switch"
@@ -3064,15 +3078,15 @@
                         appSettings.auto_update_enabled = val;
                         saveAppSettings();
                       }}
-                      ariaLabel="Toggle automatic updates"
+                      ariaLabel={t('updater.auto_updates')}
                     />
                   </div>
 
                   <!-- Update Frequency Dropdown -->
                   <div class="control-item">
                     <div class="control-label-group">
-                      <span class="control-title">Check Frequency</span>
-                      <span class="control-sub">How often Curry automatically queries GitHub releases</span>
+                      <span class="control-title">{t('updater.check_frequency')}</span>
+                      <span class="control-sub">{t('updater.check_frequency_desc')}</span>
                     </div>
                     <div class="dropdown-control-wrapper">
                       <Dropdown
@@ -3080,7 +3094,7 @@
                         items={AUTO_UPDATE_FREQUENCY_OPTIONS}
                         value={appSettings.auto_update_frequency ?? "daily"}
                         disabled={!(appSettings.auto_update_enabled ?? true)}
-                        ariaLabel="Software update frequency"
+                        ariaLabel={t('updater.check_frequency')}
                         onchange={(val) => {
                           appSettings.auto_update_frequency = val as any;
                           saveAppSettings();
@@ -3194,18 +3208,18 @@
     <div class="status-left">
       <span class="status-item">
         <span class="status-mini-dot {status === 'connected' ? 'ok' : 'err'}"></span>
-        IPC: {status === 'connected' ? 'Healthy' : 'Disconnected'}
+        IPC: {status === 'connected' ? t('status.healthy') : t('status.disconnected')}
       </span>
       <span class="status-sep">&bull;</span>
-      <span class="status-item">Provider: {pipelineStatus?.provider_name ?? 'Windows Notification'}</span>
+      <span class="status-item">{t('status.provider')}: {pipelineStatus?.provider_name ?? 'Windows Notification'}</span>
       <span class="status-sep">&bull;</span>
-      <span class="status-item">Captured: {pipelineStatus?.captured_count ?? notifications.length}</span>
+      <span class="status-item">{t('status.captured')}: {pipelineStatus?.captured_count ?? notifications.length}</span>
     </div>
 
     <div class="status-right">
-      <span class="status-item">Default: Perpetuity</span>
+      <span class="status-item">{t('status.default')}: {t('status.perpetuity')}</span>
       <span class="status-sep">&bull;</span>
-      <span class="status-item highlight">Single Instance Protected</span>
+      <span class="status-item highlight">{t('status.single_instance')}</span>
     </div>
   </footer>
 
@@ -3232,9 +3246,9 @@
           </svg>
         </div>
 
-        <h3 id="clear-dialog-title" class="modal-title">Clear Notification History?</h3>
+        <h3 id="clear-dialog-title" class="modal-title">{t('notifications.clear_modal_title')}</h3>
         <p class="modal-body">
-          Are you sure you want to permanently delete all {notifications.length} stored notifications? This removes local records from disk and cannot be undone.
+          {t('notifications.clear_modal_msg', { count: notifications.length })}
         </p>
 
         <div class="modal-footer-btns">
@@ -3243,14 +3257,14 @@
             onclick={() => (showClearConfirm = false)}
             disabled={isClearing}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             class="danger-btn"
             onclick={confirmClearAll}
             disabled={isClearing}
           >
-            {isClearing ? "Deleting..." : "Yes, Delete All"}
+            {isClearing ? t('notifications.deleting') : t('notifications.delete_all_confirm')}
           </button>
         </div>
       </div>
@@ -3326,9 +3340,9 @@
             </div>
             <div>
               <h3 id="profile-modal-title" class="modal-title">
-                {isCreatingNewProfile ? "Add App Profile" : "Edit App Profile"}
+                {isCreatingNewProfile ? t('apps.modal_add_title') : t('apps.modal_edit_title')}
               </h3>
-              <p class="modal-subtitle">Configure per-app illumination and suppression</p>
+              <p class="modal-subtitle">{t('apps.modal_subtitle')}</p>
             </div>
           </div>
           <button class="modal-close-btn" onclick={closeProfileModal} aria-label="Close dialog">✕</button>
@@ -3341,10 +3355,10 @@
         {/if}
 
         <div class="modal-body-form">
-          <div class="form-section-header">App Details</div>
+          <div class="form-section-header">{t('apps.section_details')}</div>
 
           <div class="form-row">
-            <label class="form-label" for="prof-app-name">App Name</label>
+            <label class="form-label" for="prof-app-name">{t('apps.app_name')}</label>
             <input
               id="prof-app-name"
               type="text"
@@ -3355,7 +3369,7 @@
           </div>
 
           <div class="form-row">
-            <label class="form-label" for="prof-exe-name">Executable</label>
+            <label class="form-label" for="prof-exe-name">{t('apps.exe_name')}</label>
             <div class="input-with-action">
               <input
                 id="prof-exe-name"
@@ -3375,14 +3389,14 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                 </svg>
-                <span>Browse...</span>
+                <span>{t('apps.browse_exe')}</span>
               </button>
             </div>
           </div>
 
           {#if editingProfile.executablePath}
             <div class="form-row path-row">
-              <label class="form-label" for="prof-exe-path">Path</label>
+              <label class="form-label" for="prof-exe-path">{t('apps.path')}</label>
               <div class="path-display-box">
                 <span id="prof-exe-path" class="path-text" title={editingProfile.executablePath}>
                   {editingProfile.executablePath}
@@ -3401,8 +3415,8 @@
 
           <div class="control-item modal-toggle-item">
             <div class="control-label-group">
-              <span class="control-title">Enabled</span>
-              <span class="control-sub">Enable custom ambient glow for this app</span>
+              <span class="control-title">{t('apps.enabled')}</span>
+              <span class="control-sub">{t('apps.enabled_desc')}</span>
             </div>
             <AppleSwitch
               id="modal-profile-enabled-switch"
@@ -3414,11 +3428,11 @@
             />
           </div>
 
-          <div class="form-section-header">Glow Illumination</div>
+          <div class="form-section-header">{t('apps.section_glow')}</div>
 
           <!-- Glow Color -->
           <div class="form-row">
-            <span class="form-label">Glow Color</span>
+            <span class="form-label">{t('apps.override_color')}</span>
             <ColorPicker
               color={editingProfile.color || appSettings.glow.color}
               onChange={(newCol: string) => {
@@ -3429,7 +3443,7 @@
 
           <!-- Animation -->
           <div class="form-row">
-            <span class="form-label">Animation Dynamic</span>
+            <span class="form-label">{t('glow.animation_style')}</span>
             <div class="dropdown-control-wrapper">
               <Dropdown
                 items={ANIMATION_OPTIONS}
@@ -3444,7 +3458,7 @@
           <!-- Intensity Slider -->
           <div class="form-row">
             <div class="control-label-group">
-              <label class="form-label" for="prof-intensity">Intensity ({Math.round((editingProfile.intensity ?? appSettings.glow.intensity) * 100)}%)</label>
+              <label class="form-label" for="prof-intensity">{t('glow.intensity')} ({Math.round((editingProfile.intensity ?? appSettings.glow.intensity) * 100)}%)</label>
             </div>
             <div class="slider-box">
               <input
@@ -3463,7 +3477,7 @@
           <!-- Duration Slider -->
           <div class="form-row">
             <div class="control-label-group">
-              <label class="form-label" for="prof-duration">Duration ({editingProfile.duration ?? 2.0}s)</label>
+              <label class="form-label" for="prof-duration">{t('glow.duration')} ({editingProfile.duration ?? 2.0}s)</label>
             </div>
             <div class="slider-box">
               <input
@@ -3482,7 +3496,7 @@
           <!-- Border Thickness Slider -->
           <div class="form-row">
             <div class="control-label-group">
-              <label class="form-label" for="prof-thickness">Border Thickness ({editingProfile.borderThickness ?? appSettings.glow.thickness}px)</label>
+              <label class="form-label" for="prof-thickness">{t('glow.thickness')} ({editingProfile.borderThickness ?? appSettings.glow.thickness}px)</label>
             </div>
             <div class="slider-box">
               <input
@@ -3501,7 +3515,7 @@
           <!-- Corner Rounding Slider -->
           <div class="form-row">
             <div class="control-label-group">
-              <label class="form-label" for="prof-rounding">Corner Rounding ({editingProfile.cornerRounding ?? appSettings.glow.corner_radius}px)</label>
+              <label class="form-label" for="prof-rounding">{t('glow.corner_radius')} ({editingProfile.cornerRounding ?? appSettings.glow.corner_radius}px)</label>
             </div>
             <div class="slider-box">
               <input
@@ -3517,11 +3531,11 @@
             </div>
           </div>
 
-          <div class="form-section-header">Display & Suppression</div>
+          <div class="form-section-header">{t('glow.optimization_title')}</div>
 
           <!-- Monitor Target -->
           <div class="form-row">
-            <span class="form-label">Monitor Target</span>
+            <span class="form-label">{t('glow.monitor_target')}</span>
             <div class="dropdown-control-wrapper">
               <Dropdown
                 items={MONITOR_OPTIONS}
@@ -3536,8 +3550,8 @@
           <!-- Suppress in Fullscreen -->
           <div class="control-item modal-toggle-item">
             <div class="control-label-group">
-              <span class="control-title">Suppress in Fullscreen</span>
-              <span class="control-sub">Silence glow overlay when games or fullscreen apps are active</span>
+              <span class="control-title">{t('glow.fullscreen_title')}</span>
+              <span class="control-sub">{t('glow.fullscreen_sub')}</span>
             </div>
             <AppleSwitch
               id="modal-profile-suppress-switch"
@@ -3557,7 +3571,7 @@
                 class="danger-btn"
                 onclick={() => editingProfile && deleteProfile(editingProfile.id)}
               >
-                Delete
+                {t('common.delete')}
               </button>
             {/if}
             <button
@@ -3569,12 +3583,12 @@
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
-              <span>{isPreviewingProfile ? "Previewing..." : "Preview"}</span>
+              <span>{isPreviewingProfile ? t('apps.previewing') : t('apps.preview_btn')}</span>
             </button>
           </div>
           <div class="modal-footer-right">
-            <button class="secondary-btn" onclick={closeProfileModal}>Cancel</button>
-            <button class="primary-btn" onclick={saveProfile}>Save</button>
+            <button class="secondary-btn" onclick={closeProfileModal}>{t('common.cancel')}</button>
+            <button class="primary-btn" onclick={saveProfile}>{t('common.save')}</button>
           </div>
         </div>
       </div>
@@ -6427,12 +6441,66 @@
   }
 
   .applications-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .app-profile-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md, 10px);
+    transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+    min-height: 180px;
+    box-sizing: border-box;
+  }
+
+  .app-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .app-card-title-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .app-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .app-card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+    margin-top: auto;
+  }
+
+  .applications-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
 
-  .app-profile-card {
+  .app-profile-list-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -6442,6 +6510,44 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-md, 10px);
     transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .app-profile-list-item:hover {
+    border-color: var(--border-strong);
+    background: var(--surface-hover);
+    transform: translateY(-1px);
+  }
+
+  .app-profile-list-item.disabled {
+    opacity: 0.65;
+  }
+
+  .app-profile-list-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .ghost-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .ghost-action-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
   }
 
   .app-profile-card:hover {

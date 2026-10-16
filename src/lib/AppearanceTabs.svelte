@@ -13,13 +13,15 @@
     onChange?: (val: Appearance) => void;
   } = $props();
 
+  import { t } from "$lib/i18n";
+
   let activeValue = $derived(selected ?? value);
 
-  const options: { id: Appearance; label: string; icon: "monitor" | "sun" | "moon" }[] = [
-    { id: "system", label: "System", icon: "monitor" },
-    { id: "light", label: "Light", icon: "sun" },
-    { id: "dark", label: "Dark", icon: "moon" },
-  ];
+  let options = $derived<{ id: Appearance; label: string; icon: "monitor" | "sun" | "moon" }[]>([
+    { id: "system", label: t("settings.appearance_system"), icon: "monitor" },
+    { id: "light", label: t("settings.appearance_light"), icon: "sun" },
+    { id: "dark", label: t("settings.appearance_dark"), icon: "moon" },
+  ]);
 
   let activeIndex = $derived(options.findIndex((o) => o.id === activeValue));
 
