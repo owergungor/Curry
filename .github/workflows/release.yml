@@ -566,6 +566,28 @@ jobs:
             fs.writeFileSync('dist_release/curry_updater.pub', Buffer.from(b64, 'base64').toString('utf8'));
           "
 
+          # Normalize any base64-encoded .sig files to standard Minisign signature format
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            const files = fs.readdirSync('dist_release').filter(f => f.endsWith('.sig'));
+            for (const f of files) {
+              const fullPath = path.join('dist_release', f);
+              const content = fs.readFileSync(fullPath, 'utf8').trim();
+              if (!content.startsWith('untrusted comment:')) {
+                try {
+                  const decoded = Buffer.from(content, 'base64').toString('utf8');
+                  if (decoded.startsWith('untrusted comment:')) {
+                    fs.writeFileSync(fullPath, decoded);
+                    console.log('Decoded base64 signature to standard Minisign format:', f);
+                  }
+                } catch (e) {
+                  console.warn('Failed to decode signature file:', f, e);
+                }
+              }
+            }
+          "
+
           # Cryptographic Minisign verification of updater archives against signatures
           if [ "$IS_TEST" != "true" ]; then
             echo "=== Cryptographic Minisign Verification ==="
