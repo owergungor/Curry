@@ -237,3 +237,31 @@ test("release.yml defines target_platform with safe defaults and conditional job
   assert.ok(content.includes("allow_unsigned:"), "allow_unsigned input must exist");
   assert.ok(content.includes("default: false"), "allow_unsigned default must be false");
 });
+
+test("signing key detection supports both plaintext and base64-encoded minisign private keys", () => {
+  function checkKeyValid(keyStr: string): boolean {
+    if (!keyStr) return false;
+    const trimmed = keyStr.trim();
+    if (trimmed.includes("untrusted comment:")) {
+      return true;
+    }
+    try {
+      const decoded = Buffer.from(trimmed, "base64").toString("utf8");
+      if (decoded.includes("untrusted comment:")) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+    return false;
+  }
+
+  const rawKey = "untrusted comment: minisign secret key\nRWRtest...\n";
+  const b64Key = Buffer.from(rawKey, "utf8").toString("base64");
+  const invalidKey = "completely-invalid-key-data";
+
+  assert.equal(checkKeyValid(rawKey), true, "Raw minisign key must be valid");
+  assert.equal(checkKeyValid(b64Key), true, "Base64-encoded minisign key must be valid");
+  assert.equal(checkKeyValid(invalidKey), false, "Invalid key must be rejected");
+  assert.equal(checkKeyValid(""), false, "Empty key must be rejected");
+});

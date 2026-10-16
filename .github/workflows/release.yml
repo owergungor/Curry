@@ -182,8 +182,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           HAS_VALID_KEY=false
-          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] && printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | grep -q "untrusted comment:"; then
-            HAS_VALID_KEY=true
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            if printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | grep -q "untrusted comment:"; then
+              HAS_VALID_KEY=true
+            elif printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | base64 --decode 2>/dev/null | grep -q "untrusted comment:"; then
+              HAS_VALID_KEY=true
+            fi
           fi
           if [ "$IS_TEST_BUILD" = "true" ]; then
             echo "Notice: Test build mode. Disabling updater artifacts for unsigned test build."
@@ -420,8 +424,18 @@ jobs:
           try {
             $hasValidKey = $false
             if (-not [string]::IsNullOrEmpty($env:TAURI_SIGNING_PRIVATE_KEY)) {
-              if ($env:TAURI_SIGNING_PRIVATE_KEY -match "untrusted comment:") {
+              $trimmed = $env:TAURI_SIGNING_PRIVATE_KEY.Trim()
+              if ($trimmed -match "untrusted comment:") {
                 $hasValidKey = $true
+              } else {
+                try {
+                  $decoded = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($trimmed))
+                  if ($decoded -match "untrusted comment:") {
+                    $hasValidKey = $true
+                  }
+                } catch {
+                  $hasValidKey = $false
+                }
               }
             }
             if ($env:IS_TEST_BUILD -eq "true") {
