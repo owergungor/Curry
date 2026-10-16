@@ -183,9 +183,11 @@ jobs:
         run: |
           HAS_VALID_KEY=false
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
-            if printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | grep -q "untrusted comment:"; then
+            CLEAN_KEY=$(printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | tr -d '\r' | sed 's/^\xef\xbb\xbf//')
+            export TAURI_SIGNING_PRIVATE_KEY="$CLEAN_KEY"
+            if printf '%s' "$CLEAN_KEY" | grep -q "untrusted comment:"; then
               HAS_VALID_KEY=true
-            elif printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | base64 --decode 2>/dev/null | grep -q "untrusted comment:"; then
+            elif printf '%s' "$CLEAN_KEY" | base64 --decode 2>/dev/null | grep -q "untrusted comment:"; then
               HAS_VALID_KEY=true
             fi
           fi
@@ -424,7 +426,8 @@ jobs:
           try {
             $hasValidKey = $false
             if (-not [string]::IsNullOrEmpty($env:TAURI_SIGNING_PRIVATE_KEY)) {
-              $trimmed = $env:TAURI_SIGNING_PRIVATE_KEY.Trim()
+              $trimmed = $env:TAURI_SIGNING_PRIVATE_KEY.Trim([char]0xFEFF, ' ', "`t", "`r", "`n")
+              $env:TAURI_SIGNING_PRIVATE_KEY = $trimmed
               if ($trimmed -match "untrusted comment:") {
                 $hasValidKey = $true
               } else {
