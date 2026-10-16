@@ -10,6 +10,14 @@ on:
         description: 'Release tag to publish (e.g. v2.0)'
         required: false
         type: string
+      target_platform:
+        description: 'Target platform to build and release (all, windows-only)'
+        required: false
+        type: choice
+        options:
+          - all
+          - windows-only
+        default: all
       allow_unsigned:
         description: 'Allow test build without Apple signing / updater credentials (default false)'
         required: false
@@ -28,6 +36,7 @@ jobs:
       release_tag: ${{ steps.check.outputs.release_tag }}
       commit_sha: ${{ steps.check.outputs.commit_sha }}
       is_test_build: ${{ steps.check.outputs.is_test_build }}
+      target_platform: ${{ steps.check.outputs.target_platform }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -41,6 +50,14 @@ jobs:
         run: |
           TAG=""
           IS_TEST="false"
+          TARGET_PLATFORM="all"
+          if [ -n "${{ inputs.target_platform }}" ]; then
+            TARGET_PLATFORM="${{ inputs.target_platform }}"
+          fi
+          if [ "$TARGET_PLATFORM" != "all" ] && [ "$TARGET_PLATFORM" != "windows-only" ]; then
+            echo "::error::Invalid target_platform: '$TARGET_PLATFORM'. Allowed values: all, windows-only"
+            exit 1
+          fi
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             TAG="${GITHUB_REF_NAME}"
             IS_TEST="false"
@@ -121,16 +138,19 @@ jobs:
           echo "Verified commit SHA: $COMMIT_SHA"
           echo "Manifest version verified: $TAURI_VER (expected: $EXPECTED_TECH)"
           echo "Test build mode: $IS_TEST"
+          echo "Target platform: $TARGET_PLATFORM"
 
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
           echo "is_test_build=$IS_TEST" >> "$GITHUB_OUTPUT"
+          echo "target_platform=$TARGET_PLATFORM" >> "$GITHUB_OUTPUT"
 
   release-mac:
     name: Build macOS Apple Silicon (arm64)
     runs-on: macos-14
     needs: [validate-tag]
+    if: needs.validate-tag.outputs.target_platform != 'windows-only'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -476,6 +496,11 @@ jobs:
     name: Publish Draft Release
     runs-on: ubuntu-latest
     needs: [validate-tag, release-mac, release-windows]
+    if: |
+      always() &&
+      needs.validate-tag.result == 'success' &&
+      needs.release-windows.result == 'success' &&
+      (needs.validate-tag.outputs.target_platform == 'windows-only' || needs.release-mac.result == 'success')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -496,6 +521,7 @@ jobs:
           mkdir -p dist_release
           TAG="${{ needs.validate-tag.outputs.tag }}"
           IS_TEST="${{ needs.validate-tag.outputs.is_test_build }}"
+          TARGET_PLATFORM="${{ needs.validate-tag.outputs.target_platform }}"
 
           if [ -d "staged_artifacts/macos-arm64-artifacts" ]; then
             cp -r staged_artifacts/macos-arm64-artifacts/* dist_release/
@@ -519,23 +545,27 @@ jobs:
           # Cryptographic Minisign verification of updater archives against signatures
           if [ "$IS_TEST" != "true" ]; then
             echo "=== Cryptographic Minisign Verification ==="
-            MAC_ARCHIVE=$(find dist_release -maxdepth 1 -name "*.tar.gz" ! -name "*.sig" | head -n 1)
-            MAC_SIG=$(find dist_release -maxdepth 1 -name "*.tar.gz.sig" | head -n 1)
             WIN_ARCHIVE=$(find dist_release -maxdepth 1 -name "*.nsis.zip" ! -name "*.sig" | head -n 1)
             WIN_SIG=$(find dist_release -maxdepth 1 -name "*.nsis.zip.sig" | head -n 1)
 
-            if [ -z "$MAC_ARCHIVE" ] || [ -z "$MAC_SIG" ]; then
-              echo "::error::Official release requires macOS updater archive and signature file!"
-              exit 1
+            if [ "$TARGET_PLATFORM" != "windows-only" ]; then
+              MAC_ARCHIVE=$(find dist_release -maxdepth 1 -name "*.tar.gz" ! -name "*.sig" | head -n 1)
+              MAC_SIG=$(find dist_release -maxdepth 1 -name "*.tar.gz.sig" | head -n 1)
+
+              if [ -z "$MAC_ARCHIVE" ] || [ -z "$MAC_SIG" ]; then
+                echo "::error::Official release requires macOS updater archive and signature file!"
+                exit 1
+              fi
+
+              echo "Verifying macOS updater archive with Minisign ($MAC_ARCHIVE)..."
+              minisign -Vm "$MAC_ARCHIVE" -x "$MAC_SIG" -p dist_release/curry_updater.pub
+              echo "macOS updater archive cryptographically verified against public key."
             fi
+
             if [ -z "$WIN_ARCHIVE" ] || [ -z "$WIN_SIG" ]; then
               echo "::error::Official release requires Windows updater archive and signature file!"
               exit 1
             fi
-
-            echo "Verifying macOS updater archive with Minisign ($MAC_ARCHIVE)..."
-            minisign -Vm "$MAC_ARCHIVE" -x "$MAC_SIG" -p dist_release/curry_updater.pub
-            echo "macOS updater archive cryptographically verified against public key."
 
             echo "Verifying Windows updater archive with Minisign ($WIN_ARCHIVE)..."
             minisign -Vm "$WIN_ARCHIVE" -x "$WIN_SIG" -p dist_release/curry_updater.pub
@@ -547,7 +577,7 @@ jobs:
           # Clean up temporary public key before hashing
           rm -f dist_release/curry_updater.pub
 
-          # Safely generate multi-platform latest.json updater manifest from verified updater artifacts
+          # Safely generate latest.json updater manifest from verified updater artifacts
           node -e "
             const fs = require('fs');
             const path = require('path');
@@ -555,9 +585,10 @@ jobs:
             const isTest = '${{ needs.validate-tag.outputs.is_test_build }}' === 'true';
             const tag = '${{ needs.validate-tag.outputs.tag }}';
             const releaseTag = '${{ needs.validate-tag.outputs.release_tag }}';
+            const targetPlatform = '${{ needs.validate-tag.outputs.target_platform }}';
             const expectedTech = require('./package.json').version;
 
-            console.log('Building latest.json updater manifest for version:', expectedTech);
+            console.log('Building latest.json updater manifest for version:', expectedTech, 'target platform:', targetPlatform);
 
             const files = fs.readdirSync('dist_release');
             const macArchive = files.find(f => f.endsWith('.tar.gz') && !f.endsWith('.sig'));
@@ -580,9 +611,11 @@ jobs:
             console.log('Windows updater archive:', winArchive, 'sig file:', winSigFile);
 
             if (!isTest) {
-              if (!macArchive || !macSig) {
-                console.error('::error::Official release requires signed macOS updater archive (.tar.gz and .sig)!');
-                process.exit(1);
+              if (targetPlatform !== 'windows-only') {
+                if (!macArchive || !macSig) {
+                  console.error('::error::Official release requires signed macOS updater archive (.tar.gz and .sig)!');
+                  process.exit(1);
+                }
               }
               if (!winArchive || !winSig) {
                 console.error('::error::Official release requires signed Windows updater archive (.nsis.zip and .sig)!');
@@ -590,24 +623,35 @@ jobs:
               }
             }
 
-            if (macArchive && winArchive && macSig && winSig) {
+            const platforms = {};
+
+            if (targetPlatform !== 'windows-only' && macArchive && macSig) {
+              platforms['darwin-aarch64'] = {
+                signature: macSig,
+                url: 'https://github.com/owergungor/Curry/releases/download/' + releaseTag + '/' + macArchive
+              };
+            }
+
+            if (winArchive && winSig) {
+              platforms['windows-x86_64'] = {
+                signature: winSig,
+                url: 'https://github.com/owergungor/Curry/releases/download/' + releaseTag + '/' + winArchive
+              };
+            }
+
+            const canPublishManifest = targetPlatform === 'windows-only'
+              ? Boolean(platforms['windows-x86_64'])
+              : Boolean(platforms['darwin-aarch64'] && platforms['windows-x86_64']);
+
+            if (canPublishManifest) {
               const manifest = {
                 version: expectedTech,
                 notes: 'Curry ' + tag + ' release',
                 pub_date: new Date().toISOString(),
-                platforms: {
-                  'darwin-aarch64': {
-                    signature: macSig,
-                    url: 'https://github.com/owergungor/Curry/releases/download/' + releaseTag + '/' + macArchive
-                  },
-                  'windows-x86_64': {
-                    signature: winSig,
-                    url: 'https://github.com/owergungor/Curry/releases/download/' + releaseTag + '/' + winArchive
-                  }
-                }
+                platforms
               };
               fs.writeFileSync('dist_release/latest.json', JSON.stringify(manifest, null, 2));
-              console.log('Generated unified multi-platform latest.json:');
+              console.log('Generated ' + (targetPlatform === 'windows-only' ? 'Windows-only' : 'multi-platform') + ' latest.json:');
               console.log(JSON.stringify(manifest, null, 2));
             } else if (isTest) {
               console.log('Notice: Test build without complete signatures. Skipping latest.json generation.');
@@ -624,9 +668,14 @@ jobs:
             "dist_release/Curry_${TAG}_win-x64-setup.exe"
             "dist_release/Curry_${TAG}_win-x64.zip"
             "dist_release/Curry.exe"
-            "dist_release/Curry_${TAG}_mac-arm64.dmg"
-            "dist_release/Curry_${TAG}_mac-arm64.app.zip"
           )
+
+          if [ "$TARGET_PLATFORM" != "windows-only" ]; then
+            REQUIRED_ASSETS+=(
+              "dist_release/Curry_${TAG}_mac-arm64.dmg"
+              "dist_release/Curry_${TAG}_mac-arm64.app.zip"
+            )
+          fi
 
           for asset in "${REQUIRED_ASSETS[@]}"; do
             if [ ! -s "$asset" ]; then
@@ -644,16 +693,19 @@ jobs:
             node -e "
               const fs = require('fs');
               const m = JSON.parse(fs.readFileSync('dist_release/latest.json', 'utf8'));
+              const targetPlatform = '${{ needs.validate-tag.outputs.target_platform }}';
 
-              // Validate strict Tier 1 platforms: ONLY darwin-aarch64 and windows-x86_64
               const platformKeys = Object.keys(m.platforms || {});
-              const allowedKeys = ['darwin-aarch64', 'windows-x86_64'];
-              if (platformKeys.length !== 2 || !allowedKeys.every(k => platformKeys.includes(k))) {
-                console.error('::error::latest.json must contain exactly darwin-aarch64 and windows-x86_64 platforms! Found:', platformKeys);
+              const expectedKeys = targetPlatform === 'windows-only'
+                ? ['windows-x86_64']
+                : ['darwin-aarch64', 'windows-x86_64'];
+
+              if (platformKeys.length !== expectedKeys.length || !expectedKeys.every(k => platformKeys.includes(k))) {
+                console.error('::error::latest.json must contain exactly ' + expectedKeys.join(', ') + ' platforms! Found:', platformKeys);
                 process.exit(1);
               }
 
-              for (const plat of allowedKeys) {
+              for (const plat of expectedKeys) {
                 const p = m.platforms[plat];
                 if (!p.signature || !p.signature.startsWith('untrusted comment:')) {
                   console.error('::error::Invalid or empty signature for platform:', plat);
@@ -664,7 +716,7 @@ jobs:
                   process.exit(1);
                 }
               }
-              console.log('Unified latest.json verified with exact platforms, valid signatures, and correct asset URLs.');
+              console.log('Manifest (' + targetPlatform + ') verified with exact platforms, valid signatures, and correct asset URLs.');
             "
           fi
 

@@ -31,6 +31,10 @@ Every release build must generate and verify the following distribution artifact
 ### Updater & Metadata:
 - If Tauri signing private key is configured: `.tar.gz`, `.sig`, and `latest.json` updater manifests.
 
+### Target Platform Scope (`workflow_dispatch`):
+- **`all` (Default)**: Full dual-platform production release (Windows x64 + macOS arm64). Requires all 5 distribution packages, both platform updater archives, and unified dual-platform `latest.json`. Apple signing and notarization credentials remain strictly mandatory.
+- **`windows-only`**: Official Windows x64 production release (used when Apple Developer signing credentials are not yet provisioned). Bypasses macOS build without relaxing official Windows updater signing or producing unverified macOS metadata. `latest.json` is scoped strictly to `windows-x86_64`.
+
 ## 4. Release Integrity & Verification Checks
 Before publishing any release or uploading assets to GitHub Releases:
 1. **Zero-Byte Guard**: Confirm file size > 0 for all assets.

@@ -106,3 +106,134 @@ test("latest.json validator strictly enforces only Tier 1 supported platforms", 
   const invalidKeys = Object.keys(invalidManifest.platforms);
   assert.notEqual(invalidKeys.length, 2, "Unsupported platform must be rejected");
 });
+
+test("latest.json validator strictly enforces dual-platform in 'all' mode and single-platform in 'windows-only' mode", () => {
+  function validateManifest(manifest: any, targetPlatform: "all" | "windows-only") {
+    const platformKeys = Object.keys(manifest.platforms || {});
+    const expectedKeys =
+      targetPlatform === "windows-only"
+        ? ["windows-x86_64"]
+        : ["darwin-aarch64", "windows-x86_64"];
+
+    if (
+      platformKeys.length !== expectedKeys.length ||
+      !expectedKeys.every((k) => platformKeys.includes(k))
+    ) {
+      throw new Error(
+        `latest.json must contain exactly ${expectedKeys.join(", ")} platforms! Found: ${platformKeys.join(", ")}`
+      );
+    }
+
+    for (const plat of expectedKeys) {
+      const p = manifest.platforms[plat];
+      if (!p.signature || !p.signature.startsWith("untrusted comment:")) {
+        throw new Error(`Invalid or empty signature for platform: ${plat}`);
+      }
+      if (
+        !p.url ||
+        !p.url.startsWith("https://github.com/owergungor/Curry/releases/download/")
+      ) {
+        throw new Error(`Invalid download URL for platform: ${plat}`);
+      }
+    }
+    return true;
+  }
+
+  const dualPlatformManifest = {
+    version: "2.1.0",
+    notes: "Curry v2.1 release",
+    pub_date: new Date().toISOString(),
+    platforms: {
+      "darwin-aarch64": {
+        signature: "untrusted comment: minisign signature\nsig_mac",
+        url: "https://github.com/owergungor/Curry/releases/download/v2.1/Curry.app.tar.gz",
+      },
+      "windows-x86_64": {
+        signature: "untrusted comment: minisign signature\nsig_win",
+        url: "https://github.com/owergungor/Curry/releases/download/v2.1/Curry.nsis.zip",
+      },
+    },
+  };
+
+  const windowsOnlyManifest = {
+    version: "2.1.0",
+    notes: "Curry v2.1 release",
+    pub_date: new Date().toISOString(),
+    platforms: {
+      "windows-x86_64": {
+        signature: "untrusted comment: minisign signature\nsig_win",
+        url: "https://github.com/owergungor/Curry/releases/download/v2.1/Curry.nsis.zip",
+      },
+    },
+  };
+
+  // 'all' mode
+  assert.equal(validateManifest(dualPlatformManifest, "all"), true);
+  assert.throws(
+    () => validateManifest(windowsOnlyManifest, "all"),
+    /must contain exactly darwin-aarch64, windows-x86_64/
+  );
+
+  // 'windows-only' mode
+  assert.equal(validateManifest(windowsOnlyManifest, "windows-only"), true);
+  assert.throws(
+    () => validateManifest(dualPlatformManifest, "windows-only"),
+    /must contain exactly windows-x86_64/
+  );
+
+  // Rejects fake or missing signatures
+  const badSigManifest = {
+    ...windowsOnlyManifest,
+    platforms: {
+      "windows-x86_64": {
+        signature: "invalid-signature-without-comment",
+        url: "https://github.com/owergungor/Curry/releases/download/v2.1/Curry.nsis.zip",
+      },
+    },
+  };
+  assert.throws(
+    () => validateManifest(badSigManifest, "windows-only"),
+    /Invalid or empty signature/
+  );
+});
+
+test("release.yml defines target_platform with safe defaults and conditional job gating", () => {
+  const workflowPath = path.resolve(".github/workflows/release.yml");
+  assert.ok(fs.existsSync(workflowPath), ".github/workflows/release.yml must exist");
+  const content = fs.readFileSync(workflowPath, "utf8");
+
+  // Verify target_platform input exists under workflow_dispatch
+  assert.ok(content.includes("target_platform:"), "target_platform input must be declared");
+  assert.ok(
+    content.includes("- all") && content.includes("- windows-only"),
+    "target_platform must support all and windows-only"
+  );
+  assert.ok(content.includes("default: all"), "target_platform default must be 'all'");
+
+  // Verify validate-tag outputs target_platform
+  assert.ok(
+    content.includes("target_platform: ${{ steps.check.outputs.target_platform }}"),
+    "validate-tag must output target_platform"
+  );
+
+  // Verify release-mac skips on windows-only
+  assert.ok(
+    content.includes("if: needs.validate-tag.outputs.target_platform != 'windows-only'"),
+    "release-mac must skip when target_platform is windows-only"
+  );
+
+  // Verify publish-release runs when release-windows succeeds and either target_platform is windows-only or release-mac succeeded
+  assert.ok(
+    content.includes(
+      "needs.validate-tag.outputs.target_platform == 'windows-only' || needs.release-mac.result == 'success'"
+    ),
+    "publish-release must not be skipped in windows-only mode"
+  );
+
+  // Verify draft: true is preserved
+  assert.ok(content.includes("draft: true"), "Draft release setting must be preserved");
+
+  // Verify allow_unsigned default is false
+  assert.ok(content.includes("allow_unsigned:"), "allow_unsigned input must exist");
+  assert.ok(content.includes("default: false"), "allow_unsigned default must be false");
+});
