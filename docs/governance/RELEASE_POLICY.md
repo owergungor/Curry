@@ -29,7 +29,8 @@ Every release build must generate and verify the following distribution artifact
 1. `dist_release/Curry_vX.Y_mac-arm64.dmg` — Drag-and-drop installer disk image.
 2. `dist_release/Curry_vX.Y_mac-arm64.app.zip` — Symlink-preserving application bundle archive.
 ### Updater & Metadata:
-- If Tauri signing private key is configured: `.tar.gz`, `.sig`, and `latest.json` updater manifests.
+- If Tauri signing private key is configured: canonical setup signature (`Curry_vX.Y_win-x64-setup.exe.sig`), macOS updater archive/signature (`Curry_vX.Y_mac-arm64.app.tar.gz` and `.sig`), and `latest.json` updater manifest.
+- **Asset Minimalism Guard**: Only canonical distribution assets listed above shall be uploaded to GitHub Releases. Never upload internal raw build artifacts (e.g. `Curry_X.Y.Z_x64-setup.exe.sig`, `*.msi.sig`, or temporary zips).
 
 ### Target Platform Scope (`workflow_dispatch`):
 - **`all` (Default)**: Full dual-platform production release (Windows x64 + macOS arm64). Requires all 5 distribution packages, both platform updater archives, and unified dual-platform `latest.json`. Apple signing and notarization credentials remain strictly mandatory.

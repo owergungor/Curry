@@ -494,21 +494,16 @@ jobs:
           Compress-Archive -Path "$stage\*" -DestinationPath "dist_release\Curry_${tag}_win-x64.zip" -Force
           Remove-Item -Recurse -Force $stage
 
-          # Stage updater artifacts and signatures (.sig, .nsis.zip, and installer signatures)
-          $sigFiles = Get-ChildItem -Path "$targetDir\bundle" -Filter "*.sig" -Recurse -ErrorAction SilentlyContinue
-          if ($sigFiles) {
-            $sigFiles | Copy-Item -Destination "dist_release\" -Force
-          }
+          # Stage updater signature for the canonical NSIS installer
           if ($nsisExe -and (Test-Path "$($nsisExe.FullName).sig")) {
             Copy-Item "$($nsisExe.FullName).sig" "dist_release\Curry_${tag}_win-x64-setup.exe.sig" -Force
-          }
-          $updaterFiles = Get-ChildItem -Path "$targetDir\bundle" -Include "*.nsis.zip","*.nsis.zip.sig","*.zip.sig" -Recurse -ErrorAction SilentlyContinue
-          if ($updaterFiles) {
-            $updaterFiles | Copy-Item -Destination "dist_release\" -Force
           }
           if (Test-Path "$targetDir\bundle\updater\*") {
             Copy-Item "$targetDir\bundle\updater\*" "dist_release\" -Recurse -Force
           }
+          # Remove any redundant internal or non-canonical intermediate signatures (e.g. Curry_X.Y.Z_x64-setup.exe.sig or msi.sig)
+          Get-ChildItem -Path "dist_release" -Filter "*_x64-setup.exe.sig" | Where-Object { $_.Name -ne "Curry_${tag}_win-x64-setup.exe.sig" } | Remove-Item -Force -ErrorAction SilentlyContinue
+          Get-ChildItem -Path "dist_release" -Filter "*.msi*" | Remove-Item -Force -ErrorAction SilentlyContinue
 
       - name: Upload Windows Artifacts to Actions
         uses: actions/upload-artifact@v4
@@ -553,6 +548,10 @@ jobs:
           if [ -d "staged_artifacts/windows-x64-artifacts" ]; then
             cp -r staged_artifacts/windows-x64-artifacts/* dist_release/
           fi
+
+          # Eliminate unnecessary redundant artifacts (e.g. raw build signatures, unused msi/zip files) while preserving canonical Curry_${TAG}_win-x64-setup.exe.sig
+          find dist_release -maxdepth 1 -name "*_x64-setup.exe.sig" ! -name "Curry_${TAG}_win-x64-setup.exe.sig" -exec rm -f {} +
+          rm -f dist_release/*.msi*
 
           # Extract public key from tauri.conf.json for cryptographic verification
           node -e "
@@ -787,16 +786,14 @@ jobs:
           fail_on_unmatched_files: false
           files: |
             dist_release/Curry_*_win-x64-setup.exe
+            dist_release/Curry_*_win-x64-setup.exe.sig
             dist_release/Curry_*_win-x64.zip
             dist_release/Curry.exe
             dist_release/Curry_*_mac-arm64.dmg
             dist_release/Curry_*_mac-arm64.app.zip
+            dist_release/Curry_*_mac-arm64.app.tar.gz
+            dist_release/Curry_*_mac-arm64.app.tar.gz.sig
             dist_release/SHA256SUMS.txt
-            dist_release/*.tar.gz
-            dist_release/*.tar.gz.sig
-            dist_release/*.nsis.zip
-            dist_release/*.nsis.zip.sig
-            dist_release/*.sig
             dist_release/latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

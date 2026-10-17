@@ -433,7 +433,7 @@ Function FinishShow
     IntOp $4 120 * $2
   ${EndIf}
   IntOp $5 190 * $2
-  IntOp $6 280 * $2
+  IntOp $6 320 * $2
   IntOp $7 20 * $2
   IntOp $4 $4 / 96
   IntOp $5 $5 / 96
@@ -444,17 +444,8 @@ Function FinishShow
   SendMessage $HWNDPARENT ${WM_GETFONT} 0 0 $1
   SendMessage $RunAtStartupCheckbox ${WM_SETFONT} $1 1
 
-  ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}"
-  ${If} $0 == ""
-    ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Curry"
-  ${EndIf}
-  ${If} $0 != ""
-    SendMessage $RunAtStartupCheckbox ${BM_SETCHECK} ${BST_CHECKED} 0
-  ${ElseIf} $UpdateMode = 1
-    SendMessage $RunAtStartupCheckbox ${BM_SETCHECK} ${BST_UNCHECKED} 0
-  ${Else}
-    SendMessage $RunAtStartupCheckbox ${BM_SETCHECK} ${BST_CHECKED} 0
-  ${EndIf}
+  ; Always default checkbox to checked as requested
+  SendMessage $RunAtStartupCheckbox ${BM_SETCHECK} ${BST_CHECKED} 0
 FunctionEnd
 
 Function FinishLeave

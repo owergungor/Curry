@@ -245,11 +245,15 @@
   }
 
   .trigger-label {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
     font-weight: 600;
     color: var(--text-primary, #f8fafc);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .trigger-desc {
@@ -340,9 +344,13 @@
   }
 
   .item-title {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
     font-size: 13px;
     font-weight: 500;
     color: var(--text-primary, #f8fafc);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .r-dropdown-item.selected .item-title {

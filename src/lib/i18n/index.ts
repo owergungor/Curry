@@ -102,17 +102,17 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.eyebrow': 'CONFIGURATION & PREFERENCES',
     'settings.title': 'Application Settings',
     'settings.desc': 'Customize appearance, language, ambient themes, update rules, and native system integration.',
-    
+
     // Appearance & Language Row
     'settings.appearance_mode': 'Appearance Mode',
     'settings.appearance_desc': 'Choose between System theme detection, Light, or Dark mode',
     'settings.appearance_system': 'System',
     'settings.appearance_light': 'Light',
     'settings.appearance_dark': 'Dark',
-    
+
     'settings.language': 'Language',
     'settings.language_desc': 'Select interface language for Curry',
-    
+
     // Themes
     'settings.themes_title': 'Themes & Palette Styling',
     'settings.themes_desc': 'Curated high-contrast ambient palettes inspired by modern design systems',
@@ -122,7 +122,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.theme_group_cosmic': 'Cosmic Purple & Violet',
     'settings.theme_group_vibrant': 'Electric Magenta & Rose',
     'settings.theme_group_organic': 'Organic Nature & Earth',
-    
+
     // Theme names & descriptions
     'theme.promotor-wow.name': 'Promotor Wow',
     'theme.promotor-wow.desc': 'Deep obsidian navy & electric vibrant orange-coral aura (Default)',
@@ -462,17 +462,17 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.eyebrow': 'CONFIGURACIÓN Y PREFERENCIAS',
     'settings.title': 'Ajustes de la Aplicación',
     'settings.desc': 'Personaliza apariencia, idioma, temas ambientales, actualizaciones e integración nativa.',
-    
+
     // Appearance & Language Row
     'settings.appearance_mode': 'Modo de Apariencia',
     'settings.appearance_desc': 'Elige entre detección del sistema, modo Claro u Oscuro',
     'settings.appearance_system': 'Sistema',
     'settings.appearance_light': 'Claro',
     'settings.appearance_dark': 'Oscuro',
-    
+
     'settings.language': 'Idioma',
     'settings.language_desc': 'Selecciona el idioma de la interfaz de Curry',
-    
+
     // Themes
     'settings.themes_title': 'Temas y Paletas de Color',
     'settings.themes_desc': 'Paletas ambientales de alto contraste inspiradas en sistemas de diseño modernos',
@@ -482,7 +482,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.theme_group_cosmic': 'Púrpura Cósmico y Violeta',
     'settings.theme_group_vibrant': 'Magenta Eléctrico y Rosa',
     'settings.theme_group_organic': 'Naturaleza Orgánica y Tierra',
-    
+
     // Theme names & descriptions
     'theme.promotor-wow.name': 'Promotor Wow',
     'theme.promotor-wow.desc': 'Azul marino obsidiana y aura vibrante coral anaranjado (Predeterminado)',
@@ -822,17 +822,17 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.eyebrow': 'CONFIGURATION & PRÉFÉRENCES',
     'settings.title': 'Paramètres de l\'application',
     'settings.desc': 'Personnalisez l\'apparence, la langue, les thèmes ambiants, les mises à jour et l\'intégration système.',
-    
+
     // Appearance & Language Row
     'settings.appearance_mode': 'Mode d\'apparence',
     'settings.appearance_desc': 'Choisissez entre la détection du système, le mode Clair ou Sombre',
     'settings.appearance_system': 'Système',
     'settings.appearance_light': 'Clair',
     'settings.appearance_dark': 'Sombre',
-    
+
     'settings.language': 'Langue',
     'settings.language_desc': 'Sélectionnez la langue de l\'interface de Curry',
-    
+
     // Themes
     'settings.themes_title': 'Thèmes & Palettes de couleur',
     'settings.themes_desc': 'Palettes d\'ambiance à contraste élevé inspirées des systèmes de design modernes',
@@ -842,7 +842,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.theme_group_cosmic': 'Pourpre & Violet Cosmique',
     'settings.theme_group_vibrant': 'Magenta Électrique & Rose',
     'settings.theme_group_organic': 'Nature Organique & Lin',
-    
+
     // Theme names & descriptions
     'theme.promotor-wow.name': 'Promotor Wow',
     'theme.promotor-wow.desc': 'Bleu nuit obsidienne & aura éclatante corail orangé (Par défaut)',
@@ -1182,17 +1182,17 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.eyebrow': 'KONFIGURATION & EINSTELLUNGEN',
     'settings.title': 'Anwendungseinstellungen',
     'settings.desc': 'Passe Erscheinungsbild, Sprache, Themes, Updates und native Systemintegration an.',
-    
+
     // Appearance & Language Row
     'settings.appearance_mode': 'Erscheinungsbild',
     'settings.appearance_desc': 'Wähle zwischen automatischer Systemerkennung, Hell oder Dunkel',
     'settings.appearance_system': 'System',
     'settings.appearance_light': 'Hell',
     'settings.appearance_dark': 'Dunkel',
-    
+
     'settings.language': 'Sprache',
     'settings.language_desc': 'Wähle die Oberflächensprache für Curry',
-    
+
     // Themes
     'settings.themes_title': 'Themes & Farbpaletten',
     'settings.themes_desc': 'Kontrastreiche Umgebungspaletten inspiriert von modernen Designsystemen',
@@ -1202,7 +1202,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.theme_group_cosmic': 'Kosmisches Purpur & Violett',
     'settings.theme_group_vibrant': 'Elektrisches Magenta & Rose',
     'settings.theme_group_organic': 'Organische Natur & Leinen',
-    
+
     // Theme names & descriptions
     'theme.promotor-wow.name': 'Promotor Wow',
     'theme.promotor-wow.desc': 'Tiefes Obsidian-Navy & elektrisierendes Orange-Korallen-Aura (Standard)',
@@ -1508,23 +1508,23 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'nav.dashboard': 'Panel',
     'nav.notifications': 'Bildirimler',
     'nav.apps': 'Uygulamalar',
-    'nav.glow': 'Işıma',
+    'nav.glow': 'Parlama',
     'nav.settings': 'Ayarlar',
 
     // Header & Listening
     'header.brand_title': 'Curry',
-    'header.brand_tagline': 'Ortam Işıması Bildirim Yardımcısı',
-    'header.test_glow': 'Işımayı Dene',
+    'header.brand_tagline': 'Ortam Parlaması Bildirim Yardımcısı',
+    'header.test_glow': 'Parlamayı Dene',
     'header.testing': 'Deneniyor...',
-    'header.status_active': 'Dinleniyor',
+    'header.status_active': 'Aktif',
     'header.status_paused': 'Duraklatıldı',
     'header.status_error': 'Servis Hatası',
     'header.status_permission': 'İzin Gerekli',
 
     // Dashboard
     'dashboard.eyebrow': 'SİSTEM GENEL BAKIŞI',
-    'dashboard.title': 'Masaüstü Aktivitesi ve Işıma Hattı',
-    'dashboard.desc': 'Gerçek zamanlı telemetri, bildirim yakalama hattı ve ortam ışıması durumu.',
+    'dashboard.title': 'Masaüstü Aktivitesi ve Parlama Hattı',
+    'dashboard.desc': 'Gerçek zamanlı telemetri, bildirim yakalama hattı ve ortam parlaması durumu.',
     'dashboard.stat_total': 'Toplam Yakalanan',
     'dashboard.stat_unread': 'Okunmamış Mesajlar',
     'dashboard.stat_apps': 'Aktif Uygulama Profili',
@@ -1542,17 +1542,17 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.eyebrow': 'YAPILANDIRMA VE TERCİHLER',
     'settings.title': 'Uygulama Ayarları',
     'settings.desc': 'Görünüm, dil, ortam temaları, güncelleme kuralları ve yerel sistem entegrasyonunu özelleştirin.',
-    
+
     // Appearance & Language Row
     'settings.appearance_mode': 'Görünüm Modu',
     'settings.appearance_desc': 'Sistem algılama, Açık veya Koyu mod arasında seçim yapın',
     'settings.appearance_system': 'Sistem',
     'settings.appearance_light': 'Açık',
     'settings.appearance_dark': 'Koyu',
-    
+
     'settings.language': 'Dil',
     'settings.language_desc': 'Curry için arayüz dilini seçin',
-    
+
     // Themes
     'settings.themes_title': 'Temalar ve Palet Stili',
     'settings.themes_desc': 'Modern tasarım sistemlerinden ilham alan yüksek kontrastlı ortam paletleri',
@@ -1562,14 +1562,14 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.theme_group_cosmic': 'Kozmik Mor & Menekşe',
     'settings.theme_group_vibrant': 'Elektrik Macenta & Gül',
     'settings.theme_group_organic': 'Organik Doğa & Keten',
-    
+
     // Theme names & descriptions
     'theme.promotor-wow.name': 'Promotor Wow',
     'theme.promotor-wow.desc': 'Derin obsidyen lacivert & elektrikli canlı turuncu-mercan aurası (Varsayılan)',
     'theme.amberstate.name': 'Kehribar',
     'theme.amberstate.desc': 'Erimiş sıcak kehribar ve endüstriyel arduvaz çelik graniti',
     'theme.perpetuity.name': 'Standart',
-    'theme.perpetuity.desc': 'Hassas monokrom obsidyen ve fütüristik camgöbeği-çivit ışıması',
+    'theme.perpetuity.desc': 'Hassas monokrom obsidyen ve fütüristik camgöbeği-çivit parlaması',
     'theme.amethyst-haze.name': 'Ametist Pusu',
     'theme.amethyst-haze.desc': 'Mistik menekşe aurası, derin mor ve canlı ametist',
     'theme.catppuccin.name': 'Catppuccin',
@@ -1588,21 +1588,21 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.startup_title': 'Başlangıçta Çalıştır',
     'settings.startup_desc': 'Masaüstü oturumu açıldığında Curry otomatik olarak başlasın',
     'settings.sound_title': 'Bildirim Sesi',
-    'settings.sound_desc': 'Ekran ışıması tetiklendiğinde hafif bir sesli uyarı çalınsın',
+    'settings.sound_desc': 'Ekran parlaması tetiklendiğinde hafif bir sesli uyarı çalınsın',
     'settings.notifications_title': 'Masaüstü Bildirimleri',
     'settings.notifications_desc': 'Yerel sistem bildirimlerini yakalayın ve işleyin',
     'settings.oled_title': 'OLED Panel Koruması',
     'settings.oled_desc': 'Ekran yanmasını önlemek için tepe yoğunluğu %60 ile sınırlar ve kenar kalınlığını azaltır',
     'settings.fullscreen_title': 'Tam Ekran & Oyun Bastırma',
-    'settings.fullscreen_desc': 'Tam ekran oyunlar veya videolar sırasında ortam ışımasını otomatik olarak gizle',
+    'settings.fullscreen_desc': 'Tam ekran oyunlar veya videolar sırasında ortam parlamasını otomatik olarak gizle',
     'settings.history_limit': 'Geçmiş Sınırı',
     'settings.history_desc': 'Bellekte tutulacak maksimum bildirim sayısı',
 
     // Fullscreen behavior options
     'fullscreen.always_show': 'Her Zaman Göster',
-    'fullscreen.always_show_desc': 'Tam ekran pencerelerde bile ışımayı göster',
+    'fullscreen.always_show_desc': 'Tam ekran pencerelerde bile parlamayı göster',
     'fullscreen.suppress_in_fullscreen': 'Tam Ekranda Gizle',
-    'fullscreen.suppress_in_fullscreen_desc': 'Tam ekran pencerelerde ışımayı gizle',
+    'fullscreen.suppress_in_fullscreen_desc': 'Tam ekran pencerelerde parlamayı gizle',
     'fullscreen.suppress_gaming': 'Oyunlarda Gizle',
     'fullscreen.suppress_gaming_desc': 'Oyun ve tam ekran pencerelerde otomatik gizle',
 
@@ -1637,14 +1637,14 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     // Glow Configuration Tab
     'glow.eyebrow': 'ORTAM AYDINLATMASI',
-    'glow.title': 'Ekran Kenarı Işıma Kontrolleri',
-    'glow.desc': 'Işıma süresi, yoğunluğu, çerçeve kalınlığı, köşe yuvarlaması ve animasyon stilini hassasça ayarlayın.',
-    'glow.global_switch': 'Ortam Işıması Aktif',
+    'glow.title': 'Ekran Kenarı Parlama Kontrolleri',
+    'glow.desc': 'Parlama süresi, yoğunluğu, çerçeve kalınlığı, köşe yuvarlaması ve animasyon stilini hassasça ayarlayın.',
+    'glow.global_switch': 'Ortam Parlaması Aktif',
     'glow.global_switch_desc': 'Tüm ekranlardaki kenar aydınlatmasını kontrol eden ana anahtar',
     'glow.animation_style': 'Animasyon Stili',
     'glow.animation_desc': 'Ekran kenarlarında kullanılan dinamik hareket deseni',
-    'glow.duration': 'Işıma Süresi',
-    'glow.intensity': 'Işıma Yoğunluğu',
+    'glow.duration': 'Parlama Süresi',
+    'glow.intensity': 'Parlama Yoğunluğu',
     'glow.thickness': 'Kenar Kalınlığı',
     'glow.corner_radius': 'Köşe Yuvarlama',
     'glow.monitor_target': 'Hedef Ekran',
@@ -1655,7 +1655,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'glow.monitor_active': 'Aktif Pencere Ekranı',
     'glow.monitor_active_desc': 'İmlecin veya aktif pencerenin bulunduğu monitörü hedefle',
     'glow.monitor_all': 'Tüm Ekranlar',
-    'glow.monitor_all_desc': 'Tüm monitörlerde eşzamanlı ortam ışıması',
+    'glow.monitor_all_desc': 'Tüm monitörlerde eşzamanlı ortam parlaması',
 
     // Animation styles
     'anim.pulse': 'Nabız',
@@ -1671,7 +1671,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     // Applications Tab
     'apps.eyebrow': 'UYGULAMA PROFİLLERİ',
-    'apps.title': 'Uygulama Başına Işıma Profilleri',
+    'apps.title': 'Uygulama Başına Parlama Profilleri',
     'apps.desc': 'Ayrı ayrı uygulamalar için renk, animasyon, süre ve ekran hedefi kuralları belirleyin.',
     'apps.add_profile': 'Profil Ekle',
     'apps.search_placeholder': 'Uygulama profillerini filtrele...',
@@ -1719,7 +1719,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'dashboard.total_sub': 'Yerel geçmişte saklanıyor',
     'dashboard.unread_sub': 'Kullanıcı incelemesi bekliyor',
     'dashboard.stat_critical': 'Kritik Uyarılar',
-    'dashboard.critical_sub': 'Yüksek aciliyetli görsel ışıma',
+    'dashboard.critical_sub': 'Yüksek aciliyetli görsel parlama',
     'dashboard.stat_priority': 'Yüksek Öncelik',
     'dashboard.priority_sub': 'Öncelikli uyarı seviyesi',
     'dashboard.diagnostics_title': 'Sistem ve Dinleyici Tanılamaları',
@@ -1741,12 +1741,12 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'apps.disabled': 'Devre dışı',
     'apps.no_matching': 'Eşleşen Profil Yok',
     'apps.no_matching_desc': '"{query}" ile eşleşen uygulama bulunamadı.',
-    'apps.modal_subtitle': 'Uygulama bazlı ışıma ve bastırma ayarlarını yapılandırın',
+    'apps.modal_subtitle': 'Uygulama bazlı parlama ve bastırma ayarlarını yapılandırın',
     'apps.section_details': 'Uygulama Detayları',
     'apps.path': 'Yol',
     'apps.clear_path': 'Yolu temizle',
-    'apps.enabled_desc': 'Bu uygulama için özel ortam ışımasını etkinleştirin',
-    'apps.section_glow': 'Ortam Işıması',
+    'apps.enabled_desc': 'Bu uygulama için özel ortam parlamasını etkinleştirin',
+    'apps.section_glow': 'Ortam Parlaması',
     'apps.save_profile': 'Profili Kaydet',
     'apps.create_profile': 'Profil Oluştur',
     'apps.all_displays': 'Tüm Ekranlar',
@@ -1754,20 +1754,20 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     // Glow page additional (TR)
     'glow.previewing': 'Önizleniyor...',
-    'glow.activation_title': 'Işıma Etkinleştirme ve Stil',
-    'glow.activation_desc': 'Kenar ışımasını etkinleştirin ve görsel hareket stilini seçin',
+    'glow.activation_title': 'Parlama Etkinleştirme ve Stil',
+    'glow.activation_desc': 'Kenar parlamasını etkinleştirin ve görsel hareket stilini seçin',
     'glow.geometry_title': 'Kenar Geometrisi ve Boyutlandırma',
     'glow.geometry_desc': 'Ekran kenarlık kalınlığını ve köşe yuvarlatmasını yapılandırın',
     'glow.thickness_sub': 'Kenarlık genişliği ({thickness} px)',
     'glow.corner_radius_sub': 'Ekran kenarı köşe yuvarlatma yarıçapı ({radius} px)',
     'glow.timing_title': 'Zamanlama ve Maksimum Yoğunluk',
-    'glow.timing_desc': 'Bildirim ışıma süresi ve tepe parlaklık düzeyi',
+    'glow.timing_desc': 'Bildirim parlama süresi ve tepe parlaklık düzeyi',
     'glow.duration_sub': 'Görüntüleme süresi ({duration} ms)',
     'glow.intensity_sub': 'Maksimum parlaklık (%{intensity})',
     'glow.targeting_title': 'Ekran Hedefleme ve Renk',
-    'glow.targeting_desc': 'Ekran hedefini ve varsayılan bildirim ışıma tonunu seçin',
-    'glow.monitor_sub': 'Işıma kaplamasının işleneceği monitör',
-    'glow.default_color': 'Varsayılan Işıma Rengi',
+    'glow.targeting_desc': 'Ekran hedefini ve varsayılan bildirim parlama tonunu seçin',
+    'glow.monitor_sub': 'Parlama kaplamasının işleneceği monitör',
+    'glow.default_color': 'Varsayılan Parlama Rengi',
     'glow.default_color_desc': 'Standart renk tonu (Aciliyet geçersiz kılmaları: Kritik = Kırmızı, Yüksek = Kehribar)',
     'glow.optimization_title': 'Tam Ekran ve OLED Optimizasyonu',
     'glow.optimization_desc': 'Oyun bastırmasını ve panel yanma korumasını yapılandırın',
@@ -1781,9 +1781,9 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.windows_title': 'Windows Entegrasyonu ve Başlangıç',
     'settings.windows_desc': 'Masaüstü yaşam döngüsü, arka plan sistem tepsisi davranışı ve başlangıç seçenekleri',
     'settings.master_title': 'Ana İzleme Anahtarı',
-    'settings.master_desc': 'Bildirim yakalama ve kenar ışıması için genel açma/kapatma anahtarı',
+    'settings.master_desc': 'Bildirim yakalama ve kenar parlaması için genel açma/kapatma anahtarı',
     'settings.sound_chime_title': 'Sesli Uyarı Sinyali',
-    'settings.sound_chime_desc': 'Kenar ışımasıyla eşzamanlı olarak yerel Windows masaüstü sesini çalın',
+    'settings.sound_chime_desc': 'Kenar parlamasıyla eşzamanlı olarak yerel Windows masaüstü sesini çalın',
     'settings.sound_chime_enable': 'Sesli Uyarıyı Etkinleştir',
     'settings.sound_chime_enable_sub': 'Bildirimler yakalandığında yerel sesli uyarıyı tetikleyin',
     'settings.sound_test_title': 'Sesli Uyarıyı Test Et',
@@ -1852,7 +1852,7 @@ export function getLanguage(): SupportedLanguage {
       _activeLang = saved;
       try {
         setReactiveLanguage(saved);
-      } catch {}
+      } catch { }
     }
   }
   return _activeLang;
@@ -1865,11 +1865,11 @@ export function setLanguage(lang: SupportedLanguage): void {
   _activeLang = lang;
   try {
     setReactiveLanguage(lang);
-  } catch {}
+  } catch { }
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem('curry_language', lang);
-    } catch {}
+    } catch { }
   }
   subscribers.forEach((fn) => fn(lang));
 }

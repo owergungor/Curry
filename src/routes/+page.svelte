@@ -13,6 +13,7 @@
   import { errorStore } from "$lib/errors";
   import ErrorIsland from "$lib/components/ErrorIsland.svelte";
   import ErrorModal from "$lib/components/ErrorModal.svelte";
+  import ThemeSelector from "$lib/components/ThemeSelector.svelte";
 
   interface ConnectionInfo {
     connected: boolean;
@@ -210,7 +211,7 @@
 
   // Software Update Management (v2.0)
   function formatUserVersion(v: string | undefined | null): string {
-    if (!v) return "2.1";
+    if (!v) return "2.2";
     const clean = v.replace(/^v/, "");
     const parts = clean.split(".");
     if (parts.length >= 2) {
@@ -289,7 +290,7 @@
         pendingUpdateObj = null;
         updateState = "uptodate";
         updateStatusMessage = t("updater.up_to_date", {
-          version: formatUserVersion(connectionInfo?.version ?? "2.1"),
+          version: formatUserVersion(connectionInfo?.version ?? "2.2"),
         });
       }
     } catch (err: unknown) {
@@ -364,7 +365,7 @@
       updateState = "available";
       updateProgress = null;
       updateStatusMessage = t("updater.update_available", {
-        version: formatUserVersion(pendingUpdateObj?.version ?? "2.1"),
+        version: formatUserVersion(pendingUpdateObj?.version ?? "2.2"),
       });
     }
   }
@@ -510,6 +511,33 @@
     navDirection = newIdx > oldIdx ? "forward" : "backward";
     activeTab = target;
   }
+
+  // Animated Sliding Tab Indicator State
+  let navCenterTabsEl = $state<HTMLElement | null>(null);
+  let activeTabIndicator = $state({ left: 0, width: 0, ready: false });
+
+  function updateTabIndicator() {
+    if (typeof window !== "undefined" && navCenterTabsEl) {
+      const activeBtn = navCenterTabsEl.querySelector<HTMLElement>(`#tab-${activeTab}-btn`);
+      if (activeBtn) {
+        const navRect = navCenterTabsEl.getBoundingClientRect();
+        const btnRect = activeBtn.getBoundingClientRect();
+        activeTabIndicator = {
+          left: Math.round(btnRect.left - navRect.left),
+          width: Math.round(btnRect.width),
+          ready: true,
+        };
+      }
+    }
+  }
+
+  $effect(() => {
+    const _t = activeTab;
+    const _l = $currentLanguage;
+    if (typeof window !== "undefined") {
+      requestAnimationFrame(() => updateTabIndicator());
+    }
+  });
 
   function handleTabKeyDown(e: KeyboardEvent, current: TabKey) {
     const tabs: TabKey[] = ["dashboard", "notifications", "applications", "glow", "settings"];
@@ -1527,14 +1555,22 @@
       <div class="brand-text">
         <div class="brand-row">
           <h1 class="brand-title">Curry</h1>
-          <span class="brand-version-pill">v{formatUserVersion(connectionInfo?.version ?? '2.1')}</span>
+          <span class="brand-version-pill">v{formatUserVersion(connectionInfo?.version ?? '2.2')}</span>
         </div>
       </div>
     </div>
 
     <!-- Center Top Navigation Tabs (Resizable Glass Navbar) -->
     <div class="header-center-wrap">
-      <nav class="header-center-tabs" aria-label={t('nav.dashboard')}>
+      <nav class="header-center-tabs" bind:this={navCenterTabsEl} aria-label={t('nav.dashboard')}>
+        {#if activeTabIndicator.ready}
+          <div
+            class="nav-sliding-pill"
+            style:transform="translateX({activeTabIndicator.left}px)"
+            style:width="{activeTabIndicator.width}px"
+            aria-hidden="true"
+          ></div>
+        {/if}
         <button
           id="tab-dashboard-btn"
           class="nav-tab {activeTab === 'dashboard' ? 'active' : ''}"
@@ -2835,55 +2871,11 @@
                   </div>
                 </div>
 
-                <div class="themes-grid" role="radiogroup" aria-label={t('settings.themes')}>
-                  {#each THEMES as theme}
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={selectedTheme === theme.id}
-                      class="theme-picker-card {selectedTheme === theme.id ? 'active' : ''}"
-                      onclick={() => selectTheme(theme.id)}
-                      id="theme-{theme.id}-btn"
-                    >
-                      <div class="theme-card-top">
-                        <div class="theme-title-group">
-                          <span class="theme-card-title">{t(`theme.${theme.id}.name`, {}, theme.label)}</span>
-                          <span class="theme-family-badge">{theme.familyLabel}</span>
-                        </div>
-                        {#if selectedTheme === theme.id}
-                          <span class="theme-selected-pill">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="tiny-icon">
-                              <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                            {t('common.active')}
-                          </span>
-                        {/if}
-                      </div>
-
-                      <p class="theme-card-desc">{t(`theme.${theme.id}.desc`, {}, theme.description)}</p>
-
-                      <!-- Swatches Row -->
-                      <div class="theme-swatches-strip" aria-hidden="true">
-                        {#each theme.swatches as swatch}
-                          <span class="theme-swatch-circle" style="background-color: {swatch};"></span>
-                        {/each}
-                      </div>
-
-                      <!-- Mini UI Preview Box -->
-                      <div
-                        class="theme-mini-frame"
-                        style="background-color: {theme.colors.background}; border-color: {theme.colors.border}; box-shadow: 0 0 10px {theme.glowPalette[0]}33;"
-                        aria-hidden="true"
-                      >
-                        <div class="mini-frame-header">
-                          <span class="mini-frame-accent-dot" style="background-color: {theme.colors.accent}; box-shadow: 0 0 6px {theme.colors.accent};"></span>
-                          <span class="mini-frame-bar" style="background-color: {theme.colors.accent}; width: 45%;"></span>
-                        </div>
-                        <span class="mini-frame-bar secondary" style="background-color: {theme.colors.text}; width: 80%;"></span>
-                      </div>
-                    </button>
-                  {/each}
-                </div>
+                <ThemeSelector
+                  bind:selectedTheme
+                  appearance={effectiveAppearance}
+                  onselect={(id) => selectTheme(id)}
+                />
               </section>
 
               <!-- Windows Startup & Behavior -->
@@ -3637,24 +3629,28 @@
   /* Root Base Themes */
   :global(body[data-theme="perpetuity"]) { background-color: #000000; color: #ededed; }
   :global(body[data-theme="perpetuity"][data-appearance="light"]) { background-color: #ffffff; color: #000000; }
-  :global(body[data-theme="promotor-wow"]) { background-color: #0c0e14; color: #f8fafc; }
   :global(body[data-theme="indigo"]) { background-color: #0b0f19; color: #f0f4ff; }
   :global(body[data-theme="indigo"][data-appearance="light"]) { background-color: #f4f7fc; color: #0f172a; }
   :global(body[data-theme="violet"]) { background-color: #0e0c1b; color: #f3f1ff; }
-  :global(body[data-theme="catppuccin"]) { background-color: #181825; color: #cdd6f4; }
-  :global(body[data-theme="zen-linen"]) { background-color: #f7f6f2; color: #1c1b18; }
-  :global(body[data-theme="zen-linen"][data-appearance="dark"]) { background-color: #181714; color: #f7f6f2; }
-  :global(body[data-theme="neon-magenta"]) { background-color: #0f0814; color: #fdf2f8; }
+  :global(body[data-theme="violet"][data-appearance="light"]) { background-color: #f8f7ff; color: #1a103c; }
   :global(body[data-theme="amethyst-haze"]) { background-color: #0e0b16; color: #f5f0ff; }
-  :global(body[data-theme="sage-mist"]) { background-color: #0c1310; color: #ecfdf5; }
-  :global(body[data-theme="bubblegum"]) { background-color: #140a14; color: #fdf2f8; }
+  :global(body[data-theme="amethyst-haze"][data-appearance="light"]) { background-color: #faf5ff; color: #2e1065; }
+  :global(body[data-theme="catppuccin"]) { background-color: #181825; color: #cdd6f4; }
+  :global(body[data-theme="catppuccin"][data-appearance="light"]) { background-color: #eff1f5; color: #4c4f69; }
+  :global(body[data-theme="neon-magenta"]) { background-color: #0f0814; color: #fdf2f8; }
+  :global(body[data-theme="neon-magenta"][data-appearance="light"]) { background-color: #fdf2f8; color: #831843; }
   :global(body[data-theme="sakura"]) { background-color: #180d13; color: #fff0f6; }
   :global(body[data-theme="sakura"][data-appearance="light"]) { background-color: #fff5f8; color: #3b1024; }
   :global(body[data-theme="burgundy"]) { background-color: #15080c; color: #fde8ef; }
   :global(body[data-theme="burgundy"][data-appearance="light"]) { background-color: #fff1f4; color: #4c0519; }
   :global(body[data-theme="amberstate"]) { background-color: #0d1117; color: #f8fafc; }
+  :global(body[data-theme="amberstate"][data-appearance="light"]) { background-color: #fffbeb; color: #451a03; }
   :global(body[data-theme="mocha"]) { background-color: #16110d; color: #f9f0e8; }
   :global(body[data-theme="mocha"][data-appearance="light"]) { background-color: #fbf6f1; color: #332014; }
+  :global(body[data-theme="sage-mist"]) { background-color: #0c1310; color: #ecfdf5; }
+  :global(body[data-theme="sage-mist"][data-appearance="light"]) { background-color: #f0fdf4; color: #064e3b; }
+  :global(body[data-theme="zen-linen"]) { background-color: #f7f6f2; color: #1c1b18; }
+  :global(body[data-theme="zen-linen"][data-appearance="dark"]) { background-color: #181714; color: #f7f6f2; }
 
   /* ------------------------------------------------------------------------- */
   /* THEME 1: STANDARD (PERPETUITY - VERCEL MONOCHROME PRECISION - DEFAULT)    */
@@ -3690,41 +3686,6 @@
     --success-bg: rgba(0, 112, 243, 0.14);
     --success-border: rgba(0, 112, 243, 0.35);
     --success-text: #3291ff;
-  }
-
-  /* ------------------------------------------------------------------------- */
-  /* THEME 2: PROMOTOR WOW                                                     */
-  /* ------------------------------------------------------------------------- */
-  .shell[data-theme="promotor-wow"] {
-    --bg: #0c0e14;
-    --bg-secondary: #07080c;
-    --surface: #131722;
-    --surface-elevated: #1c2233;
-    --surface-hover: #262e45;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 92, 0, 0.45);
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
-    --accent: #ff5c00;
-    --accent-hover: #e05200;
-    --accent-fg: #ffffff;
-    --accent-gradient: linear-gradient(135deg, #ff5c00 0%, #ff8a00 100%);
-    --header-glow: radial-gradient(circle, rgba(255, 92, 0, 0.18) 0%, rgba(255, 138, 0, 0.08) 50%, transparent 70%);
-    --glow-surface: rgba(255, 92, 0, 0.22);
-    --ring: #ff5c00;
-    --danger: #ef4444;
-    --danger-bg: rgba(239, 68, 68, 0.14);
-    --danger-border: rgba(239, 68, 68, 0.35);
-    --danger-text: #fca5a5;
-    --warning: #f59e0b;
-    --warning-bg: rgba(245, 158, 11, 0.14);
-    --warning-border: rgba(245, 158, 11, 0.35);
-    --warning-text: #fbbf24;
-    --success: #10b981;
-    --success-bg: rgba(16, 185, 129, 0.14);
-    --success-border: rgba(16, 185, 129, 0.35);
-    --success-text: #34d399;
   }
 
   .shell[data-theme="perpetuity"][data-appearance="light"] {
@@ -3782,6 +3743,38 @@
     --success-bg: rgba(166, 227, 161, 0.14);
     --success-border: rgba(166, 227, 161, 0.35);
     --success-text: #a6e3a1;
+  }
+
+  .shell[data-theme="catppuccin"][data-appearance="light"] {
+    --bg: #eff1f5;
+    --bg-secondary: #e6e9ef;
+    --surface: #ffffff;
+    --surface-elevated: #dce0e8;
+    --surface-hover: #ccd0da;
+    --border: rgba(140, 143, 161, 0.25);
+    --border-strong: rgba(136, 57, 239, 0.45);
+    --text-primary: #4c4f69;
+    --text-secondary: #5c5f77;
+    --text-muted: #6c6f85;
+    --accent: #8839ef;
+    --accent-hover: #7287fd;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #8839ef 0%, #1e66f5 100%);
+    --header-glow: radial-gradient(circle, rgba(136, 57, 239, 0.12) 0%, rgba(30, 102, 245, 0.05) 50%, transparent 70%);
+    --glow-surface: rgba(136, 57, 239, 0.15);
+    --ring: #8839ef;
+    --danger: #d20f39;
+    --danger-bg: rgba(210, 15, 57, 0.12);
+    --danger-border: rgba(210, 15, 57, 0.3);
+    --danger-text: #d20f39;
+    --warning: #df8e1d;
+    --warning-bg: rgba(223, 142, 29, 0.12);
+    --warning-border: rgba(223, 142, 29, 0.3);
+    --warning-text: #df8e1d;
+    --success: #40a02b;
+    --success-bg: rgba(64, 160, 43, 0.12);
+    --success-border: rgba(64, 160, 43, 0.3);
+    --success-text: #40a02b;
   }
 
   /* ------------------------------------------------------------------------- */
@@ -3886,6 +3879,38 @@
     --success-text: #34d399;
   }
 
+  .shell[data-theme="neon-magenta"][data-appearance="light"] {
+    --bg: #fdf2f8;
+    --bg-secondary: #fce7f3;
+    --surface: #ffffff;
+    --surface-elevated: #fbcfe8;
+    --surface-hover: #f9a8d4;
+    --border: rgba(236, 72, 153, 0.22);
+    --border-strong: rgba(219, 39, 119, 0.45);
+    --text-primary: #831843;
+    --text-secondary: #9d174d;
+    --text-muted: #be185d;
+    --accent: #db2777;
+    --accent-hover: #be185d;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #db2777 0%, #0891b2 100%);
+    --header-glow: radial-gradient(circle, rgba(219, 39, 119, 0.14) 0%, rgba(8, 145, 178, 0.06) 50%, transparent 70%);
+    --glow-surface: rgba(219, 39, 119, 0.18);
+    --ring: #db2777;
+    --danger: #e11488;
+    --danger-bg: rgba(225, 20, 136, 0.12);
+    --danger-border: rgba(225, 20, 136, 0.3);
+    --danger-text: #e11488;
+    --warning: #d97706;
+    --warning-bg: rgba(217, 119, 6, 0.12);
+    --warning-border: rgba(217, 119, 6, 0.3);
+    --warning-text: #d97706;
+    --success: #059669;
+    --success-bg: rgba(5, 150, 105, 0.12);
+    --success-border: rgba(5, 150, 105, 0.3);
+    --success-text: #059669;
+  }
+
   /* ------------------------------------------------------------------------- */
   /* THEME 7: AMETHYST HAZE                                                    */
   /* ------------------------------------------------------------------------- */
@@ -3919,6 +3944,38 @@
     --success-bg: rgba(52, 211, 153, 0.14);
     --success-border: rgba(52, 211, 153, 0.35);
     --success-text: #34d399;
+  }
+
+  .shell[data-theme="amethyst-haze"][data-appearance="light"] {
+    --bg: #faf5ff;
+    --bg-secondary: #f3e8ff;
+    --surface: #ffffff;
+    --surface-elevated: #f7edff;
+    --surface-hover: #ebd5ff;
+    --border: rgba(168, 85, 247, 0.2);
+    --border-strong: rgba(147, 51, 234, 0.45);
+    --text-primary: #2e1065;
+    --text-secondary: #581c87;
+    --text-muted: #7e22ce;
+    --accent: #9333ea;
+    --accent-hover: #7e22ce;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #9333ea 0%, #c084fc 100%);
+    --header-glow: radial-gradient(circle, rgba(147, 51, 234, 0.14) 0%, rgba(192, 132, 252, 0.06) 50%, transparent 70%);
+    --glow-surface: rgba(147, 51, 234, 0.18);
+    --ring: #9333ea;
+    --danger: #e11d48;
+    --danger-bg: rgba(225, 29, 72, 0.12);
+    --danger-border: rgba(225, 29, 72, 0.3);
+    --danger-text: #e11d48;
+    --warning: #d97706;
+    --warning-bg: rgba(217, 119, 6, 0.12);
+    --warning-border: rgba(217, 119, 6, 0.3);
+    --warning-text: #d97706;
+    --success: #059669;
+    --success-bg: rgba(5, 150, 105, 0.12);
+    --success-border: rgba(5, 150, 105, 0.3);
+    --success-text: #059669;
   }
 
   /* ------------------------------------------------------------------------- */
@@ -3956,39 +4013,36 @@
     --success-text: #34d399;
   }
 
-  /* ------------------------------------------------------------------------- */
-  /* THEME 9: BUBBLEGUM                                                        */
-  /* ------------------------------------------------------------------------- */
-  .shell[data-theme="bubblegum"] {
-    --bg: #140a14;
-    --bg-secondary: #0c050c;
-    --surface: #221022;
-    --surface-elevated: #321832;
-    --surface-hover: #452145;
-    --border: rgba(244, 63, 94, 0.22);
-    --border-strong: rgba(251, 113, 133, 0.45);
-    --text-primary: #fdf2f8;
-    --text-secondary: #fce7f3;
-    --text-muted: #fda4af;
-    --accent: #f43f5e;
-    --accent-hover: #e11d48;
+  .shell[data-theme="sage-mist"][data-appearance="light"] {
+    --bg: #f0fdf4;
+    --bg-secondary: #dcfce7;
+    --surface: #ffffff;
+    --surface-elevated: #bbf7d0;
+    --surface-hover: #a7f3d0;
+    --border: rgba(52, 211, 153, 0.28);
+    --border-strong: rgba(5, 150, 105, 0.45);
+    --text-primary: #064e3b;
+    --text-secondary: #065f46;
+    --text-muted: #047857;
+    --accent: #059669;
+    --accent-hover: #047857;
     --accent-fg: #ffffff;
-    --accent-gradient: linear-gradient(135deg, #f43f5e 0%, #c084fc 100%);
-    --header-glow: radial-gradient(circle, rgba(244, 63, 94, 0.18) 0%, rgba(192, 132, 252, 0.08) 50%, transparent 70%);
-    --glow-surface: rgba(244, 63, 94, 0.22);
-    --ring: #f43f5e;
-    --danger: #e11d48;
-    --danger-bg: rgba(225, 29, 72, 0.14);
-    --danger-border: rgba(225, 29, 72, 0.35);
-    --danger-text: #fda4af;
-    --warning: #facc15;
-    --warning-bg: rgba(250, 204, 21, 0.14);
-    --warning-border: rgba(250, 204, 21, 0.35);
-    --warning-text: #fde047;
-    --success: #4ade80;
-    --success-bg: rgba(74, 222, 128, 0.14);
-    --success-border: rgba(74, 222, 128, 0.35);
-    --success-text: #4ade80;
+    --accent-gradient: linear-gradient(135deg, #059669 0%, #14b8a6 100%);
+    --header-glow: radial-gradient(circle, rgba(5, 150, 105, 0.14) 0%, rgba(20, 184, 166, 0.06) 50%, transparent 70%);
+    --glow-surface: rgba(5, 150, 105, 0.18);
+    --ring: #059669;
+    --danger: #dc2626;
+    --danger-bg: rgba(220, 38, 38, 0.12);
+    --danger-border: rgba(220, 38, 38, 0.3);
+    --danger-text: #dc2626;
+    --warning: #d97706;
+    --warning-bg: rgba(217, 119, 6, 0.12);
+    --warning-border: rgba(217, 119, 6, 0.3);
+    --warning-text: #d97706;
+    --success: #059669;
+    --success-bg: rgba(5, 150, 105, 0.12);
+    --success-border: rgba(5, 150, 105, 0.3);
+    --success-text: #059669;
   }
 
   /* ------------------------------------------------------------------------- */
@@ -4024,6 +4078,38 @@
     --success-bg: rgba(16, 185, 129, 0.14);
     --success-border: rgba(16, 185, 129, 0.35);
     --success-text: #34d399;
+  }
+
+  .shell[data-theme="amberstate"][data-appearance="light"] {
+    --bg: #fffbeb;
+    --bg-secondary: #fef3c7;
+    --surface: #ffffff;
+    --surface-elevated: #fde68a;
+    --surface-hover: #fcd34d;
+    --border: rgba(245, 158, 11, 0.22);
+    --border-strong: rgba(217, 119, 6, 0.45);
+    --text-primary: #451a03;
+    --text-secondary: #78350f;
+    --text-muted: #92400e;
+    --accent: #d97706;
+    --accent-hover: #b45309;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #d97706 0%, #ea580c 100%);
+    --header-glow: radial-gradient(circle, rgba(217, 119, 6, 0.14) 0%, rgba(234, 88, 12, 0.06) 50%, transparent 70%);
+    --glow-surface: rgba(217, 119, 6, 0.18);
+    --ring: #d97706;
+    --danger: #dc2626;
+    --danger-bg: rgba(220, 38, 38, 0.12);
+    --danger-border: rgba(220, 38, 38, 0.3);
+    --danger-text: #dc2626;
+    --warning: #d97706;
+    --warning-bg: rgba(217, 119, 6, 0.12);
+    --warning-border: rgba(217, 119, 6, 0.3);
+    --warning-text: #d97706;
+    --success: #059669;
+    --success-bg: rgba(5, 150, 105, 0.12);
+    --success-border: rgba(5, 150, 105, 0.3);
+    --success-text: #059669;
   }
 
   /* ------------------------------------------------------------------------- */
@@ -4110,6 +4196,38 @@
     --success-bg: rgba(16, 185, 129, 0.14);
     --success-border: rgba(16, 185, 129, 0.35);
     --success-text: #34d399;
+  }
+
+  .shell[data-theme="violet"][data-appearance="light"] {
+    --bg: #f8f7ff;
+    --bg-secondary: #f0eeff;
+    --surface: #ffffff;
+    --surface-elevated: #f4f2ff;
+    --surface-hover: #e8e4ff;
+    --border: rgba(99, 102, 241, 0.2);
+    --border-strong: rgba(99, 102, 241, 0.45);
+    --text-primary: #1a103c;
+    --text-secondary: #4338ca;
+    --text-muted: #6e5fa3;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+    --accent-fg: #ffffff;
+    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    --header-glow: radial-gradient(circle, rgba(99, 102, 241, 0.14) 0%, rgba(139, 92, 246, 0.06) 50%, transparent 70%);
+    --glow-surface: rgba(99, 102, 241, 0.18);
+    --ring: #6366f1;
+    --danger: #f43f5e;
+    --danger-bg: rgba(244, 63, 94, 0.12);
+    --danger-border: rgba(244, 63, 94, 0.3);
+    --danger-text: #f43f5e;
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.12);
+    --warning-border: rgba(245, 158, 11, 0.3);
+    --warning-text: #f59e0b;
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.12);
+    --success-border: rgba(16, 185, 129, 0.3);
+    --success-text: #10b981;
   }
 
   /* ------------------------------------------------------------------------- */
@@ -4426,8 +4544,23 @@
     transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), padding 0.2s ease;
   }
 
+  .nav-sliding-pill {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 0;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--border);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), width 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    z-index: 1;
+  }
+
   .nav-tab {
     position: relative;
+    z-index: 2;
     display: inline-flex;
     align-items: center;
     gap: 7px;
@@ -4440,7 +4573,7 @@
     border: 1px solid transparent;
     cursor: pointer;
     overflow: hidden;
-    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: color 0.15s ease, transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .nav-tab:active {
@@ -4469,10 +4602,13 @@
   }
 
   .nav-tab.active {
-    background: var(--surface);
     color: var(--accent);
-    border-color: var(--border-strong);
     font-weight: 600;
+  }
+
+  .header-center-tabs:not(:has(.nav-sliding-pill)) .nav-tab.active {
+    background: var(--surface);
+    border-color: var(--border-strong);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--border);
   }
 
