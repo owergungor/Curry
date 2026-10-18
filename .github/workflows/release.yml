@@ -668,18 +668,30 @@ jobs:
               }
             }
 
+            // Tauri v2 updater requires platforms[].signature to be a Base64-encoded string.
+            // If the .sig content was normalized to plaintext Minisign ("untrusted comment:..."),
+            // encode it to Base64 so tauri-plugin-updater's base64_to_string() succeeds.
+            const toBase64Signature = (sig) => {
+              if (!sig) return '';
+              const trimmed = sig.trim();
+              if (trimmed.startsWith('untrusted comment:')) {
+                return Buffer.from(trimmed, 'utf8').toString('base64');
+              }
+              return trimmed;
+            };
+
             const platforms = {};
 
             if (targetPlatform !== 'windows-only' && macArchive && macSig) {
               platforms['darwin-aarch64'] = {
-                signature: macSig,
+                signature: toBase64Signature(macSig),
                 url: 'https://github.com/owergungor/Curry/releases/download/' + releaseTag + '/' + macArchive
               };
             }
 
             if (winArchive && winSig) {
               platforms['windows-x86_64'] = {
-                signature: winSig,
+                signature: toBase64Signature(winSig),
                 url: 'https://github.com/owergungor/Curry/releases/download/' + releaseTag + '/' + winArchive
               };
             }

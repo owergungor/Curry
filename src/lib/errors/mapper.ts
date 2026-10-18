@@ -6,6 +6,7 @@
 
 import type { AppError, ErrorCode, ErrorCategory, ErrorSeverity, ErrorInput, ErrorInputObject, ErrorAction } from './types.ts';
 import { redactSensitiveString, sanitizeContext } from './sanitizer.ts';
+import { APP_VERSION } from '../version.ts';
 
 function extractRawMessage(raw: unknown): string {
   if (typeof raw === 'string') return raw;
@@ -245,7 +246,7 @@ export function mapTechnicalError(input: ErrorInput): AppError {
     severity,
     timestamp: new Date(timestamp).toISOString(),
     platform: redactSensitiveString(platformName),
-    appVersion: '2.0',
+    appVersion: inputObj.appVersion || APP_VERSION,
     sanitizedMessage: message,
     technicalDetails: rawMsg ? redactSensitiveString(rawMsg) : undefined,
     context: sanitizeContext(inputObj.context),

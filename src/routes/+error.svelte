@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { formatDiagnosticsForExport, redactSensitiveString } from "$lib/errors/sanitizer";
+  import { APP_VERSION } from "$lib/version";
 
   let showDetails = $state(false);
   let copied = $state(false);
@@ -21,7 +22,7 @@
       severity: "fatal",
       timestamp: new Date().toISOString(),
       platform: typeof navigator !== "undefined" ? navigator.userAgent : "desktop",
-      appVersion: "2.1",
+      appVersion: APP_VERSION,
       sanitizedMessage: "Fatal application error rendered at root error boundary.",
       technicalDetails: rawMessage,
     });

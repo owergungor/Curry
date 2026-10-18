@@ -126,7 +126,15 @@ test("latest.json validator strictly enforces dual-platform in 'all' mode and si
 
     for (const plat of expectedKeys) {
       const p = manifest.platforms[plat];
-      if (!p.signature || !p.signature.startsWith("untrusted comment:")) {
+      const isPlaintext = Boolean(p.signature && p.signature.startsWith("untrusted comment:"));
+      let isBase64Valid = false;
+      if (p.signature) {
+        try {
+          const decoded = Buffer.from(p.signature, "base64").toString("utf8");
+          isBase64Valid = decoded.startsWith("untrusted comment:");
+        } catch {}
+      }
+      if (!p.signature || (!isPlaintext && !isBase64Valid)) {
         throw new Error(`Invalid or empty signature for platform: ${plat}`);
       }
       if (
@@ -276,4 +284,20 @@ test("signing key detection supports both plaintext and base64-encoded minisign 
   assert.equal(checkKeyValid(b64Key), true, "Base64-encoded minisign key must be valid");
   assert.equal(checkKeyValid(invalidKey), false, "Invalid key must be rejected");
   assert.equal(checkKeyValid(""), false, "Empty key must be rejected");
+});
+
+test("latest.json updater signature must be valid Base64 decoding into Minisign format", () => {
+  const minisignText =
+    "untrusted comment: signature from tauri secret key\nRURj2GAZfTSBdlgZvw0T...\ntrusted comment: timestamp:123\nNlntYPe...";
+  const base64Sig = Buffer.from(minisignText, "utf8").toString("base64");
+
+  // Base64 string must not contain ASCII 32 (space) which causes "Invalid symbol 32, offset 9."
+  assert.equal(base64Sig.includes(" "), false, "Base64 signature must not contain spaces");
+
+  // Decoding must produce valid Minisign text
+  const decoded = Buffer.from(base64Sig, "base64").toString("utf8");
+  assert.ok(
+    decoded.startsWith("untrusted comment:"),
+    "Decoded signature must start with untrusted comment:"
+  );
 });

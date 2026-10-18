@@ -14,6 +14,7 @@
   import ErrorIsland from "$lib/components/ErrorIsland.svelte";
   import ErrorModal from "$lib/components/ErrorModal.svelte";
   import ThemeSelector from "$lib/components/ThemeSelector.svelte";
+  import { APP_VERSION } from "$lib/version";
 
   interface ConnectionInfo {
     connected: boolean;
@@ -209,9 +210,9 @@
     });
   });
 
-  // Software Update Management (v2.0)
+  // Software Update Management
   function formatUserVersion(v: string | undefined | null): string {
-    if (!v) return "2.2";
+    if (!v) return APP_VERSION;
     const clean = v.replace(/^v/, "");
     const parts = clean.split(".");
     if (parts.length >= 2) {
@@ -314,7 +315,9 @@
       } else if (
         errStr.toLowerCase().includes("signature") ||
         errStr.toLowerCase().includes("minisign") ||
-        errStr.toLowerCase().includes("public key")
+        errStr.toLowerCase().includes("public key") ||
+        errStr.toLowerCase().includes("invalid symbol") ||
+        errStr.toLowerCase().includes("base64")
       ) {
         updateStatusMessage = t("updater.signature_error");
       } else {
@@ -424,7 +427,12 @@
       console.warn("[Updater] Installation failed:", errStr);
       updateState = "error";
 
-      if (errStr.toLowerCase().includes("signature") || errStr.toLowerCase().includes("key")) {
+      if (
+        errStr.toLowerCase().includes("signature") ||
+        errStr.toLowerCase().includes("key") ||
+        errStr.toLowerCase().includes("invalid symbol") ||
+        errStr.toLowerCase().includes("base64")
+      ) {
         updateStatusMessage = t("updater.signature_error");
       } else {
         updateStatusMessage = t("updater.server_error");

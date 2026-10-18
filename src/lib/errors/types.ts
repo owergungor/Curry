@@ -93,6 +93,7 @@ export interface ErrorInputObject {
   suggestion?: string;
   rawError?: unknown;
   context?: Record<string, unknown>;
+  appVersion?: string;
   onRetry?: () => void | Promise<void>;
   onOpenSettings?: () => void | Promise<void>;
 }
