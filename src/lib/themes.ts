@@ -43,6 +43,9 @@ export interface ThemeDefinition {
 /** Standard is the first and default theme */
 export const DEFAULT_THEME: ThemeId = 'perpetuity';
 
+/** Authoritative default screen-edge glow color */
+export const DEFAULT_GLOW_COLOR = '#FFFFFF';
+
 export const THEMES: ThemeDefinition[] = [
   // ---------------------------------------------------------------------------
   // 1. Standard (Default)

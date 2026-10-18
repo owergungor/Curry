@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
-  import { THEMES, DEFAULT_THEME, type ThemeId, getThemeGlowPalette } from "$lib/themes";
+  import { THEMES, DEFAULT_THEME, DEFAULT_GLOW_COLOR, type ThemeId, getThemeGlowPalette } from "$lib/themes";
   import Dropdown, { type DropdownItem } from "$lib/Dropdown.svelte";
   import Skeleton from "$lib/Skeleton.svelte";
   import AppearanceTabs, { type Appearance } from "$lib/AppearanceTabs.svelte";
@@ -588,7 +588,7 @@
       corner_radius: 24,
       animation_style: "pulse",
       monitor_target: "primary",
-      color: "#6366f1",
+      color: DEFAULT_GLOW_COLOR,
     },
     theme: DEFAULT_THEME,
     applications: [],

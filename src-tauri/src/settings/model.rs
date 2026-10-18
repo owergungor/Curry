@@ -176,7 +176,7 @@ impl AppSettings {
         }
 
         if self.glow.color.trim().is_empty() {
-            self.glow.color = "#6366f1".to_string();
+            self.glow.color = crate::glow::model::DEFAULT_GLOW_COLOR.to_string();
         }
 
         for prof in &mut self.applications {

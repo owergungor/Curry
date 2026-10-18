@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { DEFAULT_GLOW_COLOR } from "$lib/themes";
 
   let {
-    value = $bindable("#6366F1"),
+    value = $bindable(DEFAULT_GLOW_COLOR),
     color = undefined,
     presets = [
+      DEFAULT_GLOW_COLOR,
       "#6366F1",
       "#38BDF8",
       "#10B981",
@@ -16,7 +18,6 @@
       "#F97316",
       "#84CC16",
       "#14B8A6",
-      "#A855F7",
     ],
     id = "color-picker",
     format = "hex",

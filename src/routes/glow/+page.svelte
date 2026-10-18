@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
+  import { DEFAULT_GLOW_COLOR } from "$lib/themes";
 
   interface GlowPayload {
     color: string;
@@ -15,7 +16,7 @@
   let isGlowing = $state(false);
   let animationKey = $state(0);
   let payload = $state<GlowPayload>({
-    color: "#6366f1",
+    color: DEFAULT_GLOW_COLOR,
     duration_ms: 2500,
     intensity: 0.8,
     thickness: 8,

@@ -102,9 +102,12 @@ pub struct GlowSettings {
     pub animation_style: GlowAnimationStyle,
     /// Target display on which the glow will render.
     pub monitor_target: MonitorTarget,
-    /// Primary glow color (Hex string, e.g. "#6366f1").
+    /// Primary glow color (Hex string, e.g. "#FFFFFF").
     pub color: String,
 }
+
+/// Authoritative default glow color.
+pub const DEFAULT_GLOW_COLOR: &str = "#FFFFFF";
 
 impl Default for GlowSettings {
     fn default() -> Self {
@@ -116,7 +119,7 @@ impl Default for GlowSettings {
             corner_radius: 24,
             animation_style: GlowAnimationStyle::Pulse,
             monitor_target: MonitorTarget::Primary,
-            color: "#6366f1".to_string(),
+            color: DEFAULT_GLOW_COLOR.to_string(),
         }
     }
 }

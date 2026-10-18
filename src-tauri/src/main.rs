@@ -245,7 +245,7 @@ mod tests {
         assert_eq!(default_settings.corner_radius, 24);
         assert_eq!(default_settings.animation_style, GlowAnimationStyle::Pulse);
         assert_eq!(default_settings.monitor_target, MonitorTarget::Primary);
-        assert_eq!(default_settings.color, "#6366f1");
+        assert_eq!(default_settings.color, "#FFFFFF");
 
         let json =
             serde_json::to_string(&default_settings).expect("Failed to serialize GlowSettings");
@@ -433,7 +433,7 @@ mod tests {
         assert!((settings.glow.intensity - 0.8).abs() < f32::EPSILON);
         assert_eq!(settings.glow.thickness, 8);
         assert_eq!(settings.glow.corner_radius, 24);
-        assert_eq!(settings.glow.color, "#6366f1");
+        assert_eq!(settings.glow.color, "#FFFFFF");
         assert_eq!(settings.theme, curry_lib::settings::AppTheme::Perpetuity);
     }
 
@@ -533,7 +533,7 @@ mod tests {
         assert!((sanitized.glow.intensity - 1.0).abs() < f32::EPSILON);
         assert_eq!(sanitized.glow.thickness, 32);
         assert_eq!(sanitized.glow.corner_radius, 48);
-        assert_eq!(sanitized.glow.color, "#6366f1");
+        assert_eq!(sanitized.glow.color, "#FFFFFF");
     }
 
     #[test]
@@ -592,7 +592,7 @@ mod tests {
             _ => (settings.glow.color.as_str(), 1.0),
         };
 
-        assert_eq!(color, "#6366f1");
+        assert_eq!(color, "#FFFFFF");
         assert!((multiplier - 1.0f32).abs() < f32::EPSILON);
 
         // Critical urgency test
@@ -600,7 +600,7 @@ mod tests {
         notif_crit.urgency = Some(NotificationUrgency::Critical);
         let (crit_color, crit_mult): (&str, f32) = match notif_crit.urgency {
             Some(NotificationUrgency::Critical) => ("#ef4444", 1.25),
-            _ => ("#6366f1", 1.0),
+            _ => ("#FFFFFF", 1.0),
         };
         assert_eq!(crit_color, "#ef4444");
         assert!((crit_mult - 1.25f32).abs() < f32::EPSILON);
