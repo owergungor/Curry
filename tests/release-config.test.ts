@@ -126,15 +126,21 @@ test("latest.json validator strictly enforces dual-platform in 'all' mode and si
 
     for (const plat of expectedKeys) {
       const p = manifest.platforms[plat];
-      const isPlaintext = Boolean(p.signature && p.signature.startsWith("untrusted comment:"));
-      let isBase64Valid = false;
-      if (p.signature) {
+      const rawSig = (p && p.signature ? p.signature.trim() : "");
+      let isValid = false;
+
+      if (rawSig.startsWith("untrusted comment:")) {
+        isValid = true;
+      } else if (rawSig.length > 0 && /^[A-Za-z0-9+/=\r\n]+$/.test(rawSig)) {
         try {
-          const decoded = Buffer.from(p.signature, "base64").toString("utf8");
-          isBase64Valid = decoded.startsWith("untrusted comment:");
+          const decoded = Buffer.from(rawSig, "base64").toString("utf8");
+          if (decoded.startsWith("untrusted comment:")) {
+            isValid = true;
+          }
         } catch {}
       }
-      if (!p.signature || (!isPlaintext && !isBase64Valid)) {
+
+      if (!isValid) {
         throw new Error(`Invalid or empty signature for platform: ${plat}`);
       }
       if (
@@ -299,5 +305,76 @@ test("latest.json updater signature must be valid Base64 decoding into Minisign 
   assert.ok(
     decoded.startsWith("untrusted comment:"),
     "Decoded signature must start with untrusted comment:"
+  );
+});
+
+test("latest.json signature validator comprehensively handles plaintext, base64, empty, and invalid signatures", () => {
+  const minisignText =
+    "untrusted comment: signature from tauri secret key\nRURj2GAZfTSBdlgZvw0T...\ntrusted comment: timestamp:123\nNlntYPe...";
+  const base64Sig = Buffer.from(minisignText, "utf8").toString("base64");
+
+  function validateSignature(signature: unknown): boolean {
+    if (typeof signature !== "string") return false;
+    const rawSig = signature.trim();
+    if (rawSig.startsWith("untrusted comment:")) {
+      return true;
+    }
+    if (rawSig.length > 0 && /^[A-Za-z0-9+/=\r\n]+$/.test(rawSig)) {
+      try {
+        const decoded = Buffer.from(rawSig, "base64").toString("utf8");
+        return decoded.startsWith("untrusted comment:");
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  // 1. Plaintext Minisign accepted
+  assert.equal(validateSignature(minisignText), true, "Plaintext Minisign signature must be accepted");
+
+  // 2. Base64-encoded Minisign accepted
+  assert.equal(validateSignature(base64Sig), true, "Base64-encoded Minisign signature must be accepted");
+
+  // 3. Empty signature rejected
+  assert.equal(validateSignature(""), false, "Empty signature must be rejected");
+  assert.equal(validateSignature("   "), false, "Whitespace-only signature must be rejected");
+  assert.equal(validateSignature(null), false, "Null signature must be rejected");
+
+  // 4. Invalid Base64 / non-Minisign rejected
+  assert.equal(validateSignature("invalid!not!base64!"), false, "Invalid base64 characters must be rejected");
+  assert.equal(
+    validateSignature(Buffer.from("random payload not minisign", "utf8").toString("base64")),
+    false,
+    "Valid base64 but non-Minisign content must be rejected"
+  );
+  assert.equal(
+    validateSignature("some-random-plain-text"),
+    false,
+    "Non-Minisign plaintext must be rejected"
+  );
+
+  // 5. Plaintext signature containing spaces directly in latest.json triggers 'Invalid symbol 32, offset 9'
+  // Simulation of toBase64Signature to ensure plaintext is converted and spaces are eliminated
+  const toBase64Signature = (sig: string) => {
+    if (!sig) return "";
+    const trimmed = sig.trim();
+    if (trimmed.startsWith("untrusted comment:")) {
+      return Buffer.from(trimmed, "utf8").toString("base64");
+    }
+    return trimmed;
+  };
+
+  const processedSig = toBase64Signature(minisignText);
+  assert.notEqual(processedSig, minisignText, "Plaintext minisign must not be preserved as-is");
+  assert.equal(processedSig.includes(" "), false, "Base64 signature must not contain spaces (avoids 'Invalid symbol 32, offset 9')");
+  assert.equal(validateSignature(processedSig), true, "Processed signature must validate successfully");
+
+  // Verify release.yml has base64 validation logic
+  const workflowPath = path.resolve(".github/workflows/release.yml");
+  const content = fs.readFileSync(workflowPath, "utf8");
+  assert.ok(
+    content.includes("Buffer.from(rawSig, 'base64')"),
+    "release.yml must contain Base64 signature decoding validation"
   );
 });

@@ -764,7 +764,21 @@ jobs:
 
               for (const plat of expectedKeys) {
                 const p = m.platforms[plat];
-                if (!p.signature || !p.signature.startsWith('untrusted comment:')) {
+                const rawSig = (p && p.signature ? p.signature.trim() : '');
+                let isValid = false;
+
+                if (rawSig.startsWith('untrusted comment:')) {
+                  isValid = true;
+                } else if (rawSig.length > 0 && /^[A-Za-z0-9+/=\r\n]+$/.test(rawSig)) {
+                  try {
+                    const decoded = Buffer.from(rawSig, 'base64').toString('utf8');
+                    if (decoded.startsWith('untrusted comment:')) {
+                      isValid = true;
+                    }
+                  } catch (_) {}
+                }
+
+                if (!isValid) {
                   console.error('::error::Invalid or empty signature for platform:', plat);
                   process.exit(1);
                 }
