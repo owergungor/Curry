@@ -669,8 +669,8 @@ jobs:
             }
 
             // Tauri v2 updater requires platforms[].signature to be a Base64-encoded string.
-            // If the .sig content was normalized to plaintext Minisign ("untrusted comment:..."),
-            // encode it to Base64 so tauri-plugin-updater's base64_to_string() succeeds.
+            // If the .sig content was normalized to plaintext Minisign,
+            // encode it to Base64 so tauri-plugin-updater base64_to_string succeeds.
             const toBase64Signature = (sig) => {
               if (!sig) return '';
               const trimmed = sig.trim();
