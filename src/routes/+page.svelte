@@ -291,7 +291,7 @@
         pendingUpdateObj = null;
         updateState = "uptodate";
         updateStatusMessage = t("updater.up_to_date", {
-          version: formatUserVersion(connectionInfo?.version ?? "2.2"),
+          version: formatUserVersion(connectionInfo?.version ?? APP_VERSION),
         });
       }
     } catch (err: unknown) {
@@ -368,7 +368,7 @@
       updateState = "available";
       updateProgress = null;
       updateStatusMessage = t("updater.update_available", {
-        version: formatUserVersion(pendingUpdateObj?.version ?? "2.2"),
+        version: formatUserVersion(pendingUpdateObj?.version ?? APP_VERSION),
       });
     }
   }
@@ -1563,7 +1563,7 @@
       <div class="brand-text">
         <div class="brand-row">
           <h1 class="brand-title">Curry</h1>
-          <span class="brand-version-pill">v{formatUserVersion(connectionInfo?.version ?? '2.2')}</span>
+          <span class="brand-version-pill">v{formatUserVersion(connectionInfo?.version ?? APP_VERSION)}</span>
         </div>
       </div>
     </div>
