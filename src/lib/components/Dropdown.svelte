@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-
   export interface DropdownItem {
     value: string;
     label: string;
@@ -26,18 +24,40 @@
   } = $props();
 
   let isOpen = $state(false);
+  let openUpward = $state(false);
   let containerRef: HTMLDivElement | null = $state(null);
   let triggerRef: HTMLButtonElement | null = $state(null);
   let highlightedIndex = $state(-1);
 
   let selectedItem = $derived(items.find((item) => item.value === value) || items[0]);
 
+  function computePosition() {
+    if (typeof window === "undefined" || !triggerRef) {
+      openUpward = false;
+      return;
+    }
+    const rect = triggerRef.getBoundingClientRect();
+    const hasDescriptions = items.some((i) => Boolean(i.description));
+    const estimatedHeight = items.length * (hasDescriptions ? 50 : 38) + 16;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    openUpward = spaceBelow < estimatedHeight + 12 && spaceAbove > spaceBelow;
+  }
+
+  function openMenu() {
+    if (disabled) return;
+    computePosition();
+    isOpen = true;
+    highlightedIndex = items.findIndex((i) => i.value === value);
+    if (highlightedIndex === -1) highlightedIndex = 0;
+  }
+
   function toggleOpen() {
     if (disabled) return;
-    isOpen = !isOpen;
     if (isOpen) {
-      highlightedIndex = items.findIndex((i) => i.value === value);
-      if (highlightedIndex === -1) highlightedIndex = 0;
+      isOpen = false;
+    } else {
+      openMenu();
     }
   }
 
@@ -55,9 +75,7 @@
     if (!isOpen) {
       if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        isOpen = true;
-        highlightedIndex = items.findIndex((i) => i.value === value);
-        if (highlightedIndex === -1) highlightedIndex = 0;
+        openMenu();
       }
       return;
     }
@@ -97,7 +115,9 @@
     }
   }
 
-  onMount(() => {
+  $effect(() => {
+    if (!isOpen || typeof document === "undefined") return;
+
     function handleClickOutside(event: MouseEvent) {
       if (containerRef && !containerRef.contains(event.target as Node)) {
         isOpen = false;
@@ -146,7 +166,7 @@
 
   {#if isOpen}
     <ul
-      class="r-dropdown-menu"
+      class="r-dropdown-menu {openUpward ? 'open-upward' : ''}"
       role="listbox"
       aria-label={ariaLabel}
       tabindex="-1"
@@ -172,7 +192,7 @@
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              stroke-width="2.5"
+              stroke-width="2.25"
               stroke-linecap="round"
               stroke-linejoin="round"
               aria-hidden="true"
@@ -199,24 +219,23 @@
     justify-content: space-between;
     width: 100%;
     min-height: 40px;
-    padding: 8px 14px;
-    background: var(--surface-elevated, rgba(255, 255, 255, 0.05));
-    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    padding: 8px 13px;
+    background: var(--surface-elevated, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
     border-radius: 10px;
     color: var(--text-primary, #f8fafc);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
     box-sizing: border-box;
-    backdrop-filter: blur(12px);
-    transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-                border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-                box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-color 0.16s ease,
+                border-color 0.16s ease,
+                box-shadow 0.16s ease;
   }
 
   .r-dropdown-trigger:hover:not(.disabled) {
-    background: var(--surface-hover, rgba(255, 255, 255, 0.09));
-    border-color: var(--border-strong, rgba(255, 255, 255, 0.25));
+    background: var(--surface-hover, rgba(255, 255, 255, 0.07));
+    border-color: var(--border-strong, rgba(255, 255, 255, 0.18));
   }
 
   .r-dropdown-trigger.open {
@@ -265,12 +284,12 @@
   }
 
   .chevron-icon {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     margin-left: 8px;
     color: var(--text-muted, #94a3b8);
     flex-shrink: 0;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .chevron-icon.rotated {
@@ -284,24 +303,33 @@
     right: 0;
     z-index: 1000;
     margin: 0;
-    padding: 6px;
+    padding: 5px;
     list-style: none;
-    background: var(--surface-dropdown, var(--surface-elevated, rgba(30, 41, 59, 0.96)));
-    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.18));
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--surface-dropdown, var(--surface-elevated, rgba(24, 24, 28, 0.98)));
+    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.14));
     border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35),
-                0 0 0 1px var(--border, rgba(255, 255, 255, 0.08));
-    backdrop-filter: blur(20px);
-    max-height: 280px;
-    overflow-y: auto;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    height: auto;
+    max-height: calc(100vh - 32px);
+    overflow-y: visible;
     box-sizing: border-box;
-    animation: menu-slide-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: menu-slide-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .r-dropdown-menu.open-upward {
+    top: auto;
+    bottom: calc(100% + 6px);
   }
 
   @keyframes menu-slide-in {
     from {
       opacity: 0;
-      transform: translateY(-4px) scale(0.98);
+      transform: translateY(-3px) scale(0.99);
     }
     to {
       opacity: 1;
@@ -313,23 +341,21 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
+    padding: 8px 11px;
     border-radius: 8px;
     cursor: pointer;
     color: var(--text-primary);
-    border: 1px solid transparent;
-    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    transition: background-color 0.12s ease, color 0.12s ease;
   }
 
   .r-dropdown-item.highlighted,
   .r-dropdown-item:hover {
-    background: var(--surface-hover, rgba(255, 255, 255, 0.08));
+    background: var(--surface-hover, rgba(255, 255, 255, 0.07));
     color: var(--text-primary);
   }
 
   .r-dropdown-item.selected {
     background: var(--surface-active, rgba(99, 102, 241, 0.12));
-    border-color: var(--border-focus, var(--accent, #6366f1));
     color: var(--text-primary);
   }
 
@@ -341,6 +367,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 0;
   }
 
   .item-title {
@@ -360,6 +387,7 @@
 
   .item-desc {
     font-size: 11px;
+    line-height: 1.35;
     color: var(--text-muted, #94a3b8);
   }
 

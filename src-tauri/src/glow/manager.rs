@@ -329,7 +329,6 @@ impl GlowManager {
         #[cfg(target_os = "windows")]
         reinforce_windows_overlay(window);
 
-        let _ = window.emit("trigger-glow", payload);
         let _ = self
             .app_handle
             .emit_to(window.label(), "trigger-glow", payload);

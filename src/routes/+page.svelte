@@ -2,8 +2,8 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
-  import { THEMES, DEFAULT_THEME, DEFAULT_GLOW_COLOR, type ThemeId, getThemeGlowPalette } from "$lib/themes";
-  import Dropdown, { type DropdownItem } from "$lib/Dropdown.svelte";
+  import { THEMES, DEFAULT_THEME, DEFAULT_GLOW_COLOR, type ThemeId } from "$lib/themes";
+  import Dropdown, { type DropdownItem } from "$lib/components/Dropdown.svelte";
   import Skeleton from "$lib/Skeleton.svelte";
   import AppearanceTabs, { type Appearance } from "$lib/AppearanceTabs.svelte";
   import AppleSwitch from "$lib/components/AppleSwitch.svelte";
@@ -128,7 +128,6 @@
 
   // Theme Management (Defaults to Standard)
   let selectedTheme = $state<ThemeId>(DEFAULT_THEME);
-  let currentGlowPalette = $derived(getThemeGlowPalette(selectedTheme));
 
   // Appearance Management (System / Light / Dark)
   let appearance = $state<Appearance>("system");
@@ -1404,9 +1403,6 @@
     }
 
     checkConnection();
-    fetchAppSettings();
-    fetchPipelineStatus();
-    fetchNotifications();
 
     const unlistenStatePromise = listen<boolean>("app-state-changed", (event) => {
       isEnabled = event.payload;
@@ -1432,7 +1428,7 @@
     const handleNewNotif = (notif: Notification) => {
       testNotificationError = null;
       notifications = [notif, ...notifications.filter((n) => n.id !== notif.id)];
-      fetchPipelineStatus();
+      schedulePipelineStatusFetch();
     };
 
     const unlistenNotifPromise = listen<Notification>("notification-received", (event) => {
@@ -1460,19 +1456,17 @@
       notifications = notifications.filter((n) => n.id !== removedId);
     });
 
-    const unlistenReadPromise = listen<string>("notification-read-updated", (event) => {
-      const readId = event.payload;
-      notifications = notifications.map((n) => (n.id === readId ? { ...n, read: true } : n));
-    });
-
-    const unlistenUnreadPromise = listen<string>("notification-unread-updated", (event) => {
-      const unreadId = event.payload;
-      notifications = notifications.map((n) => (n.id === unreadId ? { ...n, read: false } : n));
+    const unlistenAllReadPromise = listen<void>("notifications-all-read", () => {
+      if (notifications.some((n) => !n.read)) {
+        notifications = notifications.map((n) => (n.read ? n : { ...n, read: true }));
+      }
     });
 
     const unlistenReadStatusPromise = listen<[string, boolean]>("notification-read-status-changed", (event) => {
       const [statusId, isRead] = event.payload;
-      notifications = notifications.map((n) => (n.id === statusId ? { ...n, read: isRead } : n));
+      if (notifications.some((n) => n.id === statusId && n.read !== isRead)) {
+        notifications = notifications.map((n) => (n.id === statusId ? { ...n, read: isRead } : n));
+      }
     });
 
     const unlistenGlowFinishedPromise = listen<void>("glow-finished", () => {
@@ -1510,6 +1504,26 @@
     return () => {
       clearTimeout(updateCheckTimeout);
       clearInterval(interval);
+      if (pipelineThrottleTimer) {
+        clearTimeout(pipelineThrottleTimer);
+        pipelineThrottleTimer = null;
+      }
+      if (saveDebounceTimer) {
+        clearTimeout(saveDebounceTimer);
+        saveDebounceTimer = null;
+      }
+      if (settingsErrorTimer) {
+        clearTimeout(settingsErrorTimer);
+        settingsErrorTimer = null;
+      }
+      if (glowTimeout) {
+        clearTimeout(glowTimeout);
+        glowTimeout = null;
+      }
+      if (profileGlowTimeout) {
+        clearTimeout(profileGlowTimeout);
+        profileGlowTimeout = null;
+      }
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", handleVisibilityChange);
       }
@@ -1521,10 +1535,9 @@
       unlistenRestoredPromise.then((unlisten) => unlisten());
       unlistenClearedPromise.then((unlisten) => unlisten());
       unlistenRemovedPromise.then((unlisten) => unlisten());
-      unlistenReadPromise.then((unlisten) => unlisten());
-      unlistenGlowFinishedPromise.then((unlisten) => unlisten());
-      unlistenUnreadPromise.then((unlisten) => unlisten());
+      unlistenAllReadPromise.then((unlisten) => unlisten());
       unlistenReadStatusPromise.then((unlisten) => unlisten());
+      unlistenGlowFinishedPromise.then((unlisten) => unlisten());
     };
   });
 </script>
@@ -2032,10 +2045,22 @@
               {:else if filteredNotifications.length === 0}
                 <div class="empty-state-panel">
                   <div class="empty-icon-ring">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                      <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                    </svg>
+                    {#if feedFilter === "unread"}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                      </svg>
+                    {:else if feedFilter === "critical"}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        <polyline points="9 12 11 14 15 10"></polyline>
+                      </svg>
+                    {:else}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                      </svg>
+                    {/if}
                   </div>
                   <h4 class="empty-heading">
                     {feedFilter === "unread"
@@ -2092,7 +2117,6 @@
                         <p class="card-text">{item.body || item.message || t('notifications.no_body')}</p>
 
                         <div class="card-footer-line">
-                          <span class="card-id-code">ID: {item.id}</span>
                           <div class="card-actions-group">
                             {#if !item.read}
                               <button
@@ -5085,35 +5109,6 @@
     cursor: not-allowed;
   }
 
-  .applications-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
-  }
-
-  .app-profile-list-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 18px;
-    border-radius: 10px;
-    background: var(--surface, #111);
-    border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-    transition: all 0.15s ease;
-  }
-
-  .app-profile-list-item:hover {
-    border-color: var(--border-strong, rgba(255, 255, 255, 0.18));
-    background: var(--surface-hover, rgba(255, 255, 255, 0.04));
-  }
-
-  .app-profile-list-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-shrink: 0;
-  }
 
   .view-container {
     max-width: 980px;
@@ -5784,40 +5779,45 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 32px 16px;
+    padding: 36px 20px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
     text-align: center;
     color: var(--text-muted);
   }
 
   .empty-icon-ring {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     background: var(--surface-elevated);
     border: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     color: var(--text-muted);
   }
 
   .empty-icon-ring svg {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
   }
 
   .empty-heading {
     margin: 0;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
+    letter-spacing: -0.01em;
     color: var(--text-primary);
   }
 
   .empty-paragraph {
-    margin: 4px 0 12px 0;
-    font-size: 11px;
-    max-width: 320px;
+    margin: 6px 0 16px 0;
+    font-size: 12px;
+    line-height: 1.5;
+    max-width: 340px;
     color: var(--text-muted);
   }
 
@@ -5882,279 +5882,6 @@
     color: var(--text-secondary);
     min-width: 48px;
     text-align: right;
-  }
-
-  /* Switch */
-  .switch-control {
-    position: relative;
-    width: 40px;
-    height: 22px;
-    border-radius: 11px;
-    background: var(--surface-elevated);
-    border: 1px solid var(--border);
-    cursor: pointer;
-    padding: 2px;
-    flex-shrink: 0;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-  }
-
-  .switch-control.on {
-    background: var(--accent);
-    border-color: var(--ring);
-    box-shadow: 0 0 10px var(--glow-surface);
-  }
-
-  .switch-control:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-
-  .switch-ball {
-    display: block;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .switch-control.on .switch-ball {
-    transform: translateX(18px);
-  }
-
-  /* Native Select */
-  .native-select {
-    padding: 6px 12px;
-    border-radius: 8px;
-    background: var(--surface-elevated);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    font-size: 12px;
-    cursor: pointer;
-    outline: none;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .native-select:focus-visible {
-    border-color: var(--accent);
-    outline: none;
-    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
-  }
-
-  /* Color Palette Chips */
-  .color-palette-wrap {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .color-dot {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .color-dot.selected {
-    border-color: var(--text-primary);
-    transform: scale(1.18);
-    box-shadow: 0 0 8px var(--glow-surface);
-  }
-
-  .color-dot:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-
-  .color-divider {
-    width: 1px;
-    height: 18px;
-    background: var(--border);
-    margin: 0 2px;
-  }
-
-  .custom-color-control {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--surface-elevated);
-    padding: 3px 8px 3px 6px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    transition: border-color 0.15s ease;
-  }
-
-  .custom-color-control:hover {
-    border-color: var(--accent);
-  }
-
-  .custom-color-picker-label {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    position: relative;
-    color: var(--accent);
-  }
-
-  .palette-icon {
-    width: 16px;
-    height: 16px;
-    transition: transform 0.15s ease;
-  }
-
-  .custom-color-picker-label:hover .palette-icon {
-    transform: rotate(15deg);
-  }
-
-  .custom-color-input-hidden {
-    position: absolute;
-    opacity: 0;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    cursor: pointer;
-  }
-
-  .custom-color-hex-tag {
-    font-size: 11px;
-    font-family: monospace;
-    font-weight: 600;
-    color: var(--text-muted);
-    letter-spacing: 0.05em;
-  }
-
-  /* ------------------------------------------------------------------------- */
-  /* THEME PICKER GRID                                                         */
-  /* ------------------------------------------------------------------------- */
-  .themes-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 10px;
-    margin-top: 4px;
-  }
-
-  .theme-picker-card {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    padding: 13px 14px;
-    border-radius: 11px;
-    background: var(--surface-elevated);
-    border: 1px solid var(--border);
-    cursor: pointer;
-    text-align: left;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-                border-color 0.15s ease,
-                background-color 0.15s ease,
-                box-shadow 0.15s ease;
-  }
-
-  .theme-picker-card:hover {
-    border-color: var(--border-strong);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  }
-
-  .theme-picker-card:active {
-    transform: scale(0.985);
-  }
-
-  .theme-picker-card.active {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent), 0 3px 12px rgba(0, 0, 0, 0.16);
-  }
-
-  .theme-picker-card:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
-  }
-
-  .theme-card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
-  }
-
-  .theme-card-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-primary);
-  }
-
-  .theme-selected-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    padding: 2px 6px;
-    border-radius: 10px;
-    background: var(--accent);
-    color: var(--accent-fg);
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  .theme-card-desc {
-    font-size: 10px;
-    color: var(--text-muted);
-    margin: 0 0 8px 0;
-    line-height: 1.35;
-    min-height: 28px;
-  }
-
-  .theme-swatches-strip {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 8px;
-  }
-
-  .theme-swatch-circle {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  }
-
-  .theme-mini-frame {
-    border-radius: 6px;
-    padding: 7px 9px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    border-width: 1px;
-    border-style: solid;
-  }
-
-  .mini-frame-header {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .mini-frame-accent-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-  }
-
-  .mini-frame-bar {
-    height: 5px;
-    border-radius: 3px;
-  }
-
-  .mini-frame-bar.secondary {
-    height: 3px;
-    opacity: 0.5;
   }
 
   /* ------------------------------------------------------------------------- */

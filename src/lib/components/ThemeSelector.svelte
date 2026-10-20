@@ -14,6 +14,8 @@
     className?: string;
   } = $props();
 
+  const ALL_THEME_IDS: ThemeId[] = THEMES.map((item) => item.id);
+
   function choose(id: ThemeId) {
     selectedTheme = id;
     if (onselect) {
@@ -22,30 +24,29 @@
   }
 
   function handleKeydown(e: KeyboardEvent, currentId: ThemeId) {
-    const allIds = THEMES.map((t) => t.id);
-    const idx = allIds.indexOf(currentId);
+    const idx = ALL_THEME_IDS.indexOf(currentId);
     let nextIdx = -1;
 
     if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-      nextIdx = (idx + 1) % allIds.length;
+      nextIdx = (idx + 1) % ALL_THEME_IDS.length;
     } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-      nextIdx = (idx - 1 + allIds.length) % allIds.length;
+      nextIdx = (idx - 1 + ALL_THEME_IDS.length) % ALL_THEME_IDS.length;
     } else if (e.key === "Home") {
       nextIdx = 0;
     } else if (e.key === "End") {
-      nextIdx = allIds.length - 1;
+      nextIdx = ALL_THEME_IDS.length - 1;
     }
 
     if (nextIdx >= 0) {
       e.preventDefault();
-      const targetId = allIds[nextIdx];
+      const targetId = ALL_THEME_IDS[nextIdx];
       choose(targetId);
       document.getElementById(`theme-card-${targetId}`)?.focus();
     }
   }
 </script>
 
-<div class="theme-selector-root {className}" role="radiogroup" aria-label={t('settings.themes') || "Curated Design Themes"}>
+<div class="theme-selector-root {className}" role="radiogroup" aria-label={t('settings.themes')}>
   <div class="themes-grid">
     {#each THEMES as theme}
       {@const isActive = selectedTheme === theme.id}
@@ -59,7 +60,7 @@
         onkeydown={(e) => handleKeydown(e, theme.id)}
       >
         <div class="theme-item-header">
-          <span class="theme-name">{t('theme.' + theme.id + '.name') || theme.name}</span>
+          <span class="theme-name">{t('theme.' + theme.id + '.name', undefined, theme.name)}</span>
           {#if isActive}
             <span class="check-icon-wrap" aria-hidden="true">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="check-icon">

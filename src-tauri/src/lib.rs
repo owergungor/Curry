@@ -270,7 +270,6 @@ fn mark_notification_as_read(
 
     let updated = engine.mark_as_read(&id);
     if updated {
-        let _ = app.emit("notification-read-updated", id.clone());
         let _ = app.emit("notification-read-status-changed", (id, true));
     }
     Ok(updated)
@@ -302,7 +301,6 @@ fn mark_notification_as_unread(
 
     let updated = engine.mark_as_unread(&id);
     if updated {
-        let _ = app.emit("notification-unread-updated", id.clone());
         let _ = app.emit("notification-read-status-changed", (id, false));
     }
     Ok(updated)
@@ -323,12 +321,7 @@ fn toggle_notification_read(
         let new_read = !item.read;
         let updated = engine.set_read_status(&id, new_read);
         if updated {
-            let _ = app.emit("notification-read-status-changed", (id.clone(), new_read));
-            if new_read {
-                let _ = app.emit("notification-read-updated", id);
-            } else {
-                let _ = app.emit("notification-unread-updated", id);
-            }
+            let _ = app.emit("notification-read-status-changed", (id, new_read));
         }
         Ok(new_read)
     } else {

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { DEFAULT_GLOW_COLOR } from "$lib/themes";
 
   let {
@@ -273,11 +272,17 @@
     }
   }
 
+  let copyTimer: ReturnType<typeof setTimeout> | null = null;
+
   function copyToClipboard() {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(activeColor);
       copied = true;
-      setTimeout(() => (copied = false), 1500);
+      if (copyTimer) clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => {
+        copied = false;
+        copyTimer = null;
+      }, 1500);
     }
   }
 
@@ -286,28 +291,40 @@
     isOpen = !isOpen;
   }
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape" && isOpen) {
-      e.preventDefault();
-      isOpen = false;
-      triggerRef?.focus();
-    }
-  }
+  $effect(() => {
+    return () => {
+      if (copyTimer) {
+        clearTimeout(copyTimer);
+        copyTimer = null;
+      }
+    };
+  });
 
-  onMount(() => {
+  $effect(() => {
+    if (!isOpen || typeof document === "undefined" || typeof window === "undefined") return;
+
     function handleClickOutside(e: MouseEvent) {
       if (containerRef && !containerRef.contains(e.target as Node)) {
         isOpen = false;
       }
     }
+
+    function handleKeydown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        isOpen = false;
+        triggerRef?.focus();
+      }
+    }
+
     document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleKeydown);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeydown);
     };
   });
 </script>
-
-<svelte:window onkeydown={handleKeydown} />
 
 <div class="flux-color-picker" {id} bind:this={containerRef}>
   <!-- Flux UI Trigger Button -->
