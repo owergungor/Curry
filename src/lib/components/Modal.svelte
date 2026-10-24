@@ -100,8 +100,6 @@
     align-items: center;
     justify-content: center;
     background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     padding: 16px;
     animation: fadeIn 0.18s ease-out forwards;
   }

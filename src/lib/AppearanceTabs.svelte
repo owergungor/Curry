@@ -114,7 +114,6 @@
     padding: 3px;
     user-select: none;
     box-sizing: border-box;
-    backdrop-filter: blur(12px);
     height: 36px;
   }
 

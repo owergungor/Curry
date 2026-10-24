@@ -109,9 +109,15 @@
       console.warn("Could not copy diagnostics to clipboard:", err);
     }
   }
-</script>
 
-<svelte:window onkeydown={handleKeyDown} />
+  $effect(() => {
+    if (!currentError || typeof window === "undefined") return;
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  });
+</script>
 
 {#if currentError}
   <div
@@ -214,8 +220,7 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.75);
     z-index: 10000;
     display: flex;
     align-items: center;

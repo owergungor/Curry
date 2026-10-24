@@ -4567,11 +4567,10 @@
     display: flex;
     align-items: center;
     gap: 3px;
-    background: var(--surface-elevated, rgba(30, 41, 59, 0.7));
+    background: var(--surface-elevated, rgba(30, 41, 59, 0.92));
     padding: 4px;
     border-radius: 12px;
     border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.15));
-    backdrop-filter: blur(16px);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--border, rgba(255, 255, 255, 0.05));
     transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), padding 0.2s ease;
   }
@@ -6105,8 +6104,7 @@
     position: fixed;
     inset: 0;
     z-index: 999;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.75);
     display: flex;
     align-items: center;
     justify-content: center;

@@ -45,9 +45,15 @@
       }
     }
   }
-</script>
 
-<svelte:window onkeydown={handleWindowKeyDown} />
+  $effect(() => {
+    if (errorStore.activeErrors.length === 0 || typeof window === "undefined") return;
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  });
+</script>
 
 {#if errorStore.activeErrors.length > 0}
   <aside
@@ -193,7 +199,6 @@
     position: relative;
     pointer-events: auto;
     background: var(--surface-elevated, rgba(19, 23, 34, 0.94));
-    backdrop-filter: blur(20px);
     border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
     border-radius: 14px;
     padding: 14px 16px;

@@ -585,7 +585,6 @@
     border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
     border-radius: 9px;
     cursor: pointer;
-    backdrop-filter: blur(12px);
     transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
@@ -649,7 +648,6 @@
     border-radius: 14px;
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42),
                 0 0 0 1px var(--border, rgba(255, 255, 255, 0.08));
-    backdrop-filter: blur(20px);
     display: flex;
     flex-direction: column;
     gap: 10px;

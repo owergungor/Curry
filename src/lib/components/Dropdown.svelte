@@ -312,8 +312,6 @@
     border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.14));
     border-radius: 12px;
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
     height: auto;
     max-height: calc(100vh - 32px);
     overflow-y: visible;

@@ -120,8 +120,7 @@
     background: var(--surface-elevated, rgba(255, 255, 255, 0.06));
     color: var(--text-primary, #e2e8f0);
     border-color: var(--border, rgba(255, 255, 255, 0.08));
-    backdrop-filter: blur(12px);
-  }
+      }
 
   .curry-btn.secondary:hover:not(:disabled) {
     background: var(--surface-hover, rgba(255, 255, 255, 0.1));
