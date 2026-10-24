@@ -96,9 +96,9 @@ test('mapTechnicalError provides safe fallback for unknown technical exceptions'
   assert.match(error.diagnostics.technicalDetails || '', /0xdeadbeef/);
 });
 
-test('mapTechnicalError populates appVersion with 2.7 by default or custom appVersion', () => {
+test('mapTechnicalError populates appVersion with 2.7.1 by default or custom appVersion', () => {
   const errorDefault = mapTechnicalError('some generic error');
-  assert.equal(errorDefault.diagnostics.appVersion, '2.7');
+  assert.equal(errorDefault.diagnostics.appVersion, '2.7.1');
 
   const errorCustom = mapTechnicalError({
     message: 'some custom error',
