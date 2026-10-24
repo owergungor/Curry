@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
 
-use crate::glow::{GlowManager, GlowSettings};
+use crate::glow::{GlowManager, GlowPayload, GlowSettings};
 use crate::notification::model::Notification;
 use crate::notification::{NotificationEngine, PipelineStatus};
 use crate::settings::{
@@ -386,6 +386,17 @@ fn update_glow_settings(state: State<'_, AppState>, settings: GlowSettings) -> R
         .ok_or_else(|| "Glow manager is not initialized".to_string())?;
 
     glow.update_settings(settings)
+}
+
+/// Returns the currently active glow payload (if an animation is in progress).
+/// Used by lazily created overlay windows to recover a payload emitted before they mounted.
+#[tauri::command]
+fn get_active_glow_payload(state: State<'_, AppState>) -> Result<Option<GlowPayload>, String> {
+    let glow = state
+        .glow_manager()
+        .ok_or_else(|| "Glow manager is not initialized".to_string())?;
+
+    Ok(glow.get_active_payload())
 }
 
 /// Unified configuration for screen-edge glow preview requests.
@@ -853,13 +864,9 @@ pub fn run() {
                 eprintln!("[Curry] Failed to start notification provider: {}", err);
             }
 
-            // Warm and pre-position overlay windows for all available displays
-            glow.warm_overlays();
-
-            // Ensure transparent glow-overlay ignores cursor events immediately on creation
-            if let Some(overlay) = app.get_webview_window("glow-overlay") {
-                let _ = overlay.set_ignore_cursor_events(true);
-            }
+            // Glow overlay windows are created lazily on the first glow dispatch
+            // (see GlowManager::get_or_create_overlay) to avoid a second WebView2
+            // renderer and full-screen swapchain at startup.
 
             // 1. Guaranteed tray icon creation and startup resilience
             tray::setup_tray(app.handle())?;
@@ -921,6 +928,7 @@ pub fn run() {
             get_pipeline_status,
             open_notification_settings,
             get_glow_settings,
+            get_active_glow_payload,
             update_glow_settings,
             trigger_glow_preview,
             preview_global_glow,

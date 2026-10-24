@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
+  import { invoke } from "@tauri-apps/api/core";
   import { DEFAULT_GLOW_COLOR } from "$lib/themes";
 
   interface GlowPayload {
@@ -32,6 +33,22 @@
       document.body.classList.add("glow-window");
     }
 
+    // Recover active or pending payload if overlay was just created lazily on demand
+    invoke<GlowPayload | null>("get_active_glow_payload")
+      .then((active) => {
+        if (active) {
+          payload = active;
+          animationKey += 1;
+          isGlowing = true;
+
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => {
+            isGlowing = false;
+          }, payload.duration_ms);
+        }
+      })
+      .catch(() => {});
+
     const unlistenPromise = listen<GlowPayload>("trigger-glow", (event) => {
       payload = event.payload;
       animationKey += 1;
@@ -54,19 +71,21 @@
   });
 </script>
 
-{#key animationKey}
-  <div
-    class="glow-viewport {isGlowing ? 'active' : ''} {payload.animation_style} {payload.oled_mode ? 'oled' : ''}"
-    style:--glow-color={payload.color}
-    style:--glow-thickness="{payload.thickness}px"
-    style:--glow-radius="{payload.corner_radius}px"
-    style:--glow-intensity={payload.intensity}
-    style:--glow-duration="{payload.duration_ms}ms"
-  >
-    <div class="glow-edge-inner"></div>
-    <div class="glow-edge-accent"></div>
-  </div>
-{/key}
+{#if isGlowing}
+  {#key animationKey}
+    <div
+      class="glow-viewport active {payload.animation_style} {payload.oled_mode ? 'oled' : ''}"
+      style:--glow-color={payload.color}
+      style:--glow-thickness="{payload.thickness}px"
+      style:--glow-radius="{payload.corner_radius}px"
+      style:--glow-intensity={payload.intensity}
+      style:--glow-duration="{payload.duration_ms}ms"
+    >
+      <div class="glow-edge-inner"></div>
+      <div class="glow-edge-accent"></div>
+    </div>
+  {/key}
+{/if}
 
 <style>
   :global(html.glow-window, body.glow-window) {

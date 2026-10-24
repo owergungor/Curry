@@ -193,8 +193,14 @@
     emitColor(newHex);
   }
 
+  let activeDragCleanup: (() => void) | null = null;
+
   function startSatValDrag(e: MouseEvent | TouchEvent) {
     if (disabled) return;
+    if (activeDragCleanup) {
+      activeDragCleanup();
+      activeDragCleanup = null;
+    }
     isDraggingSatVal = true;
     handleSatValPointer(e);
 
@@ -206,12 +212,20 @@
 
     function onPointerUp() {
       isDraggingSatVal = false;
+      cleanup();
+    }
+
+    function cleanup() {
       window.removeEventListener("mousemove", onPointerMove);
       window.removeEventListener("mouseup", onPointerUp);
       window.removeEventListener("touchmove", onPointerMove);
       window.removeEventListener("touchend", onPointerUp);
+      if (activeDragCleanup === cleanup) {
+        activeDragCleanup = null;
+      }
     }
 
+    activeDragCleanup = cleanup;
     window.addEventListener("mousemove", onPointerMove);
     window.addEventListener("mouseup", onPointerUp);
     window.addEventListener("touchmove", onPointerMove);
@@ -296,6 +310,10 @@
       if (copyTimer) {
         clearTimeout(copyTimer);
         copyTimer = null;
+      }
+      if (activeDragCleanup) {
+        activeDragCleanup();
+        activeDragCleanup = null;
       }
     };
   });

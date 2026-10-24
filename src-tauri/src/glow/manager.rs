@@ -1,5 +1,5 @@
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, OnceLock, RwLock};
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 
 use crate::glow::model::{GlowPayload, GlowSettings, MonitorTarget};
@@ -12,6 +12,7 @@ pub struct GlowManager {
     storage: GlowStorage,
     settings_storage: OnceLock<Arc<SettingsStorage>>,
     active_generation: Arc<AtomicU64>,
+    active_payload: Arc<RwLock<Option<GlowPayload>>>,
 }
 
 impl GlowManager {
@@ -22,12 +23,21 @@ impl GlowManager {
             storage: GlowStorage::new(app),
             settings_storage: OnceLock::new(),
             active_generation: Arc::new(AtomicU64::new(0)),
+            active_payload: Arc::new(RwLock::new(None)),
         }
     }
 
     /// Binds the centralized SettingsStorage instance.
     pub fn set_settings_storage(&self, storage: Arc<SettingsStorage>) {
         let _ = self.settings_storage.set(storage);
+    }
+
+    /// Retrieves the most recent active or pending glow payload, if an animation is currently playing.
+    pub fn get_active_payload(&self) -> Option<GlowPayload> {
+        self.active_payload
+            .read()
+            .ok()
+            .and_then(|guard| guard.clone())
     }
 
     /// Retrieves current glow settings from SettingsStorage if bound, or local storage.
@@ -194,6 +204,12 @@ impl GlowManager {
         let gen = self.active_generation.fetch_add(1, Ordering::SeqCst) + 1;
         let mut active_windows: Vec<WebviewWindow> = Vec::new();
 
+        // Record the active payload BEFORE any overlay is (lazily) created, so a freshly
+        // mounted overlay that misses the `trigger-glow` event can pull it via IPC.
+        if let Ok(mut guard) = self.active_payload.write() {
+            *guard = Some(payload.clone());
+        }
+
         match target {
             MonitorTarget::Primary => {
                 if let Some(w) = self.get_or_create_overlay("glow-overlay") {
@@ -267,12 +283,16 @@ impl GlowManager {
 
         // Spawn a single coordinated timer for this animation generation
         let gen_arc = Arc::clone(&self.active_generation);
+        let payload_arc = Arc::clone(&self.active_payload);
         let app_handle_clone = self.app_handle.clone();
         let total_duration = std::time::Duration::from_millis(payload.duration_ms + 400);
 
         tauri::async_runtime::spawn(async move {
             tokio::time::sleep(total_duration).await;
             if gen_arc.load(Ordering::SeqCst) == gen {
+                if let Ok(mut guard) = payload_arc.write() {
+                    *guard = None;
+                }
                 for win in active_windows {
                     let _ = win.hide();
                 }
@@ -281,27 +301,12 @@ impl GlowManager {
         });
     }
 
-    /// Pre-creates and warms overlay windows for all available monitors so they are loaded and ready.
-    pub fn warm_overlays(&self) {
-        if let Ok(monitors) = self.app_handle.available_monitors() {
-            for (idx, mon) in monitors.into_iter().enumerate() {
-                let win_label = if idx == 0 {
-                    "glow-overlay".to_string()
-                } else {
-                    format!("glow-overlay-{}", idx)
-                };
-
-                if let Some(w) = self.get_or_create_overlay(&win_label) {
-                    let _ = w.set_ignore_cursor_events(true);
-                    let _ = w.set_always_on_top(true);
-                    let _ = w.set_position(tauri::Position::Physical(*mon.position()));
-                    let _ = w.set_size(tauri::Size::Physical(*mon.size()));
-                }
-            }
-        }
-    }
-
     /// Retrieves an existing overlay window by label or builds a new borderless transparent window.
+    ///
+    /// Overlays are created lazily on the first glow dispatch (not at startup) so that no
+    /// secondary WebView2 renderer / DirectComposition swapchain exists until it is needed.
+    /// Once created, the overlay is hidden (not destroyed) after each animation and reused,
+    /// which avoids destroy/recreate races with back-to-back notifications.
     fn get_or_create_overlay(&self, label: &str) -> Option<WebviewWindow> {
         if let Some(existing) = self.app_handle.get_webview_window(label) {
             Some(existing)

@@ -1489,7 +1489,7 @@
     const interval = setInterval(() => {
       if (isWindowHiddenInTray || (typeof document !== "undefined" && document.hidden)) return;
       fetchPipelineStatus();
-    }, 4000);
+    }, 30000);
 
     const handleVisibilityChange = () => {
       if (typeof document !== "undefined" && !document.hidden && !isWindowHiddenInTray) {
@@ -4977,15 +4977,16 @@
     animation-duration: 220ms;
     animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     animation-fill-mode: both;
-    will-change: transform, opacity;
   }
 
   .hero-page-container.page-forward {
     animation-name: hero-enter-forward;
+    will-change: transform, opacity;
   }
 
   .hero-page-container.page-backward {
     animation-name: hero-enter-backward;
+    will-change: transform, opacity;
   }
 
   .hero-page-container.page-none,

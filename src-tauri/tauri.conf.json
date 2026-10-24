@@ -26,17 +26,6 @@
         "closable": true,
         "center": true,
         "visible": false
-      },
-      {
-        "label": "glow-overlay",
-        "title": "Curry Overlay",
-        "url": "glow.html",
-        "transparent": true,
-        "decorations": false,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "visible": false,
-        "shadow": false
       }
     ],
     "security": {
