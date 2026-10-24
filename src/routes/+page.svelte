@@ -1122,7 +1122,6 @@
   async function saveAppSettings() {
     if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
     try {
-      appSettings.enabled = isEnabled;
       const updated = await invoke<AppSettings>("update_app_settings", { settings: appSettings });
       appSettings = updated;
       isEnabled = updated.enabled;
@@ -2952,6 +2951,7 @@
                       checked={appSettings.enabled}
                       onchange={(val) => {
                         appSettings.enabled = val;
+                        isEnabled = val;
                         saveAppSettings();
                       }}
                       ariaLabel={t('settings.master_title')}
