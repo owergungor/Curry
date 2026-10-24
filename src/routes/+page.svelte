@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { safeInvoke } from "$lib/ipc";
   import { listen } from "@tauri-apps/api/event";
   import { THEMES, DEFAULT_THEME, DEFAULT_GLOW_COLOR, type ThemeId } from "$lib/themes";
   import Dropdown, { type DropdownItem } from "$lib/components/Dropdown.svelte";
@@ -14,6 +15,7 @@
   import ErrorIsland from "$lib/components/ErrorIsland.svelte";
   import ErrorModal from "$lib/components/ErrorModal.svelte";
   import ThemeSelector from "$lib/components/ThemeSelector.svelte";
+  import UpdateToast from "$lib/components/UpdateToast.svelte";
   import { APP_VERSION } from "$lib/version";
 
   interface ConnectionInfo {
@@ -257,6 +259,29 @@
   let updateAvailable = $derived(updateState === "available");
   let pendingUpdateObj = $state<any>(null);
   let updateDownloadCancelled = $state(false);
+  let updateToastDismissed = $state(false);
+
+  // Runtime test hook for validating update toast and updater state transitions
+  if (typeof window !== "undefined") {
+    (window as any).__TRIGGER_TEST_UPDATE__ = (available = true) => {
+      if (available) {
+        pendingUpdateObj = {
+          version: "3.0.0",
+          downloadAndInstall: async (cb: any) => {
+            cb({ event: "Started", data: { contentLength: 1000 } });
+            cb({ event: "Progress", data: { chunkLength: 500 } });
+            cb({ event: "Finished" });
+          },
+        };
+        updateToastDismissed = false;
+        updateState = "available";
+        updateStatusMessage = t("updater.update_available", { version: "3.0" });
+      } else {
+        pendingUpdateObj = null;
+        updateState = "uptodate";
+      }
+    };
+  }
 
   async function checkForUpdatesManually() {
     if (isCheckingUpdate || isInstallingUpdate) return;
@@ -282,6 +307,7 @@
 
       if (update && update.available) {
         pendingUpdateObj = update;
+        updateToastDismissed = false;
         updateState = "available";
         updateStatusMessage = t("updater.update_available", {
           version: formatUserVersion(update.version),
@@ -351,6 +377,7 @@
       saveAppSettings();
       if (update && update.available) {
         pendingUpdateObj = update;
+        updateToastDismissed = false;
         updateState = "available";
         updateStatusMessage = t("updater.update_available", {
           version: formatUserVersion(update.version),
@@ -454,7 +481,7 @@
     isMarkingAllRead = true;
     try {
       notifications = notifications.map((n) => ({ ...n, read: true }));
-      await invoke("mark_all_notifications_as_read");
+      await safeInvoke("mark_all_notifications_as_read");
     } catch (err) {
       console.error("Failed to mark all notifications as read:", err);
       await fetchNotifications();
@@ -847,7 +874,7 @@
     }
 
     try {
-      const saved = await invoke<ApplicationProfile>("save_application_profile", {
+      const saved = await safeInvoke<ApplicationProfile>("save_application_profile", {
         profile: {
           ...editingProfile,
           applicationName: appName,
@@ -879,7 +906,7 @@
 
   async function deleteProfile(id: string) {
     try {
-      await invoke("delete_application_profile", { id });
+      await safeInvoke("delete_application_profile", { id });
       applications = applications.filter((p) => p.id !== id);
       if (editingProfile?.id === id) {
         closeProfileModal();
@@ -937,7 +964,7 @@
       let previewed = false;
       if (p.id && p !== editingProfile) {
         try {
-          await invoke("preview_application_glow", { profileId: p.id });
+          await safeInvoke("preview_application_glow", { profileId: p.id });
           previewed = true;
         } catch {
           previewed = false;
@@ -946,7 +973,7 @@
       if (!previewed) {
         const durSec = p.duration ?? (appSettings.glow.duration_ms / 1000);
         const durMs = Math.round(durSec * 1000);
-        await invoke("preview_glow", {
+        await safeInvoke("preview_glow", {
           color: p.color || appSettings.glow.color,
           animation: normalizeAnimation(p.animation) || normalizeAnimation(appSettings.glow.animation_style),
           intensity: p.intensity ?? appSettings.glow.intensity,
@@ -1038,7 +1065,7 @@
     errorMessage = null;
 
     try {
-      const info = await invoke<ConnectionInfo>("check_backend_connection");
+      const info = await safeInvoke<ConnectionInfo>("check_backend_connection");
       connectionInfo = info;
       status = "connected";
       lastCheckedAt = new Date().toLocaleTimeString();
@@ -1144,7 +1171,7 @@
   async function toggleAppState() {
     isToggling = true;
     try {
-      const next = await invoke<boolean>("toggle_app_state");
+      const next = await safeInvoke<boolean>("toggle_app_state");
       isEnabled = next;
       appSettings.enabled = next;
       await fetchPipelineStatus();
@@ -1164,7 +1191,7 @@
   async function toggleStartup() {
     try {
       const target = !appSettings.startup_enabled;
-      const res = await invoke<boolean>("set_startup_status", { enabled: target });
+      const res = await safeInvoke<boolean>("set_startup_status", { enabled: target });
       appSettings.startup_enabled = res;
     } catch (err) {
       errorStore.report({
@@ -1181,7 +1208,7 @@
   async function testSoundAlert() {
     isPlayingSound = true;
     try {
-      await invoke("play_sound_preview");
+      await safeInvoke("play_sound_preview");
     } catch (err) {
       errorStore.report({
         category: "media",
@@ -1245,7 +1272,7 @@
     if (isPreviewingGlow) return;
     isPreviewingGlow = true;
     try {
-      await invoke("preview_global_glow");
+      await safeInvoke("preview_global_glow");
     } catch (err) {
       isPreviewingGlow = false;
       errorStore.report({
@@ -1269,7 +1296,7 @@
   async function confirmClearAll() {
     isClearing = true;
     try {
-      await invoke("clear_notifications");
+      await safeInvoke("clear_notifications");
       notifications = [];
       showClearConfirm = false;
     } catch (err) {
@@ -1287,7 +1314,7 @@
 
   async function removeNotification(id: string) {
     try {
-      await invoke("dismiss_notification", { id });
+      await safeInvoke("dismiss_notification", { id });
       notifications = notifications.filter((n) => n.id !== id);
     } catch (err) {
       errorStore.report({
@@ -1301,7 +1328,7 @@
 
   async function markAsRead(id: string) {
     try {
-      await invoke("mark_notification_as_read", { id });
+      await safeInvoke("mark_notification_as_read", { id });
       notifications = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
     } catch (err) {
       errorStore.report({
@@ -1315,7 +1342,7 @@
 
   async function markAsUnread(id: string) {
     try {
-      await invoke("mark_notification_as_unread", { id });
+      await safeInvoke("mark_notification_as_unread", { id });
       notifications = notifications.map((n) => (n.id === id ? { ...n, read: false } : n));
     } catch (err) {
       errorStore.report({
@@ -1331,7 +1358,7 @@
     isSendingTest = true;
     testNotificationError = null;
     try {
-      const notif = await invoke<Notification>("send_test_notification");
+      const notif = await safeInvoke<Notification>("send_test_notification");
       if (!notifications.some((n) => n.id === notif.id)) {
         notifications = [notif, ...notifications];
       }
@@ -3622,6 +3649,19 @@
   <!-- Application-Owned Centralized Error System Presentation -->
   <ErrorIsland reducedMotion={appSettings.reduced_motion} />
   <ErrorModal />
+
+  <!-- Application-Level Software Update Notification Toast -->
+  <UpdateToast
+    visible={Boolean(pendingUpdateObj && (updateState === "available" || isInstallingUpdate || updateState === "restart_required") && !updateToastDismissed)}
+    version={formatUserVersion(pendingUpdateObj?.version)}
+    statusMessage={updateStatusMessage || ""}
+    isInstalling={isInstallingUpdate}
+    progress={updateProgress}
+    isRestartRequired={updateState === "restart_required"}
+    onUpdate={installUpdate}
+    onDismiss={() => { updateToastDismissed = true; }}
+    onRestart={restartCurry}
+  />
 </div>
 
 <style>

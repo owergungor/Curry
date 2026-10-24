@@ -202,7 +202,6 @@ impl GlowManager {
     /// Dispatches the overlay presentation to the appropriate monitor target.
     pub fn dispatch_overlay(&self, payload: &GlowPayload, target: &MonitorTarget) {
         let gen = self.active_generation.fetch_add(1, Ordering::SeqCst) + 1;
-        let mut active_windows: Vec<WebviewWindow> = Vec::new();
 
         // Record the active payload BEFORE any overlay is (lazily) created, so a freshly
         // mounted overlay that misses the `trigger-glow` event can pull it via IPC.
@@ -210,85 +209,88 @@ impl GlowManager {
             *guard = Some(payload.clone());
         }
 
-        match target {
-            MonitorTarget::Primary => {
-                if let Some(w) = self.get_or_create_overlay("glow-overlay") {
-                    if let Ok(Some(mon)) = w.primary_monitor() {
-                        let _ = w.set_position(tauri::Position::Physical(*mon.position()));
-                        let _ = w.set_size(tauri::Size::Physical(*mon.size()));
-                    }
-                    self.show_single_overlay(&w, payload);
-                    active_windows.push(w);
-                }
-            }
-            MonitorTarget::Active => {
-                if let Some(w) = self.get_or_create_overlay("glow-overlay") {
-                    if let Some(mon) = find_active_monitor(&w) {
-                        let _ = w.set_position(tauri::Position::Physical(*mon.position()));
-                        let _ = w.set_size(tauri::Size::Physical(*mon.size()));
-                    }
-                    self.show_single_overlay(&w, payload);
-                    active_windows.push(w);
-                }
-            }
-            MonitorTarget::Specific(target_name) => {
-                if let Some(w) = self.get_or_create_overlay("glow-overlay") {
-                    let matched = w.available_monitors().ok().and_then(|mons| {
-                        mons.into_iter().find(|m| {
-                            m.name()
-                                .map(|n| n.eq_ignore_ascii_case(target_name))
-                                .unwrap_or(false)
-                        })
-                    });
-                    if let Some(mon) = matched.or_else(|| w.primary_monitor().ok().flatten()) {
-                        let _ = w.set_position(tauri::Position::Physical(*mon.position()));
-                        let _ = w.set_size(tauri::Size::Physical(*mon.size()));
-                    }
-                    self.show_single_overlay(&w, payload);
-                    active_windows.push(w);
-                }
-            }
-            MonitorTarget::All => {
-                let monitors = self
-                    .app_handle
-                    .available_monitors()
-                    .ok()
-                    .unwrap_or_default();
+        let payload_cloned = payload.clone();
+        let target_cloned = target.clone();
+        let app_handle = self.app_handle.clone();
+        let gen_arc = Arc::clone(&self.active_generation);
+        let payload_arc = Arc::clone(&self.active_payload);
 
-                if monitors.is_empty() {
-                    if let Some(w) = self.get_or_create_overlay("glow-overlay") {
-                        self.show_single_overlay(&w, payload);
-                        active_windows.push(w);
-                    }
-                } else {
-                    for (idx, mon) in monitors.into_iter().enumerate() {
-                        let win_label = if idx == 0 {
-                            "glow-overlay".to_string()
-                        } else {
-                            format!("glow-overlay-{}", idx)
-                        };
+        // Offload window instantiation, geometry calculations, and show/hide lifecycle
+        // onto a dedicated OS thread to guarantee synchronous IPC command handlers never
+        // deadlock with the Windows main UI event loop during WebView2 creation.
+        std::thread::spawn(move || {
+            let mut active_windows: Vec<WebviewWindow> = Vec::new();
 
-                        if let Some(w) = self.get_or_create_overlay(&win_label) {
-                            let _ = w.set_ignore_cursor_events(true);
-                            let _ = w.set_always_on_top(true);
+            match &target_cloned {
+                MonitorTarget::Primary => {
+                    if let Some(w) = get_or_create_overlay(&app_handle, "glow-overlay") {
+                        if let Ok(Some(mon)) = w.primary_monitor() {
                             let _ = w.set_position(tauri::Position::Physical(*mon.position()));
                             let _ = w.set_size(tauri::Size::Physical(*mon.size()));
-                            self.show_single_overlay(&w, payload);
+                        }
+                        show_single_overlay(&app_handle, &w, &payload_cloned);
+                        active_windows.push(w);
+                    }
+                }
+                MonitorTarget::Active => {
+                    if let Some(w) = get_or_create_overlay(&app_handle, "glow-overlay") {
+                        if let Some(mon) = find_active_monitor(&w) {
+                            let _ = w.set_position(tauri::Position::Physical(*mon.position()));
+                            let _ = w.set_size(tauri::Size::Physical(*mon.size()));
+                        }
+                        show_single_overlay(&app_handle, &w, &payload_cloned);
+                        active_windows.push(w);
+                    }
+                }
+                MonitorTarget::Specific(target_name) => {
+                    if let Some(w) = get_or_create_overlay(&app_handle, "glow-overlay") {
+                        let matched = w.available_monitors().ok().and_then(|mons| {
+                            mons.into_iter().find(|m| {
+                                m.name()
+                                    .map(|n| n.eq_ignore_ascii_case(target_name))
+                                    .unwrap_or(false)
+                            })
+                        });
+                        if let Some(mon) = matched.or_else(|| w.primary_monitor().ok().flatten()) {
+                            let _ = w.set_position(tauri::Position::Physical(*mon.position()));
+                            let _ = w.set_size(tauri::Size::Physical(*mon.size()));
+                        }
+                        show_single_overlay(&app_handle, &w, &payload_cloned);
+                        active_windows.push(w);
+                    }
+                }
+                MonitorTarget::All => {
+                    let monitors = app_handle.available_monitors().ok().unwrap_or_default();
+
+                    if monitors.is_empty() {
+                        if let Some(w) = get_or_create_overlay(&app_handle, "glow-overlay") {
+                            show_single_overlay(&app_handle, &w, &payload_cloned);
                             active_windows.push(w);
+                        }
+                    } else {
+                        for (idx, mon) in monitors.into_iter().enumerate() {
+                            let win_label = if idx == 0 {
+                                "glow-overlay".to_string()
+                            } else {
+                                format!("glow-overlay-{}", idx)
+                            };
+
+                            if let Some(w) = get_or_create_overlay(&app_handle, &win_label) {
+                                let _ = w.set_ignore_cursor_events(true);
+                                let _ = w.set_always_on_top(true);
+                                let _ = w.set_position(tauri::Position::Physical(*mon.position()));
+                                let _ = w.set_size(tauri::Size::Physical(*mon.size()));
+                                show_single_overlay(&app_handle, &w, &payload_cloned);
+                                active_windows.push(w);
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // Spawn a single coordinated timer for this animation generation
-        let gen_arc = Arc::clone(&self.active_generation);
-        let payload_arc = Arc::clone(&self.active_payload);
-        let app_handle_clone = self.app_handle.clone();
-        let total_duration = std::time::Duration::from_millis(payload.duration_ms + 400);
-
-        tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(total_duration).await;
+            // Sleep for the exact animation duration plus completion margin
+            let total_duration = std::time::Duration::from_millis(payload_cloned.duration_ms + 400);
+            std::thread::sleep(total_duration);
             if gen_arc.load(Ordering::SeqCst) == gen {
                 if let Ok(mut guard) = payload_arc.write() {
                     *guard = None;
@@ -296,49 +298,47 @@ impl GlowManager {
                 for win in active_windows {
                     let _ = win.hide();
                 }
-                let _ = app_handle_clone.emit("glow-finished", ());
+                let _ = app_handle.emit("glow-finished", ());
             }
         });
     }
+}
 
-    /// Retrieves an existing overlay window by label or builds a new borderless transparent window.
-    ///
-    /// Overlays are created lazily on the first glow dispatch (not at startup) so that no
-    /// secondary WebView2 renderer / DirectComposition swapchain exists until it is needed.
-    /// Once created, the overlay is hidden (not destroyed) after each animation and reused,
-    /// which avoids destroy/recreate races with back-to-back notifications.
-    fn get_or_create_overlay(&self, label: &str) -> Option<WebviewWindow> {
-        if let Some(existing) = self.app_handle.get_webview_window(label) {
-            Some(existing)
-        } else {
-            let url = tauri::WebviewUrl::App("glow.html".into());
-            let builder = tauri::WebviewWindowBuilder::new(&self.app_handle, label, url)
-                .title("Curry Overlay")
-                .decorations(false)
-                .always_on_top(true)
-                .skip_taskbar(true)
-                .visible(false)
-                .shadow(false);
+/// Retrieves an existing overlay window by label or builds a new borderless transparent window.
+///
+/// Overlays are created lazily on the first glow dispatch (not at startup) so that no
+/// secondary WebView2 renderer / DirectComposition swapchain exists until it is needed.
+/// Once created, the overlay is hidden (not destroyed) after each animation and reused,
+/// which avoids destroy/recreate races with back-to-back notifications.
+fn get_or_create_overlay(app_handle: &AppHandle, label: &str) -> Option<WebviewWindow> {
+    if let Some(existing) = app_handle.get_webview_window(label) {
+        Some(existing)
+    } else {
+        let url = tauri::WebviewUrl::App("glow.html".into());
+        let builder = tauri::WebviewWindowBuilder::new(app_handle, label, url)
+            .title("Curry Overlay")
+            .decorations(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .visible(false)
+            .shadow(false);
 
-            #[cfg(any(not(target_os = "macos"), feature = "macos-private-api"))]
-            let builder = builder.transparent(true);
+        #[cfg(any(not(target_os = "macos"), feature = "macos-private-api"))]
+        let builder = builder.transparent(true);
 
-            builder.build().ok()
-        }
+        builder.build().ok()
     }
+}
 
-    fn show_single_overlay(&self, window: &WebviewWindow, payload: &GlowPayload) {
-        let _ = window.set_ignore_cursor_events(true);
-        let _ = window.set_always_on_top(true);
+fn show_single_overlay(app_handle: &AppHandle, window: &WebviewWindow, payload: &GlowPayload) {
+    let _ = window.set_ignore_cursor_events(true);
+    let _ = window.set_always_on_top(true);
 
-        #[cfg(target_os = "windows")]
-        reinforce_windows_overlay(window);
+    #[cfg(target_os = "windows")]
+    reinforce_windows_overlay(window);
 
-        let _ = self
-            .app_handle
-            .emit_to(window.label(), "trigger-glow", payload);
-        let _ = window.show();
-    }
+    let _ = app_handle.emit_to(window.label(), "trigger-glow", payload);
+    let _ = window.show();
 }
 
 #[cfg(target_os = "windows")]

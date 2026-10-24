@@ -10,3 +10,4 @@ export { default as ColorPicker } from "../ColorPicker.svelte";
 export { default as AppearanceTabs, type Appearance } from "../AppearanceTabs.svelte";
 export { default as ErrorIsland } from "./ErrorIsland.svelte";
 export { default as ErrorModal } from "./ErrorModal.svelte";
+export { default as UpdateToast } from "./UpdateToast.svelte";
