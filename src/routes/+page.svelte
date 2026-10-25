@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { safeInvoke } from "$lib/ipc";
+  import { safeInvoke, type ScanResult } from "$lib/ipc";
   import { listen } from "@tauri-apps/api/event";
   import { THEMES, DEFAULT_THEME, DEFAULT_GLOW_COLOR, type ThemeId } from "$lib/themes";
   import Dropdown, { type DropdownItem } from "$lib/components/Dropdown.svelte";
@@ -94,6 +94,10 @@
     auto_update_frequency?: "startup" | "daily" | "weekly" | "monthly";
     last_update_check?: number | null;
     reduced_motion?: boolean;
+    auto_app_scan_enabled?: boolean;
+    auto_app_scan_frequency?: "startup" | "daily" | "weekly";
+    last_app_scan?: number | null;
+    removed_applications?: string[];
   }
 
   type ProviderStatus =
@@ -228,6 +232,12 @@
     appSettings.language = valid;
     saveAppSettings();
   }
+
+  let AUTO_SCAN_FREQUENCY_OPTIONS = $derived<DropdownItem[]>([
+    { value: "startup", label: t("settings.frequency_startup") },
+    { value: "daily", label: t("settings.frequency_daily") },
+    { value: "weekly", label: t("settings.frequency_weekly") },
+  ]);
 
   let AUTO_UPDATE_FREQUENCY_OPTIONS = $derived<DropdownItem[]>([
     { value: "startup", label: t("settings.frequency_startup"), description: t("settings.frequency_startup_desc") },
@@ -630,6 +640,9 @@
   let isProfileModalOpen = $state(false);
   let isCreatingNewProfile = $state(false);
   let isPreviewingProfile = $state(false);
+  let isScanningApps = $state(false);
+  let scanStatusBanner = $state<{ type: "success" | "info" | "danger"; message: string } | null>(null);
+  let scanStatusTimer: ReturnType<typeof setTimeout> | null = null;
   let profileActionError = $state<string | null>(null);
 
   // Apps View Mode: "grid" vs "list"
@@ -901,6 +914,53 @@
         onRetry: () => saveProfile(),
       });
       profileActionError = appErr.message;
+    }
+  }
+
+  async function triggerAppScan() {
+    if (isScanningApps) return;
+    isScanningApps = true;
+    if (scanStatusTimer) {
+      clearTimeout(scanStatusTimer);
+      scanStatusTimer = null;
+    }
+    scanStatusBanner = null;
+
+    try {
+      const res = await safeInvoke<ScanResult>("scan_installed_apps", undefined, 30000);
+      const list = await safeInvoke<ApplicationProfile[]>("get_application_profiles", undefined, 5000);
+      if (list) {
+        applications = list;
+      }
+
+      const msg =
+        res.newAdded > 0
+          ? t("apps.new_apps_found", { total: res.totalFound, added: res.newAdded })
+          : t("apps.no_new_apps", { total: res.totalFound });
+
+      scanStatusBanner = {
+        type: "success",
+        message: msg,
+      };
+
+      scanStatusTimer = setTimeout(() => {
+        scanStatusBanner = null;
+        scanStatusTimer = null;
+      }, 6000);
+    } catch (err: any) {
+      scanStatusBanner = {
+        type: "danger",
+        message: err?.message || t("apps.scan_error"),
+      };
+      errorStore.report({
+        category: "profile",
+        rawError: err,
+        title: "Application Scan Failed",
+        message: "Failed to scan installed applications from system.",
+        onRetry: () => triggerAppScan(),
+      });
+    } finally {
+      isScanningApps = false;
     }
   }
 
@@ -1447,6 +1507,15 @@
       }
     });
 
+    const unlistenAppsScannedPromise = listen<ScanResult>("apps-scanned", async () => {
+      try {
+        const list = await safeInvoke<ApplicationProfile[]>("get_application_profiles", undefined, 5000);
+        if (list) {
+          applications = list;
+        }
+      } catch {}
+    });
+
     const unlistenTraySettingsPromise = listen<void>("open-settings-tab", () => {
       navigateToTab("settings");
     });
@@ -1550,11 +1619,16 @@
         clearTimeout(profileGlowTimeout);
         profileGlowTimeout = null;
       }
+      if (scanStatusTimer) {
+        clearTimeout(scanStatusTimer);
+        scanStatusTimer = null;
+      }
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", handleVisibilityChange);
       }
       unlistenStatePromise.then((unlisten) => unlisten());
       unlistenSettingsPromise.then((unlisten) => unlisten());
+      unlistenAppsScannedPromise.then((unlisten) => unlisten());
       unlistenTraySettingsPromise.then((unlisten) => unlisten());
       unlistenNotifPromise.then((unlisten) => unlisten());
       unlistenHiddenPromise.then((unlisten) => unlisten());
@@ -2239,19 +2313,43 @@
                 <p class="view-subtitle">{t('apps.desc')}</p>
               </div>
 
-              <button
-                id="add-application-btn"
-                class="primary-btn"
-                onclick={openAddProfileModal}
-                title={t('apps.add_profile')}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                <span>+ {t('apps.add_profile')}</span>
-              </button>
+              <div class="apps-header-actions">
+                <button
+                  id="scan-applications-btn"
+                  class="secondary-btn"
+                  onclick={triggerAppScan}
+                  disabled={isScanningApps}
+                  title={t('apps.scan_btn')}
+                  aria-busy={isScanningApps}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon {isScanningApps ? 'spin' : ''}">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                  </svg>
+                  <span>{isScanningApps ? t('apps.scanning') : t('apps.scan_btn')}</span>
+                </button>
+
+                <button
+                  id="add-application-btn"
+                  class="primary-btn"
+                  onclick={openAddProfileModal}
+                  title={t('apps.add_profile')}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  <span>+ {t('apps.add_profile')}</span>
+                </button>
+              </div>
             </div>
+
+            <!-- Scan Status Banner -->
+            {#if scanStatusBanner}
+              <div class="alert-banner {scanStatusBanner.type} scan-status-banner" role="status">
+                <span>{scanStatusBanner.message}</span>
+                <button class="banner-close" onclick={() => (scanStatusBanner = null)}>✕</button>
+              </div>
+            {/if}
 
             <!-- Search Bar -->
             <div class="app-search-bar card">
@@ -2983,6 +3081,64 @@
                       }}
                       ariaLabel={t('settings.master_title')}
                     />
+                  </div>
+                </div>
+              </section>
+
+              <!-- Auto App Scan -->
+              <section class="card panel-card auto-scan-card">
+                <div class="panel-header">
+                  <div class="panel-title-wrap">
+                    <div class="panel-icon-circle">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <line x1="11" y1="8" x2="11" y2="14"></line>
+                        <line x1="8" y1="11" x2="14" y2="11"></line>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 class="panel-title">{t('settings.auto_scan_title')}</h3>
+                      <p class="panel-desc">{t('settings.auto_scan_desc')}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="controls-list">
+                  <div class="control-item">
+                    <div class="control-label-group">
+                      <span class="control-title">{t('settings.auto_scan_title')}</span>
+                      <span class="control-sub">{t('settings.auto_scan_desc')}</span>
+                    </div>
+                    <AppleSwitch
+                      id="auto-app-scan-switch"
+                      checked={appSettings.auto_app_scan_enabled ?? false}
+                      onchange={(val) => {
+                        appSettings.auto_app_scan_enabled = val;
+                        saveAppSettings();
+                      }}
+                      ariaLabel={t('settings.auto_scan_title')}
+                    />
+                  </div>
+
+                  <div class="control-item">
+                    <div class="control-label-group">
+                      <span class="control-title">{t('settings.auto_scan_frequency')}</span>
+                      <span class="control-sub">{t('settings.auto_scan_frequency_desc')}</span>
+                    </div>
+                    <div class="dropdown-control-wrapper">
+                      <Dropdown
+                        id="auto-scan-frequency-dropdown"
+                        items={AUTO_SCAN_FREQUENCY_OPTIONS}
+                        value={appSettings.auto_app_scan_frequency ?? "startup"}
+                        disabled={!(appSettings.auto_app_scan_enabled ?? false)}
+                        ariaLabel={t('settings.auto_scan_frequency')}
+                        onchange={(val) => {
+                          appSettings.auto_app_scan_frequency = val as any;
+                          saveAppSettings();
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </section>
@@ -5067,6 +5223,18 @@
   }
 
   /* Apps View Toggle & List Mode Styling */
+  .apps-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .scan-status-banner {
+    margin-bottom: 16px;
+    animation: fadeIn 0.2s ease-out;
+  }
+
   .apps-title-with-toggle {
     display: flex;
     align-items: center;

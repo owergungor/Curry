@@ -2,6 +2,7 @@ pub mod glow;
 pub mod models;
 pub mod notification;
 pub mod notifications;
+pub mod scanner;
 pub mod settings;
 pub mod single_instance;
 pub mod state;
@@ -624,6 +625,13 @@ fn save_application_profile(
         settings.applications.push(profile.clone());
     }
 
+    // Unmark from removed_applications if previously deleted by user
+    let exe_norm = trimmed_exe.to_lowercase();
+    settings.removed_applications.retain(|r| {
+        r.to_lowercase() != exe_norm
+            && r.to_lowercase() != exe_norm.strip_suffix(".exe").unwrap_or(&exe_norm)
+    });
+
     let updated = storage.update(settings)?;
     let _ = app.emit("app-settings-updated", &updated);
     Ok(profile)
@@ -670,6 +678,15 @@ fn delete_application_profile(
 
     let mut settings = storage.get();
     let initial_len = settings.applications.len();
+
+    // Track deleted executable in removed_applications to respect user intent during auto-scan
+    if let Some(target) = settings.applications.iter().find(|p| p.id == id) {
+        let exe_norm = target.executable_name.trim().to_lowercase();
+        if !settings.removed_applications.contains(&exe_norm) {
+            settings.removed_applications.push(exe_norm);
+        }
+    }
+
     settings.applications.retain(|p| p.id != id);
     let removed = settings.applications.len() < initial_len;
 
@@ -678,6 +695,42 @@ fn delete_application_profile(
         let _ = app.emit("app-settings-updated", &updated);
     }
     Ok(removed)
+}
+
+#[tauri::command]
+async fn scan_installed_apps(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<crate::scanner::ScanResult, String> {
+    let storage = state
+        .settings_storage()
+        .ok_or_else(|| "Settings storage is not initialized".to_string())?;
+
+    let storage_clone = Arc::clone(&storage);
+    let scan_res =
+        tokio::task::spawn_blocking(move || crate::scanner::execute_app_scan(&storage_clone))
+            .await
+            .map_err(|e| format!("Scan thread failed: {}", e))??;
+
+    let updated_settings = storage.get();
+    let _ = app.emit("app-settings-updated", &updated_settings);
+    let _ = app.emit("apps-scanned", &scan_res);
+
+    Ok(scan_res)
+}
+
+#[tauri::command]
+fn get_scan_status() -> crate::scanner::ScanStatus {
+    crate::scanner::ScanStatus {
+        state: if crate::scanner::is_scanning() {
+            crate::scanner::ScanLifecycleState::Scanning
+        } else {
+            crate::scanner::ScanLifecycleState::Idle
+        },
+        progress_message: None,
+        last_result: None,
+        error: None,
+    }
 }
 
 #[tauri::command]
@@ -864,6 +917,22 @@ pub fn run() {
                 eprintln!("[Curry] Failed to start notification provider: {}", err);
             }
 
+            // Automated application scan (runs in background without blocking UI startup)
+            if crate::scanner::should_run_auto_scan(&initial_settings) {
+                let storage_for_autoscan = Arc::clone(&settings_storage);
+                let app_handle_for_autoscan = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+                    let res = tokio::task::spawn_blocking(move || {
+                        crate::scanner::execute_app_scan(&storage_for_autoscan)
+                    })
+                    .await;
+                    if let Ok(Ok(scan_res)) = res {
+                        let _ = app_handle_for_autoscan.emit("apps-scanned", &scan_res);
+                    }
+                });
+            }
+
             // Glow overlay windows are created lazily on the first glow dispatch
             // (see GlowManager::get_or_create_overlay) to avoid a second WebView2
             // renderer and full-screen swapchain at startup.
@@ -941,7 +1010,9 @@ pub fn run() {
             get_fullscreen_state,
             pick_executable_file,
             parse_executable_path,
-            sync_window_chrome
+            sync_window_chrome,
+            scan_installed_apps,
+            get_scan_status
         ]);
 
     if let Err(err) = app.run(tauri::generate_context!()) {

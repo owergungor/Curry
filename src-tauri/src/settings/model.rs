@@ -62,6 +62,7 @@ impl<'de> Deserialize<'de> for AppTheme {
     }
 }
 
+use crate::scanner::model::AutoScanFrequency;
 use crate::settings::fullscreen::FullscreenBehavior;
 use crate::settings::profiles::ApplicationProfile;
 
@@ -135,6 +136,18 @@ pub struct AppSettings {
     /// Whether user preference for reduced motion is explicitly enabled.
     #[serde(default, alias = "reducedMotion")]
     pub reduced_motion: bool,
+    /// Whether automatic background application scanning is enabled (defaults to false).
+    #[serde(default, alias = "autoAppScanEnabled")]
+    pub auto_app_scan_enabled: bool,
+    /// Frequency for automated application scans.
+    #[serde(default, alias = "autoAppScanFrequency")]
+    pub auto_app_scan_frequency: AutoScanFrequency,
+    /// Unix timestamp of last application scan in seconds.
+    #[serde(default, alias = "lastAppScan")]
+    pub last_app_scan: Option<u64>,
+    /// Executable names of applications explicitly deleted by user (prevents auto re-add).
+    #[serde(default, alias = "removedApplications")]
+    pub removed_applications: Vec<String>,
 }
 
 impl Default for AppSettings {
@@ -156,6 +169,10 @@ impl Default for AppSettings {
             last_update_check: None,
             language: Some("en".to_string()),
             reduced_motion: false,
+            auto_app_scan_enabled: false,
+            auto_app_scan_frequency: AutoScanFrequency::default(),
+            last_app_scan: None,
+            removed_applications: Vec::new(),
         }
     }
 }

@@ -35,3 +35,35 @@ export async function safeInvoke<T>(
     }
   }
 }
+
+export interface DiscoveredApp {
+  name: string;
+  executableName: string;
+  executablePath?: string | null;
+  iconPath?: string | null;
+  source: string;
+  isNew: boolean;
+}
+
+export interface ScanResult {
+  totalFound: number;
+  newAdded: number;
+  alreadyExisting: number;
+  discoveredApps: DiscoveredApp[];
+  timestamp: number;
+}
+
+export interface ScanStatus {
+  state: "idle" | "scanning" | "completed" | "failed";
+  progressMessage?: string | null;
+  lastResult?: ScanResult | null;
+  error?: string | null;
+}
+
+export async function scanInstalledApps(): Promise<ScanResult> {
+  return safeInvoke<ScanResult>("scan_installed_apps", undefined, 30000);
+}
+
+export async function getScanStatus(): Promise<ScanStatus> {
+  return safeInvoke<ScanStatus>("get_scan_status", undefined, 5000);
+}

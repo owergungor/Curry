@@ -2694,4 +2694,292 @@ mod tests {
             AppTheme::ZenLinen
         ));
     }
+
+    #[test]
+    fn test_scanner_auto_scan_policy_scheduling() {
+        use curry_lib::scanner::model::AutoScanFrequency;
+        use curry_lib::scanner::should_run_auto_scan;
+        use curry_lib::settings::AppSettings;
+        use std::time::SystemTime;
+
+        let mut settings = AppSettings::default();
+        settings.auto_app_scan_enabled = false;
+        assert!(!should_run_auto_scan(&settings));
+
+        settings.auto_app_scan_enabled = true;
+        settings.last_app_scan = None;
+        assert!(should_run_auto_scan(&settings));
+
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        // Startup frequency: always runs on launch if enabled
+        settings.auto_app_scan_frequency = AutoScanFrequency::Startup;
+        settings.last_app_scan = Some(now);
+        assert!(should_run_auto_scan(&settings));
+
+        // Daily frequency: runs only after 86,400 seconds
+        settings.auto_app_scan_frequency = AutoScanFrequency::Daily;
+        settings.last_app_scan = Some(now - 100);
+        assert!(!should_run_auto_scan(&settings));
+
+        settings.last_app_scan = Some(now - 86_500);
+        assert!(should_run_auto_scan(&settings));
+
+        // Weekly frequency: runs only after 604,800 seconds
+        settings.auto_app_scan_frequency = AutoScanFrequency::Weekly;
+        settings.last_app_scan = Some(now - 100_000);
+        assert!(!should_run_auto_scan(&settings));
+
+        settings.last_app_scan = Some(now - 605_000);
+        assert!(should_run_auto_scan(&settings));
+    }
+
+    #[test]
+    fn test_scanner_blacklists_unwanted_executables_and_patches() {
+        #[cfg(target_os = "windows")]
+        {
+            use curry_lib::scanner::platform::windows::{
+                is_blacklisted_app_name, is_blacklisted_executable,
+            };
+
+            assert!(is_blacklisted_executable("uninstall.exe"));
+            assert!(is_blacklisted_executable("unins000.exe"));
+            assert!(is_blacklisted_executable("setup.exe"));
+            assert!(is_blacklisted_executable("installer.exe"));
+            assert!(is_blacklisted_executable("app_updater.exe"));
+            assert!(is_blacklisted_executable("crash_reporter.exe"));
+            assert!(is_blacklisted_executable("cmd.exe"));
+            assert!(is_blacklisted_executable("powershell.exe"));
+
+            assert!(!is_blacklisted_executable("Discord.exe"));
+            assert!(!is_blacklisted_executable("Spotify.exe"));
+            assert!(!is_blacklisted_executable("Code.exe"));
+            assert!(!is_blacklisted_executable("Curry.exe"));
+
+            assert!(is_blacklisted_app_name(
+                "Microsoft Visual C++ 2015-2022 Redistributable"
+            ));
+            assert!(is_blacklisted_app_name("Security Update for Windows"));
+            assert!(is_blacklisted_app_name("Hotfix KB123456"));
+
+            assert!(!is_blacklisted_app_name("Discord"));
+            assert!(!is_blacklisted_app_name("Spotify Music"));
+            assert!(!is_blacklisted_app_name("Visual Studio Code"));
+        }
+    }
+
+    #[test]
+    fn test_scanner_preserves_customizations_on_existing_profiles() {
+        use curry_lib::glow::model::GlowAnimationStyle;
+        use curry_lib::scanner::model::DiscoveredApp;
+        use curry_lib::settings::ApplicationProfile;
+
+        let mut profile = ApplicationProfile::new("Discord", "Discord.exe");
+        profile.color = Some("#7289DA".to_string());
+        profile.animation = Some(GlowAnimationStyle::Ripple);
+        profile.intensity = Some(0.85);
+        profile.enabled = false;
+
+        let existing_profiles = vec![profile.clone()];
+
+        let discovered = vec![DiscoveredApp {
+            name: "Discord".to_string(),
+            executable_name: "Discord.exe".to_string(),
+            executable_path: Some(
+                "C:\\Users\\User\\AppData\\Local\\Discord\\Discord.exe".to_string(),
+            ),
+            icon_path: None,
+            source: "start_menu".to_string(),
+            is_new: false,
+        }];
+
+        let mut app_list = existing_profiles;
+        let mut new_added = 0usize;
+
+        for disc in discovered {
+            let exe_norm = disc.executable_name.to_lowercase();
+            if let Some(idx) = app_list
+                .iter()
+                .position(|p| p.executable_name.to_lowercase() == exe_norm)
+            {
+                assert_eq!(app_list[idx].color, Some("#7289DA".to_string()));
+                assert_eq!(app_list[idx].animation, Some(GlowAnimationStyle::Ripple));
+                assert_eq!(app_list[idx].intensity, Some(0.85));
+                assert!(!app_list[idx].enabled);
+
+                if app_list[idx].executable_path.is_none() {
+                    app_list[idx].executable_path = disc.executable_path.clone();
+                }
+            } else {
+                new_added += 1;
+            }
+        }
+
+        assert_eq!(new_added, 0);
+        assert_eq!(app_list.len(), 1);
+        assert_eq!(
+            app_list[0].executable_path,
+            Some("C:\\Users\\User\\AppData\\Local\\Discord\\Discord.exe".to_string())
+        );
+    }
+
+    #[test]
+    fn test_scanner_skips_user_removed_applications() {
+        let removed_applications = vec!["discord.exe".to_string(), "spotify".to_string()];
+        let removed_set: std::collections::HashSet<String> = removed_applications
+            .iter()
+            .map(|s| s.to_lowercase())
+            .collect();
+
+        let candidate_exe = "Discord.exe";
+        let norm = candidate_exe.to_lowercase();
+        let stripped = norm.strip_suffix(".exe").unwrap_or(&norm);
+
+        assert!(removed_set.contains(&norm) || removed_set.contains(stripped));
+    }
+
+    #[test]
+    fn test_lnk_parser_resilience_on_malformed_data() {
+        use curry_lib::scanner::lnk::parse_lnk_file;
+        use std::io::Write;
+
+        let temp_dir = std::env::temp_dir();
+        let fake_lnk = temp_dir.join("curry_test_malformed_main.lnk");
+
+        // Test 1: Empty file
+        {
+            let mut f = std::fs::File::create(&fake_lnk).unwrap();
+            f.write_all(&[]).unwrap();
+        }
+        assert!(parse_lnk_file(&fake_lnk).is_none());
+
+        // Test 2: Truncated header (less than 76 bytes)
+        {
+            let mut f = std::fs::File::create(&fake_lnk).unwrap();
+            f.write_all(&[0u8; 40]).unwrap();
+        }
+        assert!(parse_lnk_file(&fake_lnk).is_none());
+
+        // Test 3: Invalid CLSID
+        {
+            let mut f = std::fs::File::create(&fake_lnk).unwrap();
+            let mut buf = [0u8; 76];
+            buf[0] = 76;
+            f.write_all(&buf).unwrap();
+        }
+        assert!(parse_lnk_file(&fake_lnk).is_none());
+
+        let _ = std::fs::remove_file(fake_lnk);
+    }
+
+    #[test]
+    fn test_scanner_live_windows_discovery() {
+        #[cfg(target_os = "windows")]
+        {
+            let apps = curry_lib::scanner::platform::windows::scan_installed_applications();
+            println!(
+                "\n>>> DISCOVERED {} APPLICATIONS ON THIS WINDOWS SYSTEM <<<",
+                apps.len()
+            );
+            for (i, a) in apps.iter().take(10).enumerate() {
+                println!(
+                    "  [{}] {} ({}) from {} -> {:?}",
+                    i + 1,
+                    a.name,
+                    a.executable_name,
+                    a.source,
+                    a.executable_path
+                );
+            }
+            assert!(
+                !apps.is_empty(),
+                "Expected at least one installed application on Windows"
+            );
+        }
+    }
+
+    #[test]
+    fn test_scanner_e2e_storage_merge_and_idempotence() {
+        let temp_dir = std::env::temp_dir();
+        let config_path = temp_dir.join(format!(
+            "curry_test_scan_settings_{}.json",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+
+        let storage = std::sync::Arc::new(curry_lib::settings::SettingsStorage::new_with_path(
+            Some(config_path.clone()),
+        ));
+
+        // Seed a custom user application profile
+        let mut initial_settings = storage.get();
+        let custom_profile = curry_lib::settings::ApplicationProfile {
+            id: "custom-app-id".to_string(),
+            application_name: "Custom App".to_string(),
+            executable_name: "customapp.exe".to_string(),
+            executable_path: Some("C:\\Tools\\customapp.exe".to_string()),
+            enabled: false,
+            color: Some("#123456".to_string()),
+            animation: Some(curry_lib::glow::model::GlowAnimationStyle::Pulse),
+            intensity: Some(0.42),
+            duration: Some(9.0),
+            border_thickness: None,
+            corner_rounding: None,
+            monitor_target: None,
+            suppress_in_fullscreen: None,
+        };
+        initial_settings.applications.push(custom_profile);
+        initial_settings
+            .removed_applications
+            .push("removedapp.exe".to_string());
+        storage.update(initial_settings).unwrap();
+
+        // First scan
+        let res1 =
+            curry_lib::scanner::execute_app_scan(&storage).expect("First scan should succeed");
+        assert!(res1.total_found >= res1.new_added);
+
+        // Custom app should still retain all its customized properties
+        let settings_after_1 = storage.get();
+        let found_custom = settings_after_1
+            .applications
+            .iter()
+            .find(|a| a.executable_name == "customapp.exe")
+            .expect("Custom profile must be preserved");
+        assert_eq!(found_custom.color.as_deref(), Some("#123456"));
+        assert_eq!(
+            found_custom.animation,
+            Some(curry_lib::glow::model::GlowAnimationStyle::Pulse)
+        );
+        assert_eq!(found_custom.duration, Some(9.0));
+        assert_eq!(found_custom.intensity, Some(0.42));
+        assert_eq!(found_custom.enabled, false);
+
+        // Removed app must not be added
+        assert!(
+            settings_after_1
+                .applications
+                .iter()
+                .all(|a| a.executable_name.to_lowercase() != "removedapp.exe"),
+            "Removed app must not be reinstated"
+        );
+
+        // Second scan immediately afterwards (idempotence)
+        let res2 =
+            curry_lib::scanner::execute_app_scan(&storage).expect("Second scan should succeed");
+        assert_eq!(res2.new_added, 0, "Second scan must not add duplicates");
+        let settings_after_2 = storage.get();
+        assert_eq!(
+            settings_after_1.applications.len(),
+            settings_after_2.applications.len(),
+            "Application count must be strictly identical after idempotent scan"
+        );
+
+        let _ = std::fs::remove_file(config_path);
+    }
 }

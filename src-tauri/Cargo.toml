@@ -1,6 +1,6 @@
 [package]
 name = "curry"
-version = "3.0.0"
+version = "3.1.0"
 description = "Curry Desktop Application"
 authors = ["Curry Contributors"]
 edition = "2021"
@@ -34,4 +34,5 @@ features = [
     "Foundation",
     "Foundation_Collections",
     "ApplicationModel",
+    "Win32_System_Registry",
 ]
