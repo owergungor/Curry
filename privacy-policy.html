@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Privacy information for Curry, a desktop notification and screen glow application.">
+  <meta name="theme-color" content="#10131b">
+  <title>Privacy Policy — Curry</title>
+  <style>
+    :root { color-scheme: dark; --bg: #10131b; --panel: #171c27; --text: #eef2fa; --muted: #aab4c5; --accent: #79d9ff; --line: #2b3445; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(ellipse at 50% -20%, #1d2940, var(--bg) 55%); color: var(--text); font: 16px/1.7 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { width: min(820px, calc(100% - 32px)); margin: 56px auto; padding: clamp(24px, 5vw, 52px); background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 24px 80px #0005; }
+    header { padding-bottom: 24px; border-bottom: 1px solid var(--line); margin-bottom: 28px; }
+    .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .14em; font-size: .78rem; font-weight: 700; }
+    h1 { margin: 8px 0 4px; font-size: clamp(2rem, 6vw, 3rem); line-height: 1.15; letter-spacing: -.035em; }
+    .updated { color: var(--muted); font-size: .92rem; }
+    h2 { margin: 30px 0 8px; font-size: 1.2rem; line-height: 1.35; }
+    p { margin: 8px 0 14px; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    ul { padding-left: 1.25rem; }
+    li { padding-left: .2rem; margin: 5px 0; }
+    .notice { padding: 14px 16px; margin: 18px 0; background: #101722; border-left: 3px solid var(--accent); border-radius: 5px 10px 10px 5px; color: #dce8f7; }
+    footer { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: .92rem; }
+    @media (max-width: 520px) { main { margin: 16px auto; border-radius: 14px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">Curry</div>
+      <h1>Privacy Policy</h1>
+      <div class="updated">Last updated: October 28, 2026</div>
+    </header>
+
+    <p>Curry is a desktop application for capturing and organizing desktop notifications and showing screen-edge glow effects. Curry is designed to keep its application data on your device. This policy explains what the app accesses, what it stores, and when it connects to an external service.</p>
+
+    <h2>1. Information Curry processes</h2>
+    <p>When notification monitoring is enabled and permitted by your operating system, Curry reads desktop notifications so it can display them and apply your glow settings. A notification may contain its title, message text, source application name, and timestamp. Notification contents can include personal or sensitive information that another app put in the notification.</p>
+    <p>Curry can also read application names and executable information from local Start Menu and Desktop shortcuts and Windows uninstall registry entries when you ask it to scan for applications. This information is used to create or update application profiles.</p>
+    <p>Curry does not require you to create an account. The codebase reviewed for this policy contains no analytics or telemetry service integration.</p>
+
+    <h2>2. Local storage and retention</h2>
+    <p>Notification history, application profiles, preferences, and glow settings are saved locally in Curry's application configuration directory. Notification history is limited to the history capacity configured in the app. The data remains subject to your device's access controls, backups, and security settings.</p>
+    <p>You can manage or clear notification history and profiles in the app. Removing Curry or clearing its data through your operating system may not remove separate backups or files you have copied elsewhere.</p>
+
+    <h2>3. Network access and updates</h2>
+    <p>Curry includes an automatic update checker. Automatic checks are enabled by default and can be turned off in the app's settings; you can also check for updates manually. Curry checks the project's GitHub release endpoint for update information and, if you choose to install an available update, downloads the update from the configured hosting service.</p>
+    <p>These update connections necessarily disclose network request information to GitHub, such as your IP address and standard connection metadata. The app does not intentionally send notification contents, application profiles, or preferences as part of its update-checking code. GitHub handles request data under its own privacy policy and practices.</p>
+    <p>Other than update checking and downloading, the reviewed application code does not make external network requests as part of its core notification, profile, or settings features. Operating systems, security software, or distribution platforms may make their own network connections outside Curry's control.</p>
+
+    <h2>4. Analytics, advertising, and tracking</h2>
+    <p>The reviewed Curry code does not include behavioral analytics, advertising trackers, or a telemetry endpoint. Curry does not intentionally transmit usage analytics to a Curry-operated service.</p>
+
+    <h2>5. Third-party services and website</h2>
+    <p>GitHub hosts Curry's source code and update releases. When Curry connects to GitHub for update information or downloads, GitHub may process technical request data under its own policies.</p>
+    <p>This policy describes the Curry desktop application. If this page is hosted by GitHub Pages, GitHub may separately process information about website visitors under GitHub's privacy policy.</p>
+
+    <h2>6. Data security</h2>
+    <p>Curry stores its application data on your device. Protecting that data also depends on your operating system, device access controls, and backup practices. Keep your operating system up to date and use appropriate protections for your computer.</p>
+
+    <h2>7. Children's privacy</h2>
+    <p>Curry is a general-purpose desktop utility and is not designed to collect personal information from children. Because notification text may contain information provided by other applications, use appropriate device and account settings for anyone using the computer.</p>
+
+    <h2>8. Changes to this policy</h2>
+    <p>This policy may be updated when Curry's features or data practices change. The current version will be published on the official project site.</p>
+
+    <h2>9. Contact</h2>
+    <p>For questions about this policy or Curry's privacy practices, contact the maintainer through the <a href="https://github.com/owergungor/Curry">official Curry GitHub repository</a>.</p>
+
+    <footer>Curry is designed to process notification and application data locally. Update checks connect to GitHub as described above.</footer>
+  </main>
+</body>
+</html>
