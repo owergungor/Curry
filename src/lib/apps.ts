@@ -16,13 +16,22 @@ export function filterAndSortProfiles<T extends SortableApplicationProfile>(
   query: string,
   order: ApplicationSortOrder,
 ): T[] {
+  // Profile actions and keyed rendering both identify profiles by id. Legacy
+  // settings can contain duplicate IDs, which otherwise aborts Svelte's each
+  // block before the Apps view can render.
+  const seenIds = new Set<string>();
+  const uniqueProfiles = profiles.filter((profile) => {
+    if (seenIds.has(profile.id)) return false;
+    seenIds.add(profile.id);
+    return true;
+  });
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const filtered = normalizedQuery
-    ? profiles.filter((profile) =>
+    ? uniqueProfiles.filter((profile) =>
         profile.applicationName.toLocaleLowerCase().includes(normalizedQuery) ||
         profile.executableName.toLocaleLowerCase().includes(normalizedQuery),
       )
-    : [...profiles];
+    : [...uniqueProfiles];
 
   if (order === 'new') return filtered.reverse();
   if (order === 'old') return filtered;

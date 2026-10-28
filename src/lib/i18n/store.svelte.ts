@@ -1,19 +1,13 @@
 import type { SupportedLanguage } from './index';
 
-if (typeof (globalThis as any).$state === 'undefined') {
-  (globalThis as any).$state = <T>(init: T) => init;
-}
-
-class LanguageState {
-  value: SupportedLanguage = $state('en');
-}
-
-export const languageState = new LanguageState();
+// This module is a shared singleton, not a Svelte component. Keep its value
+// plain; index.ts owns the Svelte store subscription that triggers rerenders.
+let activeLanguage: SupportedLanguage = 'en';
 
 export function getReactiveLanguage(): SupportedLanguage {
-  return languageState.value;
+  return activeLanguage;
 }
 
 export function setReactiveLanguage(lang: SupportedLanguage): void {
-  languageState.value = lang;
+  activeLanguage = lang;
 }

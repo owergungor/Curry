@@ -2009,6 +2009,23 @@ mod tests {
         assert!(find_unknown.is_none());
     }
 
+    #[test]
+    fn test_settings_sanitized_repairs_duplicate_profile_ids() {
+        use curry_lib::settings::{AppSettings, ApplicationProfile};
+
+        let first = ApplicationProfile::new("Logitech G Hub", "lghub.exe");
+        let mut second = ApplicationProfile::new("Logitech G Hub", "lghub_agent.exe");
+        second.id = first.id.clone();
+
+        let mut settings = AppSettings::default();
+        settings.applications = vec![first, second];
+        let sanitized = settings.sanitized();
+
+        assert_eq!(sanitized.applications.len(), 2);
+        assert_ne!(sanitized.applications[0].id, sanitized.applications[1].id);
+        assert_eq!(sanitized.applications[1].executable_name, "lghub_agent.exe");
+    }
+
     // =========================================================================
     // SECTION: APPLICATION PROFILES FILE PICKER & ENHANCED MATCHING TESTS
     // =========================================================================

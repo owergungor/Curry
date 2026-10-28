@@ -180,6 +180,20 @@ impl Default for AppSettings {
 impl AppSettings {
     /// Sanitizes and clamps all numeric settings to safe and expected boundaries.
     pub fn sanitized(mut self) -> Self {
+        let mut profile_ids = std::collections::HashSet::new();
+        for profile in &mut self.applications {
+            if profile.id.trim().is_empty() || !profile_ids.insert(profile.id.clone()) {
+                let mut replacement =
+                    ApplicationProfile::new(&profile.application_name, &profile.executable_name).id;
+                let mut suffix = 1usize;
+                while !profile_ids.insert(replacement.clone()) {
+                    replacement = format!("{replacement}-{suffix}");
+                    suffix += 1;
+                }
+                profile.id = replacement;
+            }
+        }
+
         self.history_limit = self.history_limit.clamp(10, 500);
         self.glow.duration_ms = self.glow.duration_ms.clamp(500, 10_000);
         self.glow.intensity = self.glow.intensity.clamp(0.1, 1.0);

@@ -643,6 +643,12 @@
   let isPreviewingProfile = $state(false);
   let isScanningApps = $state(false);
   let appsSortOrder = $state<ApplicationSortOrder>("az");
+  const appsSortOptions: DropdownItem[] = [
+    { value: "az", label: "A-Z" },
+    { value: "za", label: "Z-A" },
+    { value: "new", label: "New" },
+    { value: "old", label: "Old" },
+  ];
   let scanStatusBanner = $state<{ type: "success" | "info" | "danger"; message: string } | null>(null);
   let scanStatusTimer: ReturnType<typeof setTimeout> | null = null;
   let profileActionError = $state<string | null>(null);
@@ -2276,15 +2282,14 @@
               </div>
 
               <div class="apps-header-actions">
-                <label class="apps-sort-control">
-                  <span class="sr-only">{t('apps.sort_label')}</span>
-                  <select bind:value={appsSortOrder} aria-label={t('apps.sort_label')} title={t('apps.sort_hint')}>
-                    <option value="az">A-Z</option>
-                    <option value="za">Z-A</option>
-                    <option value="new">New</option>
-                    <option value="old">Old</option>
-                  </select>
-                </label>
+                <div class="apps-sort-control" title={t('apps.sort_hint')}>
+                  <Dropdown
+                    id="apps-sort-selector"
+                    items={appsSortOptions}
+                    bind:value={appsSortOrder}
+                    ariaLabel={t('apps.sort_label')}
+                  />
+                </div>
                 <div class="apps-view-toggle ghost-toggle-group" role="group" aria-label={t('apps.view_mode')}>
                     <button
                       type="button"
@@ -2332,7 +2337,7 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon {isScanningApps ? 'spin' : ''}">
                     <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                   </svg>
-                  <span>{isScanningApps ? t('apps.scanning') : 'Scan'}</span>
+                  <span>{isScanningApps ? t('apps.scanning') : t('apps.scan_btn')}</span>
                 </button>
 
                 <button
@@ -2345,7 +2350,7 @@
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
-                  <span>Add</span>
+                  <span>+ {t('apps.add_profile')}</span>
                 </button>
               </div>
             </div>
@@ -2391,7 +2396,7 @@
                   <h3>{appSearchQuery ? t('apps.no_matching') : t('apps.no_profiles')}</h3>
                   <p>{appSearchQuery ? t('apps.no_matching_desc', { query: appSearchQuery }) : t('apps.no_profiles_desc')}</p>
                   <button class="primary-btn" onclick={openAddProfileModal}>
-                    <span>Add</span>
+                    <span>+ {t('apps.add_profile')}</span>
                   </button>
                 </div>
               {:else if appsViewMode === "grid"}
@@ -5231,26 +5236,38 @@
 
   /* Apps View Toggle & List Mode Styling */
   .apps-header-actions {
+    --apps-control-height: 34px;
     display: flex;
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
   }
 
-  .apps-sort-control select {
-    min-height: 34px;
-    padding: 0 28px 0 10px;
-    color: var(--text, #ededed);
-    background: var(--surface-elevated, rgba(255, 255, 255, 0.04));
-    border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-    border-radius: 8px;
-    font: inherit;
-    cursor: pointer;
+  .apps-header-actions > #scan-applications-btn,
+  .apps-header-actions > #add-application-btn {
+    box-sizing: border-box;
+    height: var(--apps-control-height);
+    display: inline-flex;
+    align-items: center;
   }
 
-  .apps-sort-control select:focus-visible {
-    outline: 2px solid var(--accent, #6366f1);
-    outline-offset: 2px;
+  .apps-sort-control {
+    width: 120px;
+    flex-shrink: 0;
+  }
+
+  .apps-sort-control :global(.r-dropdown-trigger) {
+    box-sizing: border-box;
+    height: var(--apps-control-height);
+    min-height: var(--apps-control-height);
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .apps-sort-control :global(.r-dropdown-menu) {
+    left: auto;
+    right: 0;
+    width: 220px;
   }
 
   .sr-only {
@@ -5280,6 +5297,8 @@
   .apps-view-toggle {
     display: inline-flex;
     align-items: center;
+    box-sizing: border-box;
+    height: var(--apps-control-height);
     background: var(--surface-elevated, rgba(255, 255, 255, 0.04));
     border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
     border-radius: 8px;
@@ -5292,7 +5311,7 @@
     align-items: center;
     justify-content: center;
     width: 28px;
-    height: 28px;
+    height: calc(var(--apps-control-height) - 6px);
     border-radius: 6px;
     background: transparent;
     border: none;
