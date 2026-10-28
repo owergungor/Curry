@@ -17,6 +17,7 @@
   import ThemeSelector from "$lib/components/ThemeSelector.svelte";
   import UpdateToast from "$lib/components/UpdateToast.svelte";
   import { APP_VERSION } from "$lib/version";
+  import { filterAndSortProfiles, type ApplicationSortOrder } from "$lib/apps";
 
   interface ConnectionInfo {
     connected: boolean;
@@ -641,6 +642,7 @@
   let isCreatingNewProfile = $state(false);
   let isPreviewingProfile = $state(false);
   let isScanningApps = $state(false);
+  let appsSortOrder = $state<ApplicationSortOrder>("az");
   let scanStatusBanner = $state<{ type: "success" | "info" | "danger"; message: string } | null>(null);
   let scanStatusTimer: ReturnType<typeof setTimeout> | null = null;
   let profileActionError = $state<string | null>(null);
@@ -673,15 +675,11 @@
     profileToDelete = null;
   }
 
-  let filteredProfiles = $derived.by(() => {
-    const q = appSearchQuery.trim().toLowerCase();
-    if (!q) return applications;
-    return applications.filter(
-      (p) =>
-        p.applicationName.toLowerCase().includes(q) ||
-        p.executableName.toLowerCase().includes(q)
-    );
-  });
+  // Always derive a fresh render array so scan replacements and layout changes
+  // are reflected even when the search is empty.
+  let filteredProfiles = $derived.by(() =>
+    filterAndSortProfiles(applications, appSearchQuery, appsSortOrder)
+  );
 
   const DEFAULT_STARTER_PROFILES: ApplicationProfile[] = [
     {
@@ -2273,7 +2271,21 @@
                 <span class="hero-eyebrow">{t('apps.eyebrow')}</span>
                 <div class="apps-title-with-toggle">
                   <h2 class="view-title">{t('apps.title')}</h2>
-                  <div class="apps-view-toggle ghost-toggle-group" role="group" aria-label={t('apps.view_mode')}>
+                </div>
+                <p class="view-subtitle">{t('apps.desc')}</p>
+              </div>
+
+              <div class="apps-header-actions">
+                <label class="apps-sort-control">
+                  <span class="sr-only">{t('apps.sort_label')}</span>
+                  <select bind:value={appsSortOrder} aria-label={t('apps.sort_label')} title={t('apps.sort_hint')}>
+                    <option value="az">A-Z</option>
+                    <option value="za">Z-A</option>
+                    <option value="new">New</option>
+                    <option value="old">Old</option>
+                  </select>
+                </label>
+                <div class="apps-view-toggle ghost-toggle-group" role="group" aria-label={t('apps.view_mode')}>
                     <button
                       type="button"
                       id="apps-view-grid-btn"
@@ -2308,12 +2320,7 @@
                         <line x1="3" y1="18" x2="3.01" y2="18"></line>
                       </svg>
                     </button>
-                  </div>
                 </div>
-                <p class="view-subtitle">{t('apps.desc')}</p>
-              </div>
-
-              <div class="apps-header-actions">
                 <button
                   id="scan-applications-btn"
                   class="secondary-btn"
@@ -2325,7 +2332,7 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon {isScanningApps ? 'spin' : ''}">
                     <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                   </svg>
-                  <span>{isScanningApps ? t('apps.scanning') : t('apps.scan_btn')}</span>
+                  <span>{isScanningApps ? t('apps.scanning') : 'Scan'}</span>
                 </button>
 
                 <button
@@ -2338,7 +2345,7 @@
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
-                  <span>+ {t('apps.add_profile')}</span>
+                  <span>Add</span>
                 </button>
               </div>
             </div>
@@ -2384,7 +2391,7 @@
                   <h3>{appSearchQuery ? t('apps.no_matching') : t('apps.no_profiles')}</h3>
                   <p>{appSearchQuery ? t('apps.no_matching_desc', { query: appSearchQuery }) : t('apps.no_profiles_desc')}</p>
                   <button class="primary-btn" onclick={openAddProfileModal}>
-                    <span>+ {t('apps.add_profile')}</span>
+                    <span>Add</span>
                   </button>
                 </div>
               {:else if appsViewMode === "grid"}
@@ -5230,6 +5237,34 @@
     flex-wrap: wrap;
   }
 
+  .apps-sort-control select {
+    min-height: 34px;
+    padding: 0 28px 0 10px;
+    color: var(--text, #ededed);
+    background: var(--surface-elevated, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+    border-radius: 8px;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .apps-sort-control select:focus-visible {
+    outline: 2px solid var(--accent, #6366f1);
+    outline-offset: 2px;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .scan-status-banner {
     margin-bottom: 16px;
     animation: fadeIn 0.2s ease-out;
@@ -5362,6 +5397,15 @@
     justify-content: space-between;
     align-items: center;
     gap: 12px;
+  }
+
+  .applications-view > .view-header-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .applications-view > .view-header-row > .apps-header-actions {
+    margin-left: auto;
   }
 
   @keyframes eyebrow-enter {
@@ -6980,6 +7024,10 @@
   }
 
   @media (max-width: 768px) {
+    .applications-view > .view-header-row > .apps-header-actions {
+      margin-left: 0;
+      width: 100%;
+    }
     .header-center-tabs {
       overflow-x: auto;
       max-width: 100%;
