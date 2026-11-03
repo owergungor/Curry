@@ -1,119 +1,159 @@
 <div align="center">
 
-<img src="static/curry_icon.png" alt="Curry Logo" width="104" height="104" style="border-radius: 22px; box-shadow: 0 8px 24px rgba(255, 92, 0, 0.35);" />
+<img src="static/curry_icon.png" alt="Curry Icon" width="112" height="112" style="border-radius: 24px; box-shadow: 0 0 40px rgba(255, 92, 0, 0.45);" />
 
 # Curry
 
-### Ambient Desktop Notification Companion & Screen Glow Utility
+### Ambient Desktop Notification Companion & Screen-Edge Glow Utility
 
-Curry illuminates your display borders with customizable, hardware-accelerated ambient glow animations for incoming desktop notifications. Built with a local-first architecture, Curry processes notification data locally with zero telemetry.
-
-[![Microsoft Store](<img width="284" height="73" alt="microsoft-store-badge-logo-png_seeklogo-534806" src="https://github.com/user-attachments/assets/bc5c33e1-fa43-4bd7-87aa-63155bde4c97" />
-)](https://apps.microsoft.com/detail/9P2STBW88PDQ)
-[![Download Latest](<img width="383" height="147" alt="{3BD7A18A-6C2C-470E-965A-9B1E70EBDECD}" src="https://github.com/user-attachments/assets/a7441128-03d2-47f7-80a4-f52aa420af6f" />
-)](https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64-setup.exe)
-[![Official Website](https://img.shields.io/badge/Website-owergungor.github.io%2FCurry-10b981?style=for-the-badge&logo=safari&logoColor=white)](https://owergungor.github.io/Curry/)
+**Curry** transforms incoming Windows notifications into subtle, hardware-accelerated ambient screen-edge glows. Crafted with a dark desktop aesthetic and an **Amber Neon** glow signature, Curry delivers real-time awareness without disruptive popups.
 
 <br/>
 
-[![GitHub Release](https://img.shields.io/github/v/release/owergungor/Curry?color=ff5c00&style=flat-square&label=Release)](https://github.com/owergungor/Curry/releases)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0078D6?style=flat-square&logo=windows)](https://github.com/owergungor/Curry)
+<!-- Primary Download Action Buttons -->
+<p align="center">
+  <a href="https://apps.microsoft.com/detail/9P2STBW88PDQ" target="_blank" rel="noopener noreferrer">
+    <img src="assets/download-from-ms.png" alt="Download from Microsoft Store" height="54" />
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/owergungor/Curry/releases/latest" target="_blank" rel="noopener noreferrer">
+    <img src="assets/download-from-github.png" alt="Download from GitHub Releases" height="54" />
+  </a>
+</p>
+
+<br/>
+
+[![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-9P2STBW88PDQ-0078D6?style=flat-square&logo=microsoft&logoColor=white)](https://apps.microsoft.com/detail/9P2STBW88PDQ)
+[![GitHub Release](https://img.shields.io/github/v/release/owergungor/Curry?color=ff5c00&style=flat-square&label=Release)](https://github.com/owergungor/Curry/releases/latest)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0a0e17?style=flat-square&logo=windows&logoColor=0078D6)](https://github.com/owergungor/Curry)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-24C8D8?style=flat-square&logo=tauri&logoColor=white)](https://v2.tauri.app/)
 [![Svelte](https://img.shields.io/badge/Svelte-5.0-FF3E00?style=flat-square&logo=svelte&logoColor=white)](https://svelte.dev/)
 [![Rust](https://img.shields.io/badge/Rust-1.85+-orange?style=flat-square&logo=rust)](https://www.rust-lang.org/)
-[![Privacy](https://img.shields.io/badge/Privacy-Zero%20Telemetry-success?style=flat-square)](https://owergungor.github.io/Curry/privacy-policy.html)
+[![Privacy](https://img.shields.io/badge/Privacy-Local%20Processing-10b981?style=flat-square)](https://owergungor.github.io/Curry/privacy-policy.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
 </div>
 
 ---
 
-## Overview
+## ⚡ Overview
 
-Traditional notification banners are intrusive, often covering vital user interface elements or pulling your attention away from active tasks. **Curry** solves this problem by transforming incoming notifications into subtle, non-disruptive, ambient screen-edge glows.
+Traditional notification toasts break your focus—they obscure active windows, block critical tools, and distract during deep work. **Curry** replaces notification friction with an elegant ambient illumination layer around your monitor edges.
 
-With native Windows Runtime (WinRT) listener integration, Curry captures alerts with **0ms latency** and **zero polling overhead**, rendering fluid animations using your GPU while consuming less than 1% CPU in the background.
+- 🔶 **Native WinRT Integration**: Captures Windows 10 & 11 notifications instantaneously via `UserNotificationListener` with **0ms latency** and **zero polling overhead**.
+- 🔶 **Ultra-Lightweight Engine**: Hardware-accelerated GPU glow compositing that idles at under 1% CPU.
+- 🔶 **Privacy-Respecting Architecture**: Notification contents and application metadata are parsed and stored strictly on your local device.
+- 🔶 **Official Documentation & Website**: [https://owergungor.github.io/Curry/](https://owergungor.github.io/Curry/)
 
-- 🌐 **Landing Page & Documentation**: [https://owergungor.github.io/Curry/](https://owergungor.github.io/Curry/)
-- 🛍️ **Microsoft Store Product**: [Curry: Notification Companion](https://apps.microsoft.com/detail/9P2STBW88PDQ) (`9P2STBW88PDQ`)
-- 🔒 **Privacy Policy**: [https://owergungor.github.io/Curry/privacy-policy.html](https://owergungor.github.io/Curry/privacy-policy.html)
+> [!NOTE]
+> Curry is distributed through the **[Microsoft Store](https://apps.microsoft.com/detail/9P2STBW88PDQ)** (Store ID: `9P2STBW88PDQ`) for automated background updates and sandboxing, as well as standalone signed installers on **[GitHub Releases](https://github.com/owergungor/Curry/releases/latest)**.
 
 ---
 
-## Key Features
+## 🌟 Key Features
 
-### 🌟 Ambient Edge Glow Engine
+### 1. Ambient Edge Glow Engine
 - **5 Animation Styles**: `Pulse`, `Sweep`, `Ambient`, `Comet`, and `Ripple`.
-- **Complete Visual Customization**: Granular control over border thickness, glow spread, animation duration, cycle speed, and opacity.
-- **Hardware-Accelerated**: Rendered via direct GPU compositing for silk-smooth 60+ FPS motion without frame drops.
+- **Full Visual Control**: Granular sliders for border thickness, outer blur spread, cycle duration, and opacity.
+- **Hardware-Accelerated**: Rendered via direct GPU compositing for fluid 60+ FPS animations without frame stutter.
 
-### ⚡ Native WinRT Event Capture
-- Direct integration with Windows 10 & 11 `Windows.UI.Notifications.Management.UserNotificationListener`.
-- Pure event-driven notification stream with zero background CPU polling.
-- In-memory ring buffer with full-text search, filtering, and read/unread status management.
+### 2. Native WinRT Notification Stream
+- Direct event-driven hook into Windows `UserNotificationListener` APIs.
+- Captures incoming alerts across all desktop applications without constant process polling.
+- In-memory ring buffer with real-time search, read/unread status toggling, and instant cleanup.
 
-### 🔍 Auto App Discovery & Custom Profiles
-- **Auto App Scan**: Automatically scans installed Start Menu and Registry shortcuts to detect desktop applications.
-- **Per-Application Overrides**: Configure distinct colors, animations, durations, and monitor targets for individual apps (e.g., Slack, Discord, Outlook, Teams).
-- **Layout Switcher**: Toggle between high-density card grid and streamlined list view for application profiles.
+### 3. Auto App Discovery & Profiles
+- **Auto App Scan**: One-click scanner that detects installed desktop applications from Start Menu shortcuts and Windows Registry entries.
+- **Per-Application Customization**: Configure custom glow colors, animation styles, and display routing for individual applications (e.g., Slack, Teams, Outlook, Discord).
+- **Flexible UI Views**: Switch seamlessly between a high-density card grid and a streamlined list view.
 
-### 🛡️ Smart Suppression & OLED Care
-- **Fullscreen & Gaming Suppression**: Automatically suppresses ambient glow overlays during full-screen games, media playback, or fullscreen presentations.
-- **OLED Panel Burn-In Protection**: Dynamic peak luminance capping and border spread narrowing to preserve OLED / QD-OLED display longevity.
-- **Low-Battery Awareness**: Gracefully pauses intense glow animations when your laptop transitions to battery saver mode.
+### 4. Gaming & Fullscreen Suppression
+- Intelligently senses when a full-screen application, game, or media player is active.
+- Automatically suppresses ambient glow overlays so gameplay and video playback remain completely unobstructed.
 
-### 🎨 Curated Themes & Modern UI
-- **10 Handcrafted Colorways**: *Perpetuity (Standard Obsidian)*, *Matrix Green*, *Neon Magenta*, *Catppuccin*, *Amethyst Haze*, *Zen Linen*, *Sage Mist*, *Amber Slate*, *Sakura Dawn*, and *Mocha Mousse*.
-- **Tactile Svelte 5 Interface**: Built with modern Svelte 5 runes (`$state`, `$derived`, `$effect`) for instant reactive UI updates and accessible controls.
-- **Multilingual Support (i18n)**: Fully localized in English 🇬🇧, Türkçe 🇹🇷, Deutsch 🇩🇪, Français 🇫🇷, and Español 🇪🇸.
+### 5. OLED Panel Burn-In Protection
+- Dedicated **OLED Mode** clamps peak luminance and narrows edge spread.
+- Modulates glow duration and active cycle duty to preserve QD-OLED and OLED panel longevity.
 
-### 🖥️ Multi-Monitor Display Synchronization
-- Route ambient glows to your **Primary Display**, the display housing your **Active Window**, or synchronize simultaneously across **All Displays**.
-- Dynamic DPI-aware coordinate handling with negative coordinate virtual desktop support.
+### 6. 10 Curated Artisan Themes
+Curry features finely tuned color palettes designed for dark and high-contrast desktop environments:
+- **Perpetuity (Standard)** — Precision obsidian slate with signature Amber Neon radiance
+- **Matrix Green** — High-contrast cyber terminal emerald
+- **Neon Magenta** — Midnight void with high-voltage magenta
+- **Catppuccin** — Soothing pastel lavender and mocha crust
+- **Amethyst Haze** — Deep violet aura with vivid amethyst accents
+- **Zen Linen** — Calm organic linen and warm stone tones
+- **Sage Mist** — Botanical evergreen with soft mint highlights
+- **Amber Slate** — Molten warm amber and industrial slate steel
+- **Sakura Dawn** — Soft cherry blossom dawn with rose quartz
+- **Mocha Mousse** — Velvety espresso, warm caramel, and toasted cocoa
+
+### 7. Multi-Monitor Display Coordination
+- Route ambient edge glows to your **Primary Display**, the display housing your **Active Window**, or synchronize simultaneously across **All Monitors**.
+- Native DPI-aware coordinate handling with support for mixed-resolution and negative-coordinate monitor arrangements.
 
 ---
 
-## Downloads & Installation
+## 🖼️ Screenshots
 
-Curry is distributed officially via the **Microsoft Store** and **GitHub Releases**.
+<div align="center">
+
+<img src="static/curry_icon.png" alt="Curry Visual Identity" width="96" height="96" style="border-radius: 20px; box-shadow: 0 4px 20px rgba(255, 92, 0, 0.35);" />
+
+*Curry — Amber Neon Ambient Notification Companion*
+
+</div>
+
+Curry's desktop interface features a dark obsidian aesthetic with tactile controls, Svelte 5 reactive runes, and immediate preview triggers for every glow mode and colorway.
+
+---
+
+## 📦 Downloads & Installation
+
+Curry is available as a verified **Microsoft Store** application and as standalone release binaries on **GitHub**.
 
 ### Official Packages (v3.3)
 
-| Package Format | Filename / Target | Size | Description |
+| Package Format | Target / Filename | Size | Recommended For |
 | :--- | :--- | :--- | :--- |
-| **Microsoft Store** | Store ID `9P2STBW88PDQ` | Cloud | **Recommended**: Verified, sandboxed, and automatic background updates. |
-| **Windows Installer** | [`Curry_v3.3_win-x64-setup.exe`](https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64-setup.exe) | 3.9 MB | Standard NSIS installer with Start Menu shortcuts and auto-updater. |
-| **Windows MSIX** | [`Curry_v3.3_win-x64.msix`](https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64.msix) | 5.2 MB | Modern MSIX package for clean installation and enterprise deployment. |
-| **Portable ZIP** | [`Curry_v3.3_win-x64.zip`](https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64.zip) | 9.2 MB | Portable archive. Extract anywhere and launch `Curry.exe` directly. |
-| **Standalone Binary**| [`Curry.exe`](https://github.com/owergungor/Curry/releases/download/v3.3/Curry.exe) | 14.0 MB | Single portable executable without installer. |
+| **Microsoft Store** | [Store ID `9P2STBW88PDQ`](https://apps.microsoft.com/detail/9P2STBW88PDQ) | Cloud | **Recommended**: Seamless installation, automated background updates, and Windows sandboxing. |
+| **Windows Setup (.exe)** | [`Curry_v3.3_win-x64-setup.exe`](https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64-setup.exe) | 3.9 MB | Standard NSIS installer with Start Menu integration and auto-updater. |
+| **Windows MSIX (.msix)** | [`Curry_v3.3_win-x64.msix`](https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64.msix) | 5.2 MB | Modern MSIX package for clean installation and enterprise management. |
+| **Portable ZIP (.zip)** | [`Curry_v3.3_win-x64.zip`](https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64.zip) | 9.2 MB | Standalone portable archive. Extract anywhere and launch `Curry.exe`. |
+| **Standalone Binary** | [`Curry.exe`](https://github.com/owergungor/Curry/releases/download/v3.3/Curry.exe) | 14.0 MB | Single executable without installer. |
 
-> All release packages include SHA-256 digests in [`SHA256SUMS.txt`](https://github.com/owergungor/Curry/releases/download/v3.3/SHA256SUMS.txt) and cryptographic signatures (`.sig`).
-
-### System Requirements
-- **OS**: Windows 10 (Build 14393 or later) or Windows 11 (64-bit).
-- **Runtime**: Microsoft Edge WebView2 (pre-installed on Windows 10/11).
-- **Notification Access**: Notification Listener permission enabled in Windows Settings (`Settings > Privacy & security > Notifications`).
+> Cryptographic verification digests are published in [`SHA256SUMS.txt`](https://github.com/owergungor/Curry/releases/download/v3.3/SHA256SUMS.txt) alongside digital signatures (`.sig`).
 
 ---
 
-## Privacy & Security
+## 🖥️ System Requirements
 
-Curry is built from the ground up as a **local-first, privacy-respecting** utility:
-
-- 🔒 **Zero Telemetry**: No analytics libraries, no tracking scripts, no advertising SDKs.
-- 🚫 **No Cloud Sync**: Notification titles, text, sender names, and icons are never uploaded to any remote server. Network connectivity is limited strictly to checking GitHub for release updates.
-- 💾 **Local Configuration**: Settings and profiles are saved strictly in `%LOCALAPPDATA%\com.curry.app`.
-- 📖 Read our full [Privacy Policy](https://owergungor.github.io/Curry/privacy-policy.html).
+- **Operating System**: Windows 10 (Build 14393 or later) or Windows 11 (64-bit architecture).
+- **Webview Runtime**: Microsoft Edge WebView2 (pre-installed on Windows 10 and 11).
+- **Permissions**: Windows Notification Access enabled (`Settings > Privacy & security > Notifications > Notification access`).
 
 ---
 
-## Development
+## 🔒 Privacy & Security
 
-Curry is developed using **Tauri v2**, **Rust**, and **Svelte 5**.
+Curry is engineered with a **local-first, privacy-respecting architecture**:
+
+- **Local Notification Processing**: Notification text, sender names, titles, and application identifiers are processed strictly on your local PC to trigger ambient lighting. Notification content is never uploaded to any remote server or cloud service.
+- **Zero Telemetry**: Curry contains no telemetry beacons, tracking scripts, advertising SDKs, or analytics aggregators.
+- **Update Checks**: When using the standalone installer version, Curry periodically connects anonymously to the public GitHub Releases API (`https://api.github.com/repos/owergungor/Curry/releases/latest`) to check for newer signed releases. When distributed via Microsoft Store, updates are handled natively by Windows Store infrastructure.
+- **Local Settings Storage**: All custom profiles, application preferences, and history logs reside strictly in your local app data directory (`%LOCALAPPDATA%\com.curry.app`).
+
+For complete details, read our official [Privacy Policy](https://owergungor.github.io/Curry/privacy-policy.html).
+
+---
+
+## 🛠️ Development
+
+Curry is built with **Tauri v2**, **Rust**, and **Svelte 5**.
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/) (v20 or higher) and npm
-- [Rust](https://rustup.rs/) (v1.85 or higher with MSVC target)
+- [Rust](https://rustup.rs/) (v1.85 or higher with `x86_64-pc-windows-msvc` toolchain)
 - Microsoft Visual Studio C++ Build Tools & WebView2
 
 ### Setup & Run
@@ -125,10 +165,10 @@ cd Curry
 # Install frontend dependencies
 npm install
 
-# Start development server with hot-reload
+# Start Vite development server
 npm run dev
 
-# Run the complete Tauri desktop app
+# Run the complete Tauri desktop app in dev mode
 npm run tauri dev
 ```
 
@@ -140,35 +180,37 @@ npm run check
 # Frontend unit tests
 npm test
 
-# Rust unit and integration tests
+# Rust unit & integration test suite
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
 ### Production Build
 ```bash
-# Generate production frontend and packaged desktop binaries
+# Compile optimized frontend assets
 npm run build
+
+# Package desktop application via Tauri CLI
 npm run tauri build
 ```
 
-Production installers and standalone executables will be output to `src-tauri/target/release/bundle/`.
+Installers and executables are generated in `src-tauri/target/release/bundle/`.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
-- **Frontend**: Svelte 5 runes (`$state`, `$derived`, `$props`), TypeScript, and Vite for reactive desktop UI.
-- **Tauri Core**: Tauri v2 with secure IPC commands, window lifecycle events, and tray management.
-- **Native OS Layer (Rust)**:
-  - `src-tauri/src/listener/`: WinRT `UserNotificationListener` integration.
-  - `src-tauri/src/glow/`: Multi-monitor overlay management and display coordination.
-  - `src-tauri/src/scanner/`: Fast Windows Start Menu & Registry desktop app discovery.
-  - `src-tauri/src/settings/`: Atomic JSON configuration storage with rollback protection.
+- **Frontend (`src/`)**: Svelte 5 runes (`$state`, `$derived`, `$props`), TypeScript, and Vite providing an ultra-responsive, accessible UI layer.
+- **IPC Gateway (`src/lib/ipc.ts`)**: Structured, typed Tauri IPC bridge with timeout protection and safe asynchronous error recovery.
+- **Native OS Core (`src-tauri/src/`)**:
+  - `listener/`: Native WinRT `UserNotificationListener` integration.
+  - `glow/`: Hardware-accelerated multi-monitor transparent overlay management.
+  - `scanner/`: Fast Windows Start Menu and Registry desktop application discovery.
+  - `settings/`: Thread-safe, atomic configuration persistence with rollback safety.
 
 ---
 
-## License
+## 📄 License
 
-Curry is open source software licensed under the **[MIT License](LICENSE)**.
+Curry is open source software distributed under the **[MIT License](LICENSE)**.
 
 Copyright &copy; 2026 Ömer Güngör &amp; Curry Contributors.
