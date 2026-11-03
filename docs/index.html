@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Curry — Ambient Desktop Notification Companion</title>
+  <meta name="description" content="Curry illuminates your screen edges with customizable, hardware-accelerated ambient glow animations for incoming desktop notifications. Local notification processing, zero telemetry.">
+  <meta name="keywords" content="Curry, desktop notification, ambient glow, screen edge lighting, Windows 11, Windows 10, Tauri, Rust, Svelte, notification companion">
+  <meta name="author" content="Ömer Güngör">
+  <meta property="og:title" content="Curry — Ambient Desktop Notification Companion">
+  <meta property="og:description" content="Turn incoming desktop notifications into subtle, beautiful screen-edge glow animations. Local notification processing, zero telemetry.">
+  <meta property="og:image" content="https://raw.githubusercontent.com/owergungor/Curry/main/static/curry_icon.png">
+  <meta property="og:url" content="https://owergungor.github.io/Curry/">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Curry — Ambient Desktop Notification Companion">
+  <meta name="twitter:description" content="Ambient screen-edge glow companion for Windows desktop notifications. Fast, lightweight, and private.">
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/owergungor/Curry/main/static/curry_icon.png">
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/owergungor/Curry/main/static/curry_icon.png">
+
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --bg-card: rgba(18, 24, 38, 0.75);
+      --bg-card-hover: rgba(28, 36, 56, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(255, 92, 0, 0.35);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --text-dim: #6b7280;
+      --primary: #ff5c00;
+      --primary-hover: #ff7524;
+      --primary-glow: rgba(255, 92, 0, 0.35);
+      --accent-cyan: #00f2fe;
+      --accent-blue: #4facfe;
+      --accent-purple: #9d4edd;
+      --accent-green: #10b981;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-full: 9999px;
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      color-scheme: dark;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Background Ambient Gradients */
+    .bg-mesh {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(255, 92, 0, 0.12), transparent 40%),
+        radial-gradient(circle at 85% 30%, rgba(79, 172, 254, 0.10), transparent 45%),
+        radial-gradient(circle at 50% 80%, rgba(157, 78, 221, 0.08), transparent 50%),
+        #0a0e17;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      width: 100%;
+    }
+
+    /* Navigation */
+    header.site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: rgba(10, 14, 23, 0.8);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.75rem;
+    }
+
+    .nav-link {
+      font-size: 0.938rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      transition: color 0.2s ease;
+    }
+
+    .nav-link:hover {
+      color: var(--text-main);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.938rem;
+      font-weight: 600;
+      padding: 0.65rem 1.25rem;
+      border-radius: var(--radius-sm);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, #ff7524 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 18px rgba(255, 92, 0, 0.32);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 6px 24px rgba(255, 92, 0, 0.48);
+      transform: translateY(-1px);
+    }
+
+    .btn-store {
+      background: #000000;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .btn-store:hover {
+      background: #111111;
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border-color: var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateY(-1px);
+    }
+
+    .btn-sm {
+      padding: 0.45rem 0.9rem;
+      font-size: 0.85rem;
+    }
+
+    .btn-lg {
+      padding: 0.85rem 1.6rem;
+      font-size: 1rem;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.813rem;
+      font-weight: 500;
+      padding: 0.3rem 0.8rem;
+      border-radius: var(--radius-full);
+      background: rgba(255, 92, 0, 0.12);
+      border: 1px solid rgba(255, 92, 0, 0.28);
+      color: #ff914d;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--primary);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--primary);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 5rem 0 3.5rem;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-content {
+      max-width: 820px;
+      margin: 0 auto;
+    }
+
+    .hero-badge-wrap {
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 5vw, 4rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.35rem;
+    }
+
+    .hero-gradient-text {
+      background: linear-gradient(135deg, #ffffff 30%, #ff8a3d 70%, #ff5c00 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p.lead {
+      font-size: clamp(1.05rem, 2vw, 1.25rem);
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 2.5rem;
+      font-weight: 400;
+    }
+
+    .hero-cta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+
+    .hero-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Interactive Desktop Showcase Mockup */
+    .showcase-wrap {
+      margin: 3.5rem auto 1rem;
+      max-width: 960px;
+      position: relative;
+    }
+
+    .ambient-glow-frame {
+      position: relative;
+      border-radius: var(--radius-lg);
+      padding: 3px;
+      background: linear-gradient(135deg, #ff5c00, #4facfe, #ff5c00);
+      background-size: 200% 200%;
+      animation: ambientGlowAnimation 6s ease-in-out infinite;
+      box-shadow: 0 0 50px rgba(255, 92, 0, 0.28), 0 0 80px rgba(79, 172, 254, 0.18);
+      transition: all 0.4s ease;
+    }
+
+    @keyframes ambientGlowAnimation {
+      0% { background-position: 0% 50%; box-shadow: 0 0 45px rgba(255, 92, 0, 0.35), 0 0 80px rgba(79, 172, 254, 0.15); }
+      50% { background-position: 100% 50%; box-shadow: 0 0 60px rgba(79, 172, 254, 0.35), 0 0 90px rgba(255, 92, 0, 0.25); }
+      100% { background-position: 0% 50%; box-shadow: 0 0 45px rgba(255, 92, 0, 0.35), 0 0 80px rgba(79, 172, 254, 0.15); }
+    }
+
+    .window-mockup {
+      background: #0f1422;
+      border-radius: calc(var(--radius-lg) - 3px);
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.75);
+    }
+
+    .window-titlebar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 40px;
+      padding: 0 14px;
+      background: rgba(18, 24, 38, 0.95);
+      border-bottom: 1px solid var(--border-color);
+      user-select: none;
+    }
+
+    .window-title {
+      font-size: 0.813rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .control-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .control-dot.close { background: #ef4444; }
+    .control-dot.minimize { background: #eab308; }
+    .control-dot.maximize { background: #22c55e; }
+
+    .window-body {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      min-height: 420px;
+      background: #0d121f;
+    }
+
+    @media (max-width: 768px) {
+      .window-body {
+        grid-template-columns: 1fr;
+      }
+      .mock-sidebar {
+        display: none;
+      }
+    }
+
+    .mock-sidebar {
+      background: rgba(14, 19, 31, 0.95);
+      border-right: 1px solid var(--border-color);
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mock-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.825rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: default;
+    }
+
+    .mock-nav-item.active {
+      background: rgba(255, 92, 0, 0.12);
+      color: #ff914d;
+      font-weight: 600;
+    }
+
+    .mock-main {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      text-align: left;
+    }
+
+    .mock-card {
+      background: rgba(20, 27, 43, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 18px;
+    }
+
+    .mock-notification-demo {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      border: 1px solid rgba(255, 92, 0, 0.25);
+    }
+
+    .mock-app-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0d121f;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .mock-controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .mock-pill {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .interactive-glow-picker {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .glow-dot-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .glow-dot-btn:hover, .glow-dot-btn.active {
+      transform: scale(1.2);
+      border-color: #ffffff;
+    }
+
+    /* Section Styles */
+    section {
+      padding: 5rem 0;
+      position: relative;
+    }
+
+    .section-header {
+      text-align: center;
+      max-width: 680px;
+      margin: 0 auto 3.5rem;
+    }
+
+    .section-header h2 {
+      font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.9rem;
+    }
+
+    .section-header p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    /* Feature Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 2rem;
+      transition: all 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      backdrop-filter: blur(12px);
+    }
+
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 92, 0, 0.3);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    .feature-icon-wrap {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 92, 0, 0.12);
+      border: 1px solid rgba(255, 92, 0, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+
+    .feature-card h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.938rem;
+      line-height: 1.6;
+    }
+
+    /* Download Grid */
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .download-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 1.25rem;
+      position: relative;
+      transition: all 0.25s ease;
+    }
+
+    .download-card.highlight {
+      border-color: var(--border-accent);
+      background: linear-gradient(180deg, rgba(255, 92, 0, 0.08) 0%, var(--bg-card) 100%);
+    }
+
+    .download-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .download-card-badge {
+      position: absolute;
+      top: -10px;
+      right: 16px;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: var(--radius-full);
+      background: var(--primary);
+      color: #ffffff;
+      letter-spacing: 0.05em;
+    }
+
+    .download-header h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .download-header p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .download-meta {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Privacy Banner */
+    .privacy-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(14, 19, 31, 0.8) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .privacy-text {
+      max-width: 650px;
+    }
+
+    .privacy-text h3 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: #34d399;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .privacy-text p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Themes Showcase Strip */
+    .themes-strip {
+      display: flex;
+      gap: 1rem;
+      overflow-x: auto;
+      padding: 1rem 0 1.5rem;
+      scrollbar-width: thin;
+    }
+
+    .theme-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .theme-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+    }
+
+    /* Footer */
+    footer.site-footer {
+      border-top: 1px solid var(--border-color);
+      padding: 4rem 0 2.5rem;
+      background: rgba(8, 11, 18, 0.9);
+      margin-top: auto;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 2.5rem;
+      margin-bottom: 3rem;
+    }
+
+    @media (max-width: 840px) {
+      .footer-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .footer-col h4 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-main);
+      margin-bottom: 1.2rem;
+    }
+
+    .footer-col ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .footer-col a {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      transition: color 0.2s;
+    }
+
+    .footer-col a:hover {
+      color: var(--text-main);
+    }
+
+    .footer-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-color);
+      color: var(--text-dim);
+      font-size: 0.825rem;
+    }
+
+    /* Accessibility focus rings */
+    a:focus-visible, button:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh" aria-hidden="true"></div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container nav-inner">
+      <a href="#top" class="brand" aria-label="Curry Home">
+        <img src="https://raw.githubusercontent.com/owergungor/Curry/main/static/curry_icon.png" alt="Curry Icon" class="brand-icon" width="38" height="38">
+        <span>Curry</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Main Navigation">
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#preview" class="nav-link">Preview</a>
+        <a href="#themes" class="nav-link">Themes</a>
+        <a href="#downloads" class="nav-link">Downloads</a>
+        <a href="privacy-policy.html" class="nav-link">Privacy</a>
+      </nav>
+
+      <div class="nav-actions">
+        <a href="https://github.com/owergungor/Curry" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" aria-label="GitHub Repository">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          <span>Star</span>
+        </a>
+        <a href="#downloads" class="btn btn-primary btn-sm">Get Curry</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-content">
+        <div class="hero-badge-wrap">
+          <span class="badge">
+            <span class="badge-dot"></span>
+            Curry v3.3 Available • Windows 10/11 & Microsoft Store
+          </span>
+        </div>
+
+        <h1>
+          Ambient Desktop Notifications.<br>
+          <span class="hero-gradient-text">Subtle. Glowing. Private.</span>
+        </h1>
+
+        <p class="lead">
+          Transform incoming desktop notifications into mesmerizing, hardware-accelerated screen-edge glows.
+          Notification data is processed strictly locally with native WinRT capture, zero telemetry, and ultra-low CPU footprint.
+        </p>
+
+        <div class="hero-cta">
+          <!-- Official Microsoft Store Button -->
+          <a href="https://apps.microsoft.com/detail/9P2STBW88PDQ" target="_blank" rel="noopener noreferrer" class="btn btn-store btn-lg" aria-label="Get it from Microsoft Store">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M19.5 4h-3.08A4.996 4.996 0 0 0 12 0a4.996 4.996 0 0 0-4.42 4H4.5A2.5 2.5 0 0 0 2 6.5v13A2.5 2.5 0 0 0 4.5 22h15a2.5 2.5 0 0 0 2.5-2.5v-13A2.5 2.5 0 0 0 19.5 4zM12 2c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3zm-1 8h-2V8h2v2zm4 0h-2V8h2v2zM6 8h1v2H6V8zm12 0h-1v2h1V8z"/>
+            </svg>
+            <span>Get it from Microsoft Store</span>
+          </a>
+
+          <!-- Direct Windows Setup Button -->
+          <a href="https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64-setup.exe" class="btn btn-primary btn-lg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>Download for Windows (.exe)</span>
+          </a>
+
+          <!-- GitHub Source Button -->
+          <a href="https://github.com/owergungor/Curry" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-lg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+            </svg>
+            <span>GitHub Repository</span>
+          </a>
+        </div>
+
+        <div class="hero-meta">
+          <div class="hero-meta-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Local Processing & Private</span>
+          </div>
+          <div class="hero-meta-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            <span>Windows 10 & 11 (x64)</span>
+          </div>
+          <div class="hero-meta-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+            <span>Zero-Lag WinRT Event Stream</span>
+          </div>
+          <div class="hero-meta-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="15"/></svg>
+            <span>MIT Licensed Open Source</span>
+          </div>
+        </div>
+
+        <!-- Interactive Preview Mockup -->
+        <div id="preview" class="showcase-wrap">
+          <div id="glowFrame" class="ambient-glow-frame">
+            <div class="window-mockup">
+              <!-- Window Titlebar -->
+              <div class="window-titlebar">
+                <div class="window-title">
+                  <img src="https://raw.githubusercontent.com/owergungor/Curry/main/static/curry_icon.png" width="16" height="16" alt="Curry Icon">
+                  <span>Curry — Ambient Notification Companion</span>
+                </div>
+                <div class="window-controls">
+                  <div class="control-dot minimize"></div>
+                  <div class="control-dot maximize"></div>
+                  <div class="control-dot close"></div>
+                </div>
+              </div>
+
+              <!-- Window Interior Mockup -->
+              <div class="window-body">
+                <div class="mock-sidebar">
+                  <div class="mock-nav-item active">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    <span>Dashboard</span>
+                  </div>
+                  <div class="mock-nav-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    <span>Applications</span>
+                  </div>
+                  <div class="mock-nav-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/></svg>
+                    <span>Appearance</span>
+                  </div>
+                  <div class="mock-nav-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Settings</span>
+                  </div>
+                </div>
+
+                <div class="mock-main">
+                  <div class="mock-controls-row">
+                    <div>
+                      <h4 style="font-size: 1.05rem; font-weight: 600;">Ambient Display Engine</h4>
+                      <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time desktop edge lighting & listener</p>
+                    </div>
+                    <span class="mock-pill">
+                      <span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
+                      WinRT Active
+                    </span>
+                  </div>
+
+                  <!-- Simulated Notification Alert Card -->
+                  <div class="mock-notification-demo">
+                    <div class="mock-app-icon">#</div>
+                    <div style="flex-grow: 1;">
+                      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 2px;">
+                        <span>Slack • General</span>
+                        <span>Just now</span>
+                      </div>
+                      <div style="font-size: 0.88rem; font-weight: 600; color: #fff;">Sophia Miller</div>
+                      <div style="font-size: 0.8rem; color: var(--text-muted);">Curry v3.3 release package is ready on Microsoft Store! 🚀</div>
+                    </div>
+                  </div>
+
+                  <!-- Live Glow Selector Bar -->
+                  <div class="mock-card" style="padding: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.813rem;">
+                      <span style="font-weight: 500;">Interactive Preview Aura:</span>
+                      <span id="activeColorName" style="color: #ff8038; font-weight: 600;">Perpetuity Amber</span>
+                    </div>
+
+                    <div class="interactive-glow-picker">
+                      <button class="glow-dot-btn active" style="background: #ff5c00;" onclick="switchPreviewColor('#ff5c00', '#4facfe', 'Perpetuity Amber')" aria-label="Amber Glow"></button>
+                      <button class="glow-dot-btn" style="background: #00f2fe;" onclick="switchPreviewColor('#00f2fe', '#4facfe', 'Electric Cyan')" aria-label="Cyan Glow"></button>
+                      <button class="glow-dot-btn" style="background: #10b981;" onclick="switchPreviewColor('#10b981', '#059669', 'Matrix Green')" aria-label="Matrix Green Glow"></button>
+                      <button class="glow-dot-btn" style="background: #e11d48;" onclick="switchPreviewColor('#e11d48', '#ff758c', 'Neon Magenta')" aria-label="Neon Magenta Glow"></button>
+                      <button class="glow-dot-btn" style="background: #8b5cf6;" onclick="switchPreviewColor('#8b5cf6', '#c084fc', 'Amethyst Haze')" aria-label="Amethyst Glow"></button>
+                      <button class="glow-dot-btn" style="background: #fbbf24;" onclick="switchPreviewColor('#fbbf24', '#d97706', 'Sakura Gold')" aria-label="Gold Glow"></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Core Features Section -->
+    <section id="features">
+      <div class="container">
+        <div class="section-header">
+          <span class="badge" style="margin-bottom: 0.8rem;">ENGINEERED FOR FOCUS</span>
+          <h2>Crafted for Windows Power Users</h2>
+          <p>
+            Experience notifications without disruptive popups pulling you out of your workflow.
+            Every feature is designed with system performance, OLED preservation, and personal aesthetics in mind.
+          </p>
+        </div>
+
+        <div class="features-grid">
+          <!-- Feature 1 -->
+          <div class="feature-card">
+            <div class="feature-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+            </div>
+            <h3>Ambient Screen-Edge Glow</h3>
+            <p>
+              Choose from 5 hardware-accelerated animation modes: <strong>Pulse</strong>, <strong>Sweep</strong>, <strong>Ambient</strong>, <strong>Comet</strong>, and <strong>Ripple</strong>. Fully tune border thickness, glow spread, duration, and opacity.
+            </p>
+          </div>
+
+          <!-- Feature 2 -->
+          <div class="feature-card">
+            <div class="feature-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+            </div>
+            <h3>Native WinRT Notification Capture</h3>
+            <p>
+              Direct integration with Windows 10 & 11 native <code>UserNotificationListener</code> APIs. Captures alerts instantly with 0ms lag, zero polling, and near-zero background CPU consumption.
+            </p>
+          </div>
+
+          <!-- Feature 3 -->
+          <div class="feature-card">
+            <div class="feature-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </div>
+            <h3>Auto App Scan & Custom Profiles</h3>
+            <p>
+              Auto-discovers installed desktop applications from Start Menu and Registry. Assign distinct glow colors, animations, duration overrides, and monitor targets per application.
+            </p>
+          </div>
+
+          <!-- Feature 4 -->
+          <div class="feature-card">
+            <div class="feature-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+            </div>
+            <h3>Gaming & Fullscreen Suppression</h3>
+            <p>
+              Intelligently detects when you are immersed in full-screen games, video players, or presentations, automatically suppressing glows so your screen remains undisturbed.
+            </p>
+          </div>
+
+          <!-- Feature 5 -->
+          <div class="feature-card">
+            <div class="feature-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+              </svg>
+            </div>
+            <h3>OLED Panel Burn-In Protection</h3>
+            <p>
+              Built-in OLED Mode limits peak luminance, narrows edge spread, and modulates glow duration to protect high-end OLED and QD-OLED monitors from static pixel fatigue.
+            </p>
+          </div>
+
+          <!-- Feature 6 -->
+          <div class="feature-card">
+            <div class="feature-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+            </div>
+            <h3>Multi-Monitor Coordination</h3>
+            <p>
+              Whether you use an ultrawide setup or multiple displays, route ambient glows to your primary display, the monitor housing your active window, or synchronize across all monitors.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Themes Showcase Section -->
+    <section id="themes" style="background: rgba(14, 19, 31, 0.5);">
+      <div class="container">
+        <div class="section-header">
+          <span class="badge" style="margin-bottom: 0.8rem;">PALETTES & AESTHETICS</span>
+          <h2>10 Curated Artisan Themes</h2>
+          <p>Carefully balanced colorways designed for dark, light, and high-contrast ambient environments.</p>
+        </div>
+
+        <div class="themes-strip">
+          <div class="theme-chip">
+            <span class="theme-swatch" style="background: #ff5c00;"></span>
+            <span>Perpetuity (Standard)</span>
+          </div>
+          <div class="theme-chip">
+            <span class="theme-swatch" style="background: #10b981;"></span>
+            <span>Matrix Green</span>
+          </div>
+          <div class="theme-chip">
+            <span class="theme-swatch" style="background: #e11d48;"></span>
+            <span>Neon Magenta</span>
+          </div>
+          <div class="theme-chip">
+            <span class="theme-swatch" style="background: #cba6f7;"></span>
+            <span>Catppuccin</span>
+          </div>
+          <div class="theme-chip">
+            <span class="theme-swatch" style="background: #9d4edd;"></span>
+            <span>Amethyst Haze</span>
+          </div>
+          <div class="theme-chip">
+            <span class="theme-swatch" style="background: #84a98c;"></span>
+            <span>Zen Linen</span>
+          </div>
+          <div class="theme-chip">
+            <span class="theme-swatch" style="background: #52b788;"></span>
+            <span>Sage Mist</span>
+          </div>
+          <div class="theme-chip">
+            <span class="theme-swatch" style="background: #ffb703;"></span>
+            <span>Amber Slate</span>
+          </div>
+          <div class="theme-chip">
+            <span class="theme-swatch" style="background: #ffb4a2;"></span>
+            <span>Sakura Dawn</span>
+          </div>
+          <div class="theme-chip">
+            <span class="theme-swatch" style="background: #a98467;"></span>
+            <span>Mocha Mousse</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Downloads Section -->
+    <section id="downloads">
+      <div class="container">
+        <div class="section-header">
+          <span class="badge" style="margin-bottom: 0.8rem;">GET CURRY</span>
+          <h2>Download Curry v3.3 for Windows</h2>
+          <p>
+            Choose your preferred package format. Verified, signed, and ready for Windows 10 (Build 14393+) and Windows 11.
+          </p>
+        </div>
+
+        <div class="download-grid">
+          <!-- Store Card (Recommended) -->
+          <div class="download-card highlight">
+            <span class="download-card-badge">RECOMMENDED</span>
+            <div class="download-header">
+              <h3>Microsoft Store</h3>
+              <p>Official Store edition with seamless background updates, sandboxing, and zero-touch installation.</p>
+            </div>
+            <div>
+              <div class="download-meta" style="margin-bottom: 1rem;">
+                <span>Store ID: 9P2STBW88PDQ</span>
+                <span>•</span>
+                <span>Windows 10 / 11</span>
+              </div>
+              <a href="https://apps.microsoft.com/detail/9P2STBW88PDQ" target="_blank" rel="noopener noreferrer" class="btn btn-store" style="width: 100%;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19.5 4h-3.08A4.996 4.996 0 0 0 12 0a4.996 4.996 0 0 0-4.42 4H4.5A2.5 2.5 0 0 0 2 6.5v13A2.5 2.5 0 0 0 4.5 22h15a2.5 2.5 0 0 0 2.5-2.5v-13A2.5 2.5 0 0 0 19.5 4zM12 2c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3zm-1 8h-2V8h2v2zm4 0h-2V8h2v2zM6 8h1v2H6V8zm12 0h-1v2h1V8z"/>
+                </svg>
+                <span>Get it from Microsoft Store</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- NSIS Installer -->
+          <div class="download-card">
+            <div class="download-header">
+              <h3>Windows Setup (.exe)</h3>
+              <p>Standalone installer with Start Menu integration, desktop shortcuts, and auto-updater.</p>
+            </div>
+            <div>
+              <div class="download-meta" style="margin-bottom: 1rem;">
+                <span>Size: 3.9 MB</span>
+                <span>•</span>
+                <span>NSIS Installer</span>
+              </div>
+              <a href="https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64-setup.exe" class="btn btn-primary" style="width: 100%;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Download Setup (.exe)</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- MSIX Package -->
+          <div class="download-card">
+            <div class="download-header">
+              <h3>MSIX Package (.msix)</h3>
+              <p>Modern declarative Windows app packaging for enterprise distribution and clean uninstallation.</p>
+            </div>
+            <div>
+              <div class="download-meta" style="margin-bottom: 1rem;">
+                <span>Size: 5.2 MB</span>
+                <span>•</span>
+                <span>MSIX Bundle</span>
+              </div>
+              <a href="https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64.msix" class="btn btn-secondary" style="width: 100%;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Download MSIX (.msix)</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Portable ZIP -->
+          <div class="download-card">
+            <div class="download-header">
+              <h3>Portable Archive (.zip)</h3>
+              <p>No installer required. Extract anywhere and launch immediately. Ideal for USB drives.</p>
+            </div>
+            <div>
+              <div class="download-meta" style="margin-bottom: 1rem;">
+                <span>Size: 9.2 MB</span>
+                <span>•</span>
+                <span>Portable ZIP</span>
+              </div>
+              <a href="https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64.zip" class="btn btn-secondary" style="width: 100%;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Download Portable (.zip)</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Privacy & Security Guarantee Banner -->
+        <div class="privacy-banner">
+          <div class="privacy-text">
+            <h3>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>Zero Telemetry. Local Processing.</span>
+            </h3>
+            <p>
+              Your notification data is processed strictly on your computer and never leaves your device. Curry contains zero telemetry or advertising trackers; network connectivity is limited exclusively to GitHub for release update checks.
+            </p>
+          </div>
+          <div>
+            <a href="privacy-policy.html" class="btn btn-secondary">
+              <span>Read Full Privacy Policy</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <div class="brand" style="margin-bottom: 1rem;">
+            <img src="https://raw.githubusercontent.com/owergungor/Curry/main/static/curry_icon.png" alt="Curry Logo" class="brand-icon" width="32" height="32">
+            <span>Curry</span>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.875rem; max-width: 320px; line-height: 1.6;">
+            The ambient desktop notification companion and screen-edge glow utility for Windows. Built with Tauri v2, Rust, and Svelte 5.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Distribution</h4>
+          <ul>
+            <li><a href="https://apps.microsoft.com/detail/9P2STBW88PDQ" target="_blank" rel="noopener noreferrer">Microsoft Store</a></li>
+            <li><a href="https://github.com/owergungor/Curry/releases/tag/v3.3">Curry v3.3 Release</a></li>
+            <li><a href="https://github.com/owergungor/Curry/releases">All Releases</a></li>
+            <li><a href="https://github.com/owergungor/Curry/releases/download/v3.3/SHA256SUMS.txt">SHA-256 Checksums</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/owergungor/Curry" target="_blank" rel="noopener noreferrer">Source Code (GitHub)</a></li>
+            <li><a href="https://github.com/owergungor/Curry/issues" target="_blank" rel="noopener noreferrer">Issue Tracker</a></li>
+            <li><a href="https://github.com/owergungor/Curry/blob/main/LICENSE">MIT License</a></li>
+            <li><a href="privacy-policy.html">Privacy Policy</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Technology</h4>
+          <ul>
+            <li><a href="https://v2.tauri.app" target="_blank" rel="noopener noreferrer">Tauri v2 Desktop</a></li>
+            <li><a href="https://www.rust-lang.org" target="_blank" rel="noopener noreferrer">Rust Core</a></li>
+            <li><a href="https://svelte.dev" target="_blank" rel="noopener noreferrer">Svelte 5 Runes</a></li>
+            <li><a href="https://learn.microsoft.com/en-us/uwp/api/windows.ui.notifications.management.usernotificationlistener" target="_blank" rel="noopener noreferrer">WinRT API</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          Copyright &copy; 2026 Ömer Güngör &amp; Curry Contributors. Distributed under the MIT License.
+        </div>
+        <div style="display: flex; gap: 16px;">
+          <a href="privacy-policy.html" style="color: var(--text-dim); text-decoration: underline;">Privacy Policy</a>
+          <a href="https://apps.microsoft.com/detail/9P2STBW88PDQ" target="_blank" rel="noopener noreferrer" style="color: var(--text-dim); text-decoration: underline;">Microsoft Store (9P2STBW88PDQ)</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Script for preview interaction -->
+  <script>
+    function switchPreviewColor(c1, c2, name) {
+      const frame = document.getElementById('glowFrame');
+      const label = document.getElementById('activeColorName');
+      if (frame) {
+        frame.style.background = `linear-gradient(135deg, ${c1}, ${c2}, ${c1})`;
+        frame.style.boxShadow = `0 0 50px ${c1}55, 0 0 80px ${c2}33`;
+      }
+      if (label) {
+        label.textContent = name;
+        label.style.color = c1;
+      }
+      // Update active button state
+      document.querySelectorAll('.glow-dot-btn').forEach(btn => btn.classList.remove('active'));
+      if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+      }
+    }
+  </script>
+</body>
+</html>

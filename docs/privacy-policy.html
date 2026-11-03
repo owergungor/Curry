@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Curry Notification Companion</title>
+  <meta name="description" content="Privacy Policy for Curry: Notification Companion. Explains our local-first, zero-telemetry architecture and strict data privacy standards.">
+  <meta name="author" content="Ömer Güngör">
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/owergungor/Curry/main/static/curry_icon.png">
+
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --bg-card: rgba(18, 24, 38, 0.75);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --text-dim: #6b7280;
+      --primary: #ff5c00;
+      --primary-glow: rgba(255, 92, 0, 0.35);
+      --accent-green: #10b981;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.7;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bg-mesh {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(255, 92, 0, 0.08), transparent 40%),
+        radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.06), transparent 45%),
+        #0a0e17;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      width: 100%;
+    }
+
+    header.site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: rgba(10, 14, 23, 0.85);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 70px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: var(--text-main);
+      text-decoration: none;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px var(--primary-glow);
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: var(--primary);
+    }
+
+    main {
+      padding: 4rem 0 6rem;
+      flex-grow: 1;
+    }
+
+    .policy-header {
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .policy-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+
+    .policy-meta {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    .policy-section {
+      margin-bottom: 2.5rem;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 0.9rem;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h2::before {
+      content: "";
+      display: inline-block;
+      width: 4px;
+      height: 18px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    ul {
+      color: var(--text-muted);
+      margin-left: 1.5rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    li strong {
+      color: var(--text-main);
+    }
+
+    .highlight-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    .highlight-card h3 {
+      font-size: 1.1rem;
+      color: #34d399;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .highlight-card p {
+      margin-bottom: 0;
+      font-size: 0.95rem;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Andale Mono", monospace;
+      font-size: 0.88em;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.2em 0.4em;
+      border-radius: 4px;
+      color: #ff914d;
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 2.5rem 0;
+      background: rgba(8, 11, 18, 0.9);
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="container nav-inner">
+      <a href="index.html" class="brand">
+        <img src="https://raw.githubusercontent.com/owergungor/Curry/main/static/curry_icon.png" alt="Curry Icon" class="brand-icon" width="34" height="34">
+        <span>Curry</span>
+      </a>
+
+      <a href="index.html" class="back-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Back to Home</span>
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <div class="policy-header">
+        <div class="policy-tag">Privacy Policy</div>
+        <h1>Curry: Notification Companion</h1>
+        <div class="policy-meta">
+          <span>Effective Date: October 28, 2026</span>
+          <span style="margin: 0 8px;">•</span>
+          <span>Microsoft Store ID: 9P2STBW88PDQ</span>
+          <span style="margin: 0 8px;">•</span>
+          <span>Version 3.3</span>
+        </div>
+      </div>
+
+      <div class="highlight-card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Summary: Local Notification Processing &amp; Zero Telemetry
+        </h3>
+        <p>
+          Curry is a privacy-first desktop application. All notification processing, alert parsing, and edge glow animations occur strictly on your local computer. Notification data is never collected or uploaded to any remote server. Network connections are limited strictly to anonymous GitHub release update checks in the standalone edition.
+        </p>
+      </div>
+
+      <div class="policy-section">
+        <h2>1. Information We Do Not Collect</h2>
+        <p>
+          Unlike cloud-connected notification aggregators, Curry operates with a strict zero-telemetry policy:
+        </p>
+        <ul>
+          <li><strong>Zero Network Analytics:</strong> We do not embed Google Analytics, Mixpanel, Sentry, TelemetryDeck, or any other tracking SDKs.</li>
+          <li><strong>No User Accounts:</strong> You do not need to register, provide an email address, or log in to use Curry.</li>
+          <li><strong>No Notification Uploads:</strong> The titles, text bodies, sender names, and icons of your incoming desktop alerts are never transmitted over the internet.</li>
+          <li><strong>No Device Fingerprinting:</strong> We do not collect hardware identifiers, MAC addresses, IP addresses, or unique machine GUIDs.</li>
+        </ul>
+      </div>
+
+      <div class="policy-section">
+        <h2>2. Windows Notification Listener (WinRT)</h2>
+        <p>
+          To illuminate display borders when notifications arrive, Curry requires access to the Windows <code>UserNotificationListener</code> API:
+        </p>
+        <ul>
+          <li><strong>Local Event Processing:</strong> Incoming alerts are delivered by the Windows kernel directly to the local Curry process in memory.</li>
+          <li><strong>Purpose Limitation:</strong> Notification metadata (such as application name or category) is used solely to match configured glow rules (e.g., triggering a magenta sweep for Slack or green pulse for Teams).</li>
+          <li><strong>Memory-Only History:</strong> Notification history is held in an in-memory ring buffer (up to 200 items by default) strictly for your local search and review. It is never uploaded to any remote server or persistent cloud database.</li>
+          <li><strong>Revocation:</strong> You can revoke notification access at any time through Windows Settings under <code>Privacy &amp; security &gt; Notifications</code>.</li>
+        </ul>
+      </div>
+
+      <div class="policy-section">
+        <h2>3. Local Storage and Preferences</h2>
+        <p>
+          All configurations and preferences are kept exclusively on your local system:
+        </p>
+        <ul>
+          <li><strong>Configuration Directory:</strong> User preferences (theme selection, custom glow animations, per-app color rules, monitor routing) are stored in your local application directory (<code>%LOCALAPPDATA%\com.curry.app</code> on Windows).</li>
+          <li><strong>Deletion:</strong> You can clear notification history or remove application profiles at any time inside the app. Uninstalling Curry completely removes the application and its associated local settings.</li>
+        </ul>
+      </div>
+
+      <div class="policy-section">
+        <h2>4. Automatic Updates</h2>
+        <p>
+          Depending on your distribution channel:
+        </p>
+        <ul>
+          <li><strong>Microsoft Store Edition:</strong> Package updates, licensing verification, and downloads are handled entirely by Microsoft Store infrastructure. Curry does not initiate separate update connections.</li>
+          <li><strong>GitHub Standalone Edition:</strong> The integrated updater checks for new releases by sending an anonymous HTTPS query to the public GitHub Releases API (<code>https://api.github.com/repos/owergungor/Curry/releases/latest</code>). No identifying user data is included in this request.</li>
+        </ul>
+      </div>
+
+      <div class="policy-section">
+        <h2>5. Children's Privacy</h2>
+        <p>
+          Curry does not collect information from anyone, including children under the age of 13.
+        </p>
+      </div>
+
+      <div class="policy-section">
+        <h2>6. Third-Party Links</h2>
+        <p>
+          The application and this website may contain links to external sites (such as GitHub or Microsoft Store). We are not responsible for the privacy practices or content of third-party websites.
+        </p>
+      </div>
+
+      <div class="policy-section">
+        <h2>7. Contact &amp; Questions</h2>
+        <p>
+          If you have any questions or concerns regarding this Privacy Policy or Curry's data handling practices, please open an issue on our GitHub repository:
+        </p>
+        <p>
+          <a href="https://github.com/owergungor/Curry/issues" target="_blank" rel="noopener noreferrer">https://github.com/owergungor/Curry/issues</a>
+        </p>
+        <p style="margin-top: 1rem;">
+          Developer: <strong>Ömer Güngör</strong> (<a href="https://github.com/owergungor" target="_blank" rel="noopener noreferrer">@owergungor</a>)<br>
+          Official Repository: <a href="https://github.com/owergungor/Curry" target="_blank" rel="noopener noreferrer">https://github.com/owergungor/Curry</a>
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>Copyright &copy; 2026 Ömer Güngör &amp; Curry Contributors. Distributed under the MIT License.</p>
+    </div>
+  </footer>
+</body>
+</html>
