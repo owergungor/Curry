@@ -8,8 +8,10 @@
 
 Curry illuminates your display borders with customizable, hardware-accelerated ambient glow animations for incoming desktop notifications. Built with a local-first architecture, Curry processes notification data locally with zero telemetry.
 
-[![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Get%20Curry-0078D6?style=for-the-badge&logo=microsoft&logoColor=white)](https://apps.microsoft.com/detail/9P2STBW88PDQ)
-[![Download Latest](https://img.shields.io/badge/Download-v3.3%20Windows%20Setup-ff5c00?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64-setup.exe)
+[![Microsoft Store](<img width="284" height="73" alt="microsoft-store-badge-logo-png_seeklogo-534806" src="https://github.com/user-attachments/assets/bc5c33e1-fa43-4bd7-87aa-63155bde4c97" />
+)](https://apps.microsoft.com/detail/9P2STBW88PDQ)
+[![Download Latest](<img width="383" height="147" alt="{3BD7A18A-6C2C-470E-965A-9B1E70EBDECD}" src="https://github.com/user-attachments/assets/a7441128-03d2-47f7-80a4-f52aa420af6f" />
+)](https://github.com/owergungor/Curry/releases/download/v3.3/Curry_v3.3_win-x64-setup.exe)
 [![Official Website](https://img.shields.io/badge/Website-owergungor.github.io%2FCurry-10b981?style=for-the-badge&logo=safari&logoColor=white)](https://owergungor.github.io/Curry/)
 
 <br/>
