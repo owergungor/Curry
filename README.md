@@ -23,14 +23,13 @@
 
 <br/>
 
-[![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-9P2STBW88PDQ-0078D6?style=flat-square&logo=microsoft&logoColor=white)](https://apps.microsoft.com/detail/9P2STBW88PDQ)
-[![GitHub Release](https://img.shields.io/github/v/release/owergungor/Curry?color=ff5c00&style=flat-square&label=Release)](https://github.com/owergungor/Curry/releases/latest)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0a0e17?style=flat-square&logo=windows&logoColor=0078D6)](https://github.com/owergungor/Curry)
-[![Tauri](https://img.shields.io/badge/Tauri-2.0-24C8D8?style=flat-square&logo=tauri&logoColor=white)](https://v2.tauri.app/)
-[![Svelte](https://img.shields.io/badge/Svelte-5.0-FF3E00?style=flat-square&logo=svelte&logoColor=white)](https://svelte.dev/)
-[![Rust](https://img.shields.io/badge/Rust-1.85+-orange?style=flat-square&logo=rust)](https://www.rust-lang.org/)
-[![Privacy](https://img.shields.io/badge/Privacy-Local%20Processing-10b981?style=flat-square)](https://owergungor.github.io/Curry/privacy-policy.html)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/owergungor/Curry?color=fd9f19&style=flat-square&label=Release)](https://github.com/owergungor/Curry/releases/latest)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0a0e17?style=flat&logo=windows&logoColor=08a1f7)](https://github.com/owergungor/Curry)
+[![Privacy](https://img.shields.io/badge/Privacy-Local%20Processing-0d1117?style=flat)](https://owergungor.github.io/Curry/privacy-policy.html)
+[![Tauri](https://img.shields.io/badge/Tauri-2.0-24C8D8?style=flat&logo=tauri&logoColor=white)](https://v2.tauri.app/)
+[![Svelte](https://img.shields.io/badge/Svelte-5.0-ff3e00?style=flat&logo=svelte&logoColor=white)](https://svelte.dev/)
+[![Rust](https://img.shields.io/badge/Rust-1.85+-c93308?style=flat&logo=rust)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-750014.svg?style=flat)](LICENSE)
 
 </div>
 
