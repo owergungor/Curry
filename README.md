@@ -24,7 +24,7 @@
 <br/>
 
 [![GitHub Release](https://img.shields.io/github/v/release/owergungor/Curry?color=fd9f19&style=flat&label=Release)](https://github.com/owergungor/Curry/releases/latest)
-[![Windows]([https://img.shields.io/badge/Windows%2010%20%7C%2011%20(x64)](https://img.shields.io/badge/Windows-10%20%7C%2011-08a1f7?style=flat&logo=windows11&logoColor=white)](https://github.com/owergungor/Curry)
+<img src="https://img.shields.io/badge/Windows-10%20%7C%2011-08a1f7?style=flat&logo=windows11&logoColor=white" alt="Windows 10 / 11" />
 [![Privacy](https://img.shields.io/badge/Privacy-Local%20Processing-40E40B?style=flat)](https://owergungor.github.io/Curry/privacy-policy.html)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-24C8D8?style=flat&logo=tauri&logoColor=white)](https://v2.tauri.app/)
 [![Svelte](https://img.shields.io/badge/Svelte-5.0-ff3e00?style=flat&logo=svelte&logoColor=white)](https://svelte.dev/)
