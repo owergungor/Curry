@@ -39,4 +39,6 @@ features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_Graphics_Gdi",
     "Win32_Storage_FileSystem",
+    "Devices_Geolocation",
+    "Services_Maps",
 ]

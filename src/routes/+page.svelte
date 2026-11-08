@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { safeInvoke, type ScanResult, type AppIconInfo } from "$lib/ipc";
+  import { safeInvoke, type ScanResult, type AppIconInfo, getPreciseLocation, type PreciseLocationResult } from "$lib/ipc";
   import { listen } from "@tauri-apps/api/event";
   import { THEMES, DEFAULT_THEME, DEFAULT_GLOW_COLOR, type ThemeId } from "$lib/themes";
   import Dropdown, { type DropdownItem } from "$lib/components/Dropdown.svelte";
@@ -647,6 +647,34 @@
   let isCreatingNewProfile = $state(false);
   let isPreviewingProfile = $state(false);
   let isScanningApps = $state(false);
+
+  // Precise Location State
+  let isRetrievingLocation = $state(false);
+  let locationResult = $state<PreciseLocationResult | null>(null);
+  let locationError = $state<string | null>(null);
+
+  async function fetchExactLocation() {
+    if (isRetrievingLocation) return;
+    isRetrievingLocation = true;
+    locationError = null;
+    try {
+      const res = await getPreciseLocation();
+      locationResult = res;
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      if (msg.includes("PERMISSION_DENIED")) {
+        locationError = t('settings.location_permission_denied');
+      } else if (msg.includes("LOCATION_DISABLED")) {
+        locationError = t('settings.location_disabled');
+      } else if (msg.includes("TIMEOUT")) {
+        locationError = t('settings.location_timeout');
+      } else {
+        locationError = `${t('settings.location_error')}: ${msg}`;
+      }
+    } finally {
+      isRetrievingLocation = false;
+    }
+  }
   let appsSortOrder = $state<ApplicationSortOrder>("az");
   const appsSortOptions: DropdownItem[] = [
     { value: "az", label: "A-Z" },
@@ -3195,6 +3223,107 @@
                     </div>
                   </div>
                   {/if}
+                </div>
+              </section>
+
+              <!-- Precise Location -->
+              <section class="card panel-card location-card">
+                <div class="panel-header">
+                  <div class="panel-title-wrap">
+                    <div class="panel-icon-circle">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="22" y1="12" x2="18" y2="12"></line>
+                        <line x1="6" y1="12" x2="2" y2="12"></line>
+                        <line x1="12" y1="6" x2="12" y2="2"></line>
+                        <line x1="12" y1="22" x2="12" y2="18"></line>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 class="panel-title">{t('settings.location_title')}</h3>
+                      <p class="panel-desc">{t('settings.location_desc')}</p>
+                    </div>
+                  </div>
+                  <button
+                    class="secondary-btn location-fetch-btn"
+                    onclick={fetchExactLocation}
+                    disabled={isRetrievingLocation}
+                    aria-label={t('settings.get_location_btn')}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon {isRetrievingLocation ? 'spin' : ''}">
+                      <circle cx="12" cy="12" r="3"></circle>
+                      <path d="M12 2a10 10 0 0 1 10 10c0 5.25-10 12-10 12S2 17.25 2 12A10 10 0 0 1 12 2z"></path>
+                    </svg>
+                    <span>{isRetrievingLocation ? t('settings.location_retrieving') : t('settings.get_location_btn')}</span>
+                  </button>
+                </div>
+
+                {#if locationError}
+                  <div class="location-error-alert" role="alert">
+                    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span class="alert-text">{locationError}</span>
+                  </div>
+                {/if}
+
+                {#if locationResult}
+                  <div class="location-details-container">
+                    <div class="location-metrics-grid">
+                      <div class="location-metric-card">
+                        <span class="metric-label">{t('settings.location_latitude')}</span>
+                        <span class="metric-value font-mono">{locationResult.latitude.toFixed(6)}°</span>
+                      </div>
+                      <div class="location-metric-card">
+                        <span class="metric-label">{t('settings.location_longitude')}</span>
+                        <span class="metric-value font-mono">{locationResult.longitude.toFixed(6)}°</span>
+                      </div>
+                      <div class="location-metric-card">
+                        <span class="metric-label">{t('settings.location_accuracy')}</span>
+                        <span class="metric-value font-mono">±{Math.round(locationResult.accuracy)} m</span>
+                      </div>
+                      <div class="location-metric-card">
+                        <span class="metric-label">{t('settings.location_timestamp')}</span>
+                        <span class="metric-value font-mono">{new Date(locationResult.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                    </div>
+
+                    {#if locationResult.address}
+                      <div class="location-address-card">
+                        <span class="metric-label">{t('settings.location_address')}</span>
+                        {#if locationResult.address.formatted_address}
+                          <p class="address-primary">{locationResult.address.formatted_address}</p>
+                        {/if}
+                        <div class="address-badges">
+                          {#if locationResult.address.street}
+                            <span class="addr-chip">{locationResult.address.street}</span>
+                          {/if}
+                          {#if locationResult.address.district}
+                            <span class="addr-chip">{locationResult.address.district}</span>
+                          {/if}
+                          {#if locationResult.address.city}
+                            <span class="addr-chip">{locationResult.address.city}</span>
+                          {/if}
+                          {#if locationResult.address.postal_code}
+                            <span class="addr-chip">{locationResult.address.postal_code}</span>
+                          {/if}
+                          {#if locationResult.address.country}
+                            <span class="addr-chip">{locationResult.address.country}</span>
+                          {/if}
+                        </div>
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
+
+                <div class="location-footer-note">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shield-icon">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  </svg>
+                  <span>{t('settings.location_privacy_note')}</span>
                 </div>
               </section>
 
@@ -7115,6 +7244,134 @@
       width: 100%;
       justify-content: flex-end;
     }
+  }
+
+  /* Location Card Styling */
+  .location-card {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .location-fetch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .location-error-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 16px 20px 0;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  .location-error-alert .alert-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: #ef4444;
+  }
+
+  .location-details-container {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .location-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+  }
+
+  .location-metric-card {
+    background: var(--surface-secondary, rgba(255, 255, 255, 0.03));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .metric-label {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.45));
+    font-weight: 600;
+  }
+
+  .metric-value {
+    font-size: 0.9375rem;
+    color: var(--text-primary, #ffffff);
+    font-weight: 600;
+  }
+
+  .font-mono {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  .location-address-card {
+    background: var(--surface-secondary, rgba(255, 255, 255, 0.03));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .address-primary {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-primary, #ffffff);
+    line-height: 1.4;
+  }
+
+  .address-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .addr-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 0.75rem;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    color: #fbbf24;
+    font-weight: 500;
+  }
+
+  .location-footer-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px 16px;
+    font-size: 0.75rem;
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.45));
+  }
+
+  .location-footer-note .shield-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    color: #10b981;
   }
 
   /* Reduced Motion Accessibility */
