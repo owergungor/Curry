@@ -1,6 +1,6 @@
 [package]
 name = "curry"
-version = "3.4.0"
+version = "3.5.0"
 description = "Curry Desktop Application"
 authors = ["Curry Contributors"]
 edition = "2021"
@@ -39,6 +39,4 @@ features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_Graphics_Gdi",
     "Win32_Storage_FileSystem",
-    "Devices_Geolocation",
-    "Services_Maps",
 ]

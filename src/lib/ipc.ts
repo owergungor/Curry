@@ -72,24 +72,3 @@ export async function scanInstalledApps(): Promise<ScanResult> {
 export async function getScanStatus(): Promise<ScanStatus> {
   return safeInvoke<ScanStatus>("get_scan_status", undefined, 5000);
 }
-
-export interface LocationAddress {
-  street?: string | null;
-  district?: string | null;
-  city?: string | null;
-  postal_code?: string | null;
-  country?: string | null;
-  formatted_address?: string | null;
-}
-
-export interface PreciseLocationResult {
-  latitude: number;
-  longitude: number;
-  accuracy: number;
-  timestamp: number;
-  address?: LocationAddress | null;
-}
-
-export async function getPreciseLocation(): Promise<PreciseLocationResult> {
-  return safeInvoke<PreciseLocationResult>("get_precise_location", undefined, 15000);
-}

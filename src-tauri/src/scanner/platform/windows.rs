@@ -199,6 +199,10 @@ fn process_lnk_file(
             crate::settings::format_display_name(exe_name.strip_suffix(".exe").unwrap_or(&exe_name))
         });
 
+    if is_resource_based_name(&display_name) || is_blacklisted_app_name(&display_name) {
+        return;
+    }
+
     discovered.push(DiscoveredApp {
         name: display_name,
         executable_name: exe_name,
@@ -366,26 +370,71 @@ unsafe fn read_reg_string(
     }
 }
 
+unsafe fn read_reg_dword(
+    hkey: windows::Win32::System::Registry::HKEY,
+    value_name: &str,
+) -> Option<u32> {
+    use windows::core::PCWSTR;
+    use windows::Win32::System::Registry::{RegQueryValueExW, REG_DWORD, REG_VALUE_TYPE};
+
+    let val_wide: Vec<u16> = value_name
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
+    let mut val_type = REG_VALUE_TYPE::default();
+    let mut data: u32 = 0;
+    let mut data_len = std::mem::size_of::<u32>() as u32;
+
+    let res = RegQueryValueExW(
+        hkey,
+        PCWSTR(val_wide.as_ptr()),
+        None,
+        Some(&mut val_type),
+        Some(&mut data as *mut u32 as *mut u8),
+        Some(&mut data_len),
+    );
+
+    if res.is_ok() && val_type == REG_DWORD {
+        Some(data)
+    } else {
+        None
+    }
+}
+
 unsafe fn process_registry_app_key(
     hkey: windows::Win32::System::Registry::HKEY,
     discovered: &mut Vec<DiscoveredApp>,
     seen: &mut HashSet<String>,
 ) {
-    // 1. DisplayName is required
+    // 1. Check SystemComponent DWORD: if == 1, Windows Settings hides this entry
+    if read_reg_dword(hkey, "SystemComponent").unwrap_or(0) == 1 {
+        return;
+    }
+
+    // 2. Check ParentKeyName: if present, this is a patch/update/sub-component
+    if let Some(parent) = read_reg_string(hkey, "ParentKeyName") {
+        if !parent.trim().is_empty() {
+            return;
+        }
+    }
+
+    // 3. DisplayName is required
     let display_name = match read_reg_string(hkey, "DisplayName") {
         Some(name) => name,
         None => return,
     };
 
-    // Filter out common non-applications (updates, patches, toolchains)
+    // 4. Reject resource-based names (@{...} or ms-resource:)
+    if is_resource_based_name(&display_name) {
+        return;
+    }
+
+    // 5. Filter out common non-applications (updates, patches, toolchains)
     if is_blacklisted_app_name(&display_name) {
         return;
     }
 
-    // Check SystemComponent DWORD
-    // (If SystemComponent == 1, skip)
-
-    // 2. Resolve executable path from DisplayIcon or InstallLocation
+    // 6. Resolve executable path from DisplayIcon or InstallLocation
     let display_icon = read_reg_string(hkey, "DisplayIcon");
     let install_location = read_reg_string(hkey, "InstallLocation");
 
@@ -457,6 +506,16 @@ fn resolve_executable_from_registry_fields(
     None
 }
 
+/// Determines if a display name is an unresolved Windows resource identifier.
+/// e.g. "@{Microsoft.AAD.BrokerPlugin...}" or "ms-resource:..."
+pub fn is_resource_based_name(name: &str) -> bool {
+    let trimmed = name.trim();
+    trimmed.starts_with("@{")
+        || trimmed.starts_with("ms-resource:")
+        || trimmed.contains("?ms-resource:")
+        || (trimmed.starts_with('@') && (trimmed.contains('{') || trimmed.contains("ms-resource")))
+}
+
 pub fn is_blacklisted_executable(name: &str) -> bool {
     let lower = name.to_lowercase();
     let blacklisted = [
@@ -473,6 +532,19 @@ pub fn is_blacklisted_executable(name: &str) -> bool {
         "conhost.exe",
         "rundll32.exe",
         "regsvr32.exe",
+        "backgroundtaskhost.exe",
+        "runtimebroker.exe",
+        "wsl.exe",
+        "wslhost.exe",
+        "systemsettingsadminflows.exe",
+        "appresolver.exe",
+        "accountscontrolhost.exe",
+        "smartscreen.exe",
+        "searchhost.exe",
+        "shellexperiencehost.exe",
+        "startmenuexperiencehost.exe",
+        "lockapp.exe",
+        "gamebarft.exe",
     ];
 
     blacklisted.iter().any(|b| lower.contains(b))
@@ -490,6 +562,23 @@ pub fn is_blacklisted_app_name(name: &str) -> bool {
         "microsoft visual c++",
         "windows sdk",
         ".net framework",
+        "brokerplugin",
+        "appresolverux",
+        "windowsappruntime",
+        "accountscontrolhost",
+        "shellexperiencehost",
+        "startmenuexperiencehost",
+        "viewmanagementhost",
+        "lockapp",
+        "bioenrollment",
+        "capturepicker",
+        "creddialoghost",
+        "secureassessmentbrowser",
+        "parentalcontrols",
+        "pinningconfirmationdialog",
+        "printdialog",
+        "xboxgamecallableui",
+        "xboxspeechtotextoverlay",
     ];
 
     blacklisted.iter().any(|b| lower.contains(b))
@@ -745,9 +834,12 @@ unsafe fn process_store_package_key(
     discovered: &mut Vec<DiscoveredApp>,
     seen: &mut HashSet<String>,
 ) {
-    let display_name_raw = read_reg_string(hkey, "DisplayName");
-    let root_folder_raw = read_reg_string(hkey, "PackageRootFolder");
+    // 1. Immediately reject known system, internal, framework, broker, and runtime packages
+    if is_system_store_package(pkg_id) {
+        return;
+    }
 
+    let root_folder_raw = read_reg_string(hkey, "PackageRootFolder");
     let root_folder = match root_folder_raw {
         Some(r) if !r.is_empty() => r,
         _ => return,
@@ -755,86 +847,164 @@ unsafe fn process_store_package_key(
 
     let root_path = Path::new(&root_folder);
 
-    // Derive display name
-    let display_name = display_name_raw
-        .filter(|s| !s.trim().is_empty() && !s.starts_with("ms-resource:"))
-        .unwrap_or_else(|| clean_package_id_to_name(pkg_id));
-
-    if is_blacklisted_app_name(&display_name) {
+    // 2. Require a valid, readable AppxManifest.xml. User-facing apps always declare a manifest with launchable applications.
+    let manifest_path = root_path.join("AppxManifest.xml");
+    if !manifest_path.is_file() {
         return;
     }
 
-    // Try reading AppxManifest.xml to find executable and icon
-    let manifest_path = root_path.join("AppxManifest.xml");
-    if manifest_path.is_file() {
-        if let Ok(manifest_str) = std::fs::read_to_string(&manifest_path) {
-            let exe_rel = extract_xml_attr(&manifest_str, "Application", "Executable");
-            let logo_rel = extract_xml_content(&manifest_str, "Logo")
-                .or_else(|| extract_xml_attr(&manifest_str, "uap:VisualElements", "Square150x150Logo"))
-                .or_else(|| extract_xml_attr(&manifest_str, "uap:VisualElements", "Square44x44Logo"));
+    let manifest_str = match std::fs::read_to_string(&manifest_path) {
+        Ok(s) => s,
+        Err(_) => return,
+    };
 
-            if let Some(exe) = exe_rel {
-                let full_exe_path = root_path.join(&exe);
-                let exe_name = Path::new(&exe)
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or(&exe)
-                    .to_string();
-
-                let norm_key = exe_name.to_lowercase();
-                if !seen.contains(&norm_key) && !is_blacklisted_executable(&exe_name) {
-                    seen.insert(norm_key);
-
-                    let icon_path = logo_rel.map(|l| root_path.join(l.replace('/', "\\")).to_string_lossy().to_string());
-
-                    discovered.push(DiscoveredApp {
-                        name: display_name,
-                        executable_name: exe_name,
-                        executable_path: Some(full_exe_path.to_string_lossy().to_string()),
-                        icon_path,
-                        source: "ms_store".to_string(),
-                        is_new: false,
-                    });
-                    return;
-                }
-            }
-        }
+    // 3. Exclude Framework and Resource packages
+    if is_framework_or_resource_manifest(&manifest_str) {
+        return;
     }
 
-    // Fallback: if manifest isn't accessible due to container permissions, record package entry
-    let base_name = pkg_id.split('_').next().unwrap_or(pkg_id);
-    let candidate_exe = format!("{}.exe", base_name.split('.').last().unwrap_or(base_name));
-    let norm_key = candidate_exe.to_lowercase();
+    // 4. Exclude packages marked as unlisted or non-launchable in app list
+    if is_unlisted_app_entry(&manifest_str) {
+        return;
+    }
 
-    if !seen.contains(&norm_key) && !is_blacklisted_executable(&candidate_exe) {
+    // 5. Look for launchable <Application Executable="...">
+    let exe_rel = extract_xml_attr(&manifest_str, "Application", "Executable");
+    let exe = match exe_rel {
+        Some(e) if !e.trim().is_empty() => e,
+        _ => return,
+    };
+
+    let full_exe_path = root_path.join(&exe);
+    let exe_name = Path::new(&exe)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&exe)
+        .to_string();
+
+    if is_blacklisted_executable(&exe_name) {
+        return;
+    }
+
+    // 6. Resolve DisplayName (rejecting resource-based strings starting with @{ or ms-resource:)
+    let display_name_raw = read_reg_string(hkey, "DisplayName");
+    let resolved_name = display_name_raw
+        .filter(|s| !is_resource_based_name(s))
+        .or_else(|| {
+            extract_xml_attr(&manifest_str, "uap:VisualElements", "DisplayName")
+                .filter(|s| !is_resource_based_name(s))
+        })
+        .or_else(|| {
+            extract_xml_attr(&manifest_str, "VisualElements", "DisplayName")
+                .filter(|s| !is_resource_based_name(s))
+        })
+        .or_else(|| {
+            extract_xml_content(&manifest_str, "DisplayName")
+                .filter(|s| !is_resource_based_name(s))
+        });
+
+    let display_name = match resolved_name {
+        Some(n) if !n.trim().is_empty() => n.trim().to_string(),
+        _ => {
+            let cleaned = clean_package_id_to_name(pkg_id);
+            if is_system_store_package(&cleaned) || is_resource_based_name(&cleaned) {
+                return;
+            }
+            cleaned
+        }
+    };
+
+    // Strict rejection of resource-based strings, blacklisted names, and system packages
+    if is_resource_based_name(&display_name)
+        || is_blacklisted_app_name(&display_name)
+        || is_system_store_package(&display_name)
+    {
+        return;
+    }
+
+    let norm_key = exe_name.to_lowercase();
+    if !seen.contains(&norm_key) {
         seen.insert(norm_key);
+
+        let logo_rel = extract_xml_content(&manifest_str, "Logo")
+            .or_else(|| extract_xml_attr(&manifest_str, "uap:VisualElements", "Square150x150Logo"))
+            .or_else(|| extract_xml_attr(&manifest_str, "uap:VisualElements", "Square44x44Logo"))
+            .or_else(|| extract_xml_attr(&manifest_str, "VisualElements", "Square150x150Logo"));
+
+        let icon_path = logo_rel.map(|l| root_path.join(l.replace('/', "\\")).to_string_lossy().to_string());
+
         discovered.push(DiscoveredApp {
             name: display_name,
-            executable_name: candidate_exe,
-            executable_path: Some(root_folder),
-            icon_path: None,
+            executable_name: exe_name,
+            executable_path: Some(full_exe_path.to_string_lossy().to_string()),
+            icon_path,
             source: "ms_store".to_string(),
             is_new: false,
         });
     }
 }
 
-fn is_system_store_package(pkg_id: &str) -> bool {
+pub fn is_framework_or_resource_manifest(xml: &str) -> bool {
+    let lower = xml.to_lowercase();
+    lower.contains("<framework>true</framework>")
+        || lower.contains("<framework>1</framework>")
+        || lower.contains("<resourcepackage>true</resourcepackage>")
+        || lower.contains("<resourcepackage>1</resourcepackage>")
+}
+
+pub fn is_unlisted_app_entry(xml: &str) -> bool {
+    let lower = xml.to_lowercase();
+    lower.contains("applistentry=\"none\"")
+        || lower.contains("applistentry='none'")
+}
+
+pub fn is_system_store_package(pkg_id: &str) -> bool {
     let lower = pkg_id.to_lowercase();
-    let sys_prefixes = [
-        "microsoft.net.",
-        "microsoft.vclibs.",
-        "microsoft.ui.xaml.",
-        "microsoft.directx.",
-        "microsoft.services.store.",
-        "microsoft.advertising.",
-        "microsoft.windowscommunicationsapps",
+    const SYSTEM_PREFIXES_AND_TOKENS: &[&str] = &[
+        // Targeted representative cases from screenshots & prompt
+        "microsoft.aad.brokerplugin",
+        "brokerplugin",
+        "appresolverux",
+        "windowsappruntime",
+        "accountscontrolhost",
+        "shellexperiencehost",
+        "startmenuexperiencehost",
+        "viewmanagementhost",
+        "lockapp",
+        "creddialoghost",
+        "bioenrollment",
+        "capturepicker",
+        "asynctextservice",
+        "assignedaccesslockapp",
+        "secureassessmentbrowser",
+        "parentalcontrols",
+        "pinningconfirmationdialog",
+        "printdialog",
+        "xboxgamecallableui",
+        "xboxspeechtotextoverlay",
+        "contentdeliverymanager",
+        "microsoft.windows.",
+        "microsoft.vclibs",
+        "microsoft.net.native",
+        "microsoft.ui.xaml",
+        "microsoft.directx",
+        "microsoft.services.store",
+        "microsoft.advertising",
         "windows.immersivecontrolpanel",
+        "windows.contactsupport",
+        "windows.printqueue",
+        "windows.cbspreview",
+        "windows.warmwelcome",
+        "microsoft.ecapp",
+        "microsoft.win32webviewhost",
         "1527c705-",
         "c5e2524a-",
+        "f46d4000-",
+        "e2a4f912-",
+        "cw5n1h2txyewy",
     ];
 
-    sys_prefixes.iter().any(|prefix| lower.contains(prefix))
+    SYSTEM_PREFIXES_AND_TOKENS.iter().any(|prefix| lower.contains(prefix))
 }
 
 fn clean_package_id_to_name(pkg_id: &str) -> String {
@@ -890,5 +1060,90 @@ fn extract_xml_content(xml: &str, tag: &str) -> Option<String> {
         None
     } else {
         Some(val)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_resource_based_name() {
+        assert!(is_resource_based_name("@{Microsoft.AAD.BrokerPlugin_1000.22621.1.0_neutral_neutral_cw5n1h2txyewy?ms-resource://...}"));
+        assert!(is_resource_based_name("ms-resource:AppDisplayName"));
+        assert!(is_resource_based_name("ms-resource:///resources/AppName"));
+        assert!(is_resource_based_name("@{AppResolverUX_1.0.0.0}"));
+        assert!(is_resource_based_name("@something?ms-resource:Title"));
+
+        // Valid user-facing application names must pass
+        assert!(!is_resource_based_name("Spotify"));
+        assert!(!is_resource_based_name("Discord"));
+        assert!(!is_resource_based_name("Visual Studio Code"));
+        assert!(!is_resource_based_name("Xbox"));
+        assert!(!is_resource_based_name("Notepad"));
+    }
+
+    #[test]
+    fn test_is_system_store_package() {
+        assert!(is_system_store_package("Microsoft.AAD.BrokerPlugin"));
+        assert!(is_system_store_package("Microsoft.AAD.BrokerPlugin_1000.22621.1.0_neutral_neutral_cw5n1h2txyewy"));
+        assert!(is_system_store_package("AppResolverUX"));
+        assert!(is_system_store_package("Microsoft.WindowsAppRuntime.1.4"));
+        assert!(is_system_store_package("AccountsControlHost"));
+        assert!(is_system_store_package("Microsoft.Windows.ShellExperienceHost"));
+        assert!(is_system_store_package("Microsoft.VCLibs.140.00"));
+        assert!(is_system_store_package("Microsoft.UI.Xaml.2.8"));
+
+        // Legitimate third-party / store applications must not be classified as system
+        assert!(!is_system_store_package("SpotifyAB.SpotifyMusic"));
+        assert!(!is_system_store_package("TelegramMessengerLLP.TelegramDesktop"));
+        assert!(!is_system_store_package("9NBLGGH42CF8")); // Microsoft Flight Simulator / Store ID
+        assert!(!is_system_store_package("SlackTechnologies.Slack"));
+    }
+
+    #[test]
+    fn test_is_framework_or_resource_manifest() {
+        let fw_xml = r#"<Package><Properties><Framework>true</Framework></Properties></Package>"#;
+        assert!(is_framework_or_resource_manifest(fw_xml));
+
+        let res_xml = r#"<Package><Properties><ResourcePackage>true</ResourcePackage></Properties></Package>"#;
+        assert!(is_framework_or_resource_manifest(res_xml));
+
+        let app_xml = r#"<Package><Properties><Framework>false</Framework></Properties><Applications><Application Id="App" Executable="app.exe"/></Applications></Package>"#;
+        assert!(!is_framework_or_resource_manifest(app_xml));
+    }
+
+    #[test]
+    fn test_is_unlisted_app_entry() {
+        let unlisted_xml = r#"<Application Id="App" Executable="app.exe" uap:AppListEntry="none">"#;
+        assert!(is_unlisted_app_entry(unlisted_xml));
+
+        let normal_xml = r#"<Application Id="App" Executable="app.exe" uap:AppListEntry="default">"#;
+        assert!(!is_unlisted_app_entry(normal_xml));
+
+        let plain_xml = r#"<Application Id="App" Executable="app.exe">"#;
+        assert!(!is_unlisted_app_entry(plain_xml));
+    }
+
+    #[test]
+    fn test_is_blacklisted_executable() {
+        assert!(is_blacklisted_executable("runtimebroker.exe"));
+        assert!(is_blacklisted_executable("accountscontrolhost.exe"));
+        assert!(is_blacklisted_executable("appresolver.exe"));
+        assert!(is_blacklisted_executable("backgroundtaskhost.exe"));
+        assert!(is_blacklisted_executable("searchhost.exe"));
+        assert!(is_blacklisted_executable("smartscreen.exe"));
+
+        // Legitimate app executables
+        assert!(!is_blacklisted_executable("spotify.exe"));
+        assert!(!is_blacklisted_executable("code.exe"));
+        assert!(!is_blacklisted_executable("discord.exe"));
+        assert!(!is_blacklisted_executable("curry.exe"));
+    }
+
+    #[test]
+    fn test_clean_package_id_to_name() {
+        assert_eq!(clean_package_id_to_name("AppleMusic_8wekyb3d8bbwe"), "Apple Music");
+        assert_eq!(clean_package_id_to_name("SpotifyAB.SpotifyMusic_zpdnekdrzrea0"), "Spotify Music");
     }
 }

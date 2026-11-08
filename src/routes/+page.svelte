@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { safeInvoke, type ScanResult, type AppIconInfo, getPreciseLocation, type PreciseLocationResult } from "$lib/ipc";
+  import { safeInvoke, type ScanResult, type AppIconInfo } from "$lib/ipc";
   import { listen } from "@tauri-apps/api/event";
   import { THEMES, DEFAULT_THEME, DEFAULT_GLOW_COLOR, type ThemeId } from "$lib/themes";
   import Dropdown, { type DropdownItem } from "$lib/components/Dropdown.svelte";
@@ -647,34 +647,6 @@
   let isCreatingNewProfile = $state(false);
   let isPreviewingProfile = $state(false);
   let isScanningApps = $state(false);
-
-  // Precise Location State
-  let isRetrievingLocation = $state(false);
-  let locationResult = $state<PreciseLocationResult | null>(null);
-  let locationError = $state<string | null>(null);
-
-  async function fetchExactLocation() {
-    if (isRetrievingLocation) return;
-    isRetrievingLocation = true;
-    locationError = null;
-    try {
-      const res = await getPreciseLocation();
-      locationResult = res;
-    } catch (err: any) {
-      const msg = String(err?.message || err);
-      if (msg.includes("PERMISSION_DENIED")) {
-        locationError = t('settings.location_permission_denied');
-      } else if (msg.includes("LOCATION_DISABLED")) {
-        locationError = t('settings.location_disabled');
-      } else if (msg.includes("TIMEOUT")) {
-        locationError = t('settings.location_timeout');
-      } else {
-        locationError = `${t('settings.location_error')}: ${msg}`;
-      }
-    } finally {
-      isRetrievingLocation = false;
-    }
-  }
   let appsSortOrder = $state<ApplicationSortOrder>("az");
   const appsSortOptions: DropdownItem[] = [
     { value: "az", label: "A-Z" },
@@ -1750,11 +1722,11 @@
           title={t('nav.dashboard')}
         >
           <span class="nav-tab-glow" aria-hidden="true"></span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
-            <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
-            <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
-            <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
-            <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon">
+            <rect x="3" y="3" width="7" height="7" rx="2"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="2"></rect>
+            <rect x="14" y="14" width="7" height="7" rx="2"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="2"></rect>
           </svg>
           <span class="nav-label">{t('nav.dashboard')}</span>
         </button>
@@ -1768,7 +1740,7 @@
           title={t('nav.notifications')}
         >
           <span class="nav-tab-glow" aria-hidden="true"></span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
           </svg>
@@ -1788,10 +1760,10 @@
           title={t('nav.apps')}
         >
           <span class="nav-tab-glow" aria-hidden="true"></span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
-            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
-            <line x1="8" y1="21" x2="16" y2="21"></line>
-            <line x1="12" y1="17" x2="12" y2="21"></line>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon">
+            <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+            <path d="M3 9h18"></path>
+            <path d="M9 21V9"></path>
           </svg>
           <span class="nav-label">{t('nav.apps')}</span>
         </button>
@@ -1805,8 +1777,8 @@
           title={t('nav.glow')}
         >
           <span class="nav-tab-glow" aria-hidden="true"></span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon">
+            <path d="M12 3c0 4.97-4.03 9-9 9 4.97 0 9 4.03 9 9 0-4.97 4.03-9 9-9-4.97 0-9-4.03-9-9z"></path>
           </svg>
           <span class="nav-label">{t('nav.glow')}</span>
         </button>
@@ -1820,7 +1792,7 @@
           title={t('nav.settings')}
         >
           <span class="nav-tab-glow" aria-hidden="true"></span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
           </svg>
@@ -1859,8 +1831,8 @@
         title={t('header.test_glow')}
         aria-label={t('header.test_glow')}
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="header-glow-icon {isPreviewingGlow ? 'pulse' : ''}">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="header-glow-icon {isPreviewingGlow ? 'pulse' : ''}">
+          <path d="M12 3c0 4.97-4.03 9-9 9 4.97 0 9 4.03 9 9 0-4.97 4.03-9 9-9-4.97 0-9-4.03-9-9z"></path>
         </svg>
         <span>{isPreviewingGlow ? t('header.testing') : t('header.test_glow')}</span>
       </button>
@@ -2143,7 +2115,7 @@
                   aria-label={t('notifications.mark_all_read')}
                   title={t('notifications.mark_all_read')}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                   <span>{isMarkingAllRead ? t('notifications.marking') : t('notifications.mark_all_read')}</span>
@@ -2157,7 +2129,7 @@
                   disabled={notifications.length === 0 || isClearing}
                   aria-label={t('notifications.clear_all')}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
                     <polyline points="3 6 5 6 21 6"></polyline>
                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                   </svg>
@@ -2240,7 +2212,15 @@
                           {#if item.icon}
                             <img src={item.icon} alt={item.app_name} class="avatar-img" />
                           {:else}
-                            <span class="avatar-initial">{getAppInitial(item.app_name || item.source_app)}</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="avatar-fallback-glyph" aria-hidden="true">
+                              <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+                              <line x1="3" y1="9" x2="21" y2="9"></line>
+                              <circle cx="6.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                              <circle cx="9.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                              <circle cx="12.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                              <rect x="7" y="12" width="4" height="4" rx="1"></rect>
+                              <rect x="13" y="12" width="4" height="4" rx="1"></rect>
+                            </svg>
                           {/if}
                         </div>
                         {#if !item.read}
@@ -2273,7 +2253,7 @@
                                 onclick={() => markAsRead(item.id)}
                                 aria-label={t('notifications.mark_read')}
                               >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon">
                                   <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
                                 <span>{t('notifications.mark_read')}</span>
@@ -2284,7 +2264,7 @@
                                 onclick={() => markAsUnread(item.id)}
                                 aria-label={t('notifications.mark_unread')}
                               >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon">
                                   <circle cx="12" cy="12" r="4"></circle>
                                 </svg>
                                 <span>{t('notifications.mark_unread')}</span>
@@ -2296,7 +2276,7 @@
                                 onclick={() => removeNotification(item.id)}
                                 aria-label={t('notifications.dismiss')}
                               >
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon">
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
                                 <line x1="6" y1="6" x2="18" y2="18"></line>
                               </svg>
@@ -2432,10 +2412,10 @@
               {#if filteredProfiles.length === 0}
                 <div class="empty-state-card card">
                   <div class="empty-state-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="2" y="3" width="20" height="14" rx="2"></rect>
-                      <line x1="8" y1="21" x2="16" y2="21"></line>
-                      <line x1="12" y1="17" x2="12" y2="21"></line>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+                      <path d="M3 9h18"></path>
+                      <path d="M9 21V9"></path>
                     </svg>
                   </div>
                   <h3>{appSearchQuery ? t('apps.no_matching') : t('apps.no_profiles')}</h3>
@@ -2457,7 +2437,15 @@
                           {#if profile.icon}
                             <img src={profile.icon} alt={profile.applicationName} class="app-avatar-img" onerror={() => { profile.icon = null; }} />
                           {:else}
-                            <span class="app-avatar-letter">{getAppInitial(profile.applicationName)}</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="app-avatar-fallback-icon" aria-hidden="true">
+                              <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+                              <line x1="3" y1="9" x2="21" y2="9"></line>
+                              <circle cx="6.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                              <circle cx="9.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                              <circle cx="12.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                              <rect x="7" y="12" width="4" height="4" rx="1"></rect>
+                              <rect x="13" y="12" width="4" height="4" rx="1"></rect>
+                            </svg>
                           {/if}
                         </div>
                         <div class="app-card-title-col">
@@ -2523,7 +2511,7 @@
                           title={t('apps.preview_btn')}
                           disabled={isPreviewingProfile}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon {isPreviewingProfile ? 'pulse' : ''}">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon {isPreviewingProfile ? 'pulse' : ''}">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                             <circle cx="12" cy="12" r="3"></circle>
                           </svg>
@@ -2537,7 +2525,7 @@
                           onclick={() => openEditProfileModal(profile)}
                           title={t('apps.edit')}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                           </svg>
@@ -2552,7 +2540,7 @@
                           title={t('apps.delete')}
                           aria-label={`Delete ${profile.applicationName} profile`}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon">
                             <polyline points="3 6 5 6 21 6"></polyline>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                           </svg>
@@ -2575,7 +2563,15 @@
                           {#if profile.icon}
                             <img src={profile.icon} alt={profile.applicationName} class="app-avatar-img" onerror={() => { profile.icon = null; }} />
                           {:else}
-                            <span class="app-avatar-letter">{getAppInitial(profile.applicationName)}</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="app-avatar-fallback-icon" aria-hidden="true">
+                              <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+                              <line x1="3" y1="9" x2="21" y2="9"></line>
+                              <circle cx="6.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                              <circle cx="9.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                              <circle cx="12.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                              <rect x="7" y="12" width="4" height="4" rx="1"></rect>
+                              <rect x="13" y="12" width="4" height="4" rx="1"></rect>
+                            </svg>
                           {/if}
                         </div>
                         <div class="app-info">
@@ -2626,7 +2622,7 @@
                           title={t('apps.preview_btn')}
                           disabled={isPreviewingProfile}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon {isPreviewingProfile ? 'pulse' : ''}">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon {isPreviewingProfile ? 'pulse' : ''}">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                             <circle cx="12" cy="12" r="3"></circle>
                           </svg>
@@ -2640,7 +2636,7 @@
                           onclick={() => openEditProfileModal(profile)}
                           title={t('apps.edit')}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                           </svg>
@@ -2655,7 +2651,7 @@
                           title={t('apps.delete')}
                           aria-label={`Delete ${profile.applicationName} profile`}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon">
                             <polyline points="3 6 5 6 21 6"></polyline>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                           </svg>
@@ -2686,7 +2682,7 @@
                 onclick={previewGlow}
                 disabled={isPreviewingGlow || !appSettings.glow.enabled}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon {isPreviewingGlow ? 'pulse' : ''}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon {isPreviewingGlow ? 'pulse' : ''}">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
@@ -3226,107 +3222,6 @@
                 </div>
               </section>
 
-              <!-- Precise Location -->
-              <section class="card panel-card location-card">
-                <div class="panel-header">
-                  <div class="panel-title-wrap">
-                    <div class="panel-icon-circle">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="22" y1="12" x2="18" y2="12"></line>
-                        <line x1="6" y1="12" x2="2" y2="12"></line>
-                        <line x1="12" y1="6" x2="12" y2="2"></line>
-                        <line x1="12" y1="22" x2="12" y2="18"></line>
-                        <circle cx="12" cy="12" r="3"></circle>
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 class="panel-title">{t('settings.location_title')}</h3>
-                      <p class="panel-desc">{t('settings.location_desc')}</p>
-                    </div>
-                  </div>
-                  <button
-                    class="secondary-btn location-fetch-btn"
-                    onclick={fetchExactLocation}
-                    disabled={isRetrievingLocation}
-                    aria-label={t('settings.get_location_btn')}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon {isRetrievingLocation ? 'spin' : ''}">
-                      <circle cx="12" cy="12" r="3"></circle>
-                      <path d="M12 2a10 10 0 0 1 10 10c0 5.25-10 12-10 12S2 17.25 2 12A10 10 0 0 1 12 2z"></path>
-                    </svg>
-                    <span>{isRetrievingLocation ? t('settings.location_retrieving') : t('settings.get_location_btn')}</span>
-                  </button>
-                </div>
-
-                {#if locationError}
-                  <div class="location-error-alert" role="alert">
-                    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="8" x2="12" y2="12"></line>
-                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    <span class="alert-text">{locationError}</span>
-                  </div>
-                {/if}
-
-                {#if locationResult}
-                  <div class="location-details-container">
-                    <div class="location-metrics-grid">
-                      <div class="location-metric-card">
-                        <span class="metric-label">{t('settings.location_latitude')}</span>
-                        <span class="metric-value font-mono">{locationResult.latitude.toFixed(6)}°</span>
-                      </div>
-                      <div class="location-metric-card">
-                        <span class="metric-label">{t('settings.location_longitude')}</span>
-                        <span class="metric-value font-mono">{locationResult.longitude.toFixed(6)}°</span>
-                      </div>
-                      <div class="location-metric-card">
-                        <span class="metric-label">{t('settings.location_accuracy')}</span>
-                        <span class="metric-value font-mono">±{Math.round(locationResult.accuracy)} m</span>
-                      </div>
-                      <div class="location-metric-card">
-                        <span class="metric-label">{t('settings.location_timestamp')}</span>
-                        <span class="metric-value font-mono">{new Date(locationResult.timestamp).toLocaleTimeString()}</span>
-                      </div>
-                    </div>
-
-                    {#if locationResult.address}
-                      <div class="location-address-card">
-                        <span class="metric-label">{t('settings.location_address')}</span>
-                        {#if locationResult.address.formatted_address}
-                          <p class="address-primary">{locationResult.address.formatted_address}</p>
-                        {/if}
-                        <div class="address-badges">
-                          {#if locationResult.address.street}
-                            <span class="addr-chip">{locationResult.address.street}</span>
-                          {/if}
-                          {#if locationResult.address.district}
-                            <span class="addr-chip">{locationResult.address.district}</span>
-                          {/if}
-                          {#if locationResult.address.city}
-                            <span class="addr-chip">{locationResult.address.city}</span>
-                          {/if}
-                          {#if locationResult.address.postal_code}
-                            <span class="addr-chip">{locationResult.address.postal_code}</span>
-                          {/if}
-                          {#if locationResult.address.country}
-                            <span class="addr-chip">{locationResult.address.country}</span>
-                          {/if}
-                        </div>
-                      </div>
-                    {/if}
-                  </div>
-                {/if}
-
-                <div class="location-footer-note">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shield-icon">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                  </svg>
-                  <span>{t('settings.location_privacy_note')}</span>
-                </div>
-              </section>
-
               <!-- Sound Alerts -->
               <section class="card panel-card">
                 <div class="panel-header">
@@ -3631,7 +3526,7 @@
         tabindex="-1"
       >
         <div class="modal-icon-circle danger">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"></polyline>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           </svg>
@@ -3679,7 +3574,7 @@
         tabindex="-1"
       >
         <div class="modal-icon-circle danger">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"></polyline>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           </svg>
@@ -3730,7 +3625,15 @@
               {#if editingProfile.icon}
                 <img src={editingProfile.icon} alt={editingProfile.applicationName} class="app-avatar-img" onerror={() => { if (editingProfile) editingProfile.icon = null; }} />
               {:else}
-                <span class="app-avatar-letter">{getAppInitial(editingProfile.applicationName)}</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="app-avatar-fallback-icon" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+                  <line x1="3" y1="9" x2="21" y2="9"></line>
+                  <circle cx="6.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                  <circle cx="9.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                  <circle cx="12.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                  <rect x="7" y="12" width="4" height="4" rx="1"></rect>
+                  <rect x="13" y="12" width="4" height="4" rx="1"></rect>
+                </svg>
               {/if}
             </div>
             <div>
@@ -3781,7 +3684,7 @@
                 onclick={browseForExecutable}
                 title="Browse Windows executable (*.exe)"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                 </svg>
                 <span>{t('apps.browse_exe')}</span>
@@ -3974,7 +3877,7 @@
               onclick={() => previewProfileGlow(editingProfile)}
               disabled={isPreviewingProfile}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tiny-icon {isPreviewingProfile ? 'pulse' : ''}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon {isPreviewingProfile ? 'pulse' : ''}">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
@@ -6912,6 +6815,28 @@
     color: var(--text-primary);
   }
 
+  .app-avatar-fallback-icon {
+    width: 24px;
+    height: 24px;
+    color: var(--app-glow-color, var(--accent-neon));
+    opacity: 0.95;
+    flex-shrink: 0;
+    transition: transform var(--transition-fast), opacity var(--transition-fast);
+  }
+
+  .app-avatar-box:hover .app-avatar-fallback-icon {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+
+  .avatar-fallback-glyph {
+    width: 20px;
+    height: 20px;
+    color: var(--accent-neon);
+    opacity: 0.9;
+    flex-shrink: 0;
+  }
+
   .app-info {
     display: flex;
     flex-direction: column;
@@ -7244,134 +7169,6 @@
       width: 100%;
       justify-content: flex-end;
     }
-  }
-
-  /* Location Card Styling */
-  .location-card {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .location-fetch-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 14px;
-    font-size: 0.8125rem;
-    font-weight: 500;
-  }
-
-  .location-error-alert {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 16px 20px 0;
-    padding: 10px 14px;
-    border-radius: 8px;
-    background: rgba(239, 68, 68, 0.12);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #fca5a5;
-    font-size: 0.8125rem;
-    line-height: 1.4;
-  }
-
-  .location-error-alert .alert-icon {
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
-    color: #ef4444;
-  }
-
-  .location-details-container {
-    padding: 16px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .location-metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 10px;
-  }
-
-  .location-metric-card {
-    background: var(--surface-secondary, rgba(255, 255, 255, 0.03));
-    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
-    border-radius: 8px;
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .metric-label {
-    font-size: 0.6875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-tertiary, rgba(255, 255, 255, 0.45));
-    font-weight: 600;
-  }
-
-  .metric-value {
-    font-size: 0.9375rem;
-    color: var(--text-primary, #ffffff);
-    font-weight: 600;
-  }
-
-  .font-mono {
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  }
-
-  .location-address-card {
-    background: var(--surface-secondary, rgba(255, 255, 255, 0.03));
-    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
-    border-radius: 8px;
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .address-primary {
-    margin: 0;
-    font-size: 0.875rem;
-    color: var(--text-primary, #ffffff);
-    line-height: 1.4;
-  }
-
-  .address-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .addr-chip {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 8px;
-    border-radius: 5px;
-    font-size: 0.75rem;
-    background: rgba(245, 158, 11, 0.12);
-    border: 1px solid rgba(245, 158, 11, 0.25);
-    color: #fbbf24;
-    font-weight: 500;
-  }
-
-  .location-footer-note {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 20px 16px;
-    font-size: 0.75rem;
-    color: var(--text-tertiary, rgba(255, 255, 255, 0.45));
-  }
-
-  .location-footer-note .shield-icon {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-    color: #10b981;
   }
 
   /* Reduced Motion Accessibility */

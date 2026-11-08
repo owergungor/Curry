@@ -1,5 +1,4 @@
 pub mod glow;
-pub mod location;
 pub mod models;
 pub mod notification;
 pub mod notifications;
@@ -103,11 +102,6 @@ fn check_backend_connection() -> BackendConnectionStatus {
 #[tauri::command]
 fn get_app_icon(path: String, name: String) -> crate::scanner::icon::AppIconInfo {
     crate::scanner::icon::get_app_icon_and_color(&path, &name)
-}
-
-#[tauri::command]
-async fn get_precise_location() -> Result<crate::location::PreciseLocationResult, String> {
-    crate::location::get_precise_location().await
 }
 
 #[tauri::command]
@@ -1060,8 +1054,7 @@ pub fn run() {
             sync_window_chrome,
             scan_installed_apps,
             get_scan_status,
-            get_app_icon,
-            get_precise_location
+            get_app_icon
         ]);
 
     if let Err(err) = app.run(tauri::generate_context!()) {
