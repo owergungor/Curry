@@ -1,3 +1,4 @@
+pub mod icon;
 pub mod lnk;
 pub mod model;
 pub mod platform;
@@ -89,6 +90,12 @@ pub fn execute_app_scan(storage: &Arc<SettingsStorage>) -> Result<ScanResult, St
             p_exe == exe_norm || p_stripped == exe_stripped
         });
 
+        // Extract or retrieve cached icon and vibrant dominant glow color
+        let icon_info = icon::get_app_icon_and_color(
+            app.executable_path.as_deref().or(app.icon_path.as_deref()).unwrap_or(""),
+            &app.name,
+        );
+
         if let Some(idx) = existing_index {
             // Already exists: preserve ALL user custom settings (color, animation, intensity, enabled, etc.)
             app.is_new = false;
@@ -99,12 +106,22 @@ pub fn execute_app_scan(storage: &Arc<SettingsStorage>) -> Result<ScanResult, St
             {
                 settings.applications[idx].executable_path = app.executable_path.clone();
             }
+
+            // Enrich icon if existing profile lacks it
+            if settings.applications[idx].icon.is_none() && icon_info.icon.is_some() {
+                settings.applications[idx].icon = icon_info.icon.clone();
+            }
+
+            // Automatically assign icon-derived color only if user hasn't set an explicit custom color
+            if settings.applications[idx].color.is_none() {
+                settings.applications[idx].color = Some(icon_info.color.clone());
+            }
         } else if removed_set.contains(&exe_norm) || removed_set.contains(exe_stripped) {
             // User previously deleted this application profile: respect user's choice and do NOT re-add automatically
             app.is_new = false;
             already_existing_count += 1;
         } else {
-            // New discovered app: create a clean profile
+            // New discovered app: create a clean profile with icon and automatic vivid glow color
             app.is_new = true;
             new_added_count += 1;
 
@@ -112,6 +129,10 @@ pub fn execute_app_scan(storage: &Arc<SettingsStorage>) -> Result<ScanResult, St
             if let Some(ref path) = app.executable_path {
                 new_profile = new_profile.with_executable_path(path);
             }
+            if let Some(ref icon_data) = icon_info.icon {
+                new_profile = new_profile.with_icon(icon_data);
+            }
+            new_profile = new_profile.with_color(&icon_info.color);
             settings.applications.push(new_profile);
         }
 

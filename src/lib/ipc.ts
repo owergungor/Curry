@@ -60,6 +60,11 @@ export interface ScanStatus {
   error?: string | null;
 }
 
+export interface AppIconInfo {
+  icon?: string | null;
+  color: string;
+}
+
 export async function scanInstalledApps(): Promise<ScanResult> {
   return safeInvoke<ScanResult>("scan_installed_apps", undefined, 30000);
 }

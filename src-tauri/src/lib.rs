@@ -28,6 +28,7 @@ pub struct BackendConnectionStatus {
     pub version: String,
     pub target_os: String,
     pub target_arch: String,
+    pub is_store_build: bool,
     pub message: String,
 }
 
@@ -53,6 +54,38 @@ fn format_display_version(pkg_version: &str) -> String {
     }
 }
 
+#[cfg(target_os = "windows")]
+fn is_running_as_store_package() -> bool {
+    if std::env::var("CURRY_STORE_BUILD")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+    {
+        return true;
+    }
+
+    type GetCurrentPackageFamilyNameFn = unsafe extern "system" fn(*mut u32, *mut u16) -> u32;
+    unsafe {
+        use windows::core::s;
+        use windows::Win32::System::LibraryLoader::{GetModuleHandleA, GetProcAddress};
+        if let Ok(kernel32) = GetModuleHandleA(s!("kernel32.dll")) {
+            if let Some(proc) = GetProcAddress(kernel32, s!("GetCurrentPackageFamilyName")) {
+                let func: GetCurrentPackageFamilyNameFn = std::mem::transmute(proc);
+                let mut len = 0u32;
+                let res = func(&mut len, std::ptr::null_mut());
+                return res == 122 || res == 0;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(not(target_os = "windows"))]
+fn is_running_as_store_package() -> bool {
+    std::env::var("CURRY_STORE_BUILD")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+}
+
 #[tauri::command]
 fn check_backend_connection() -> BackendConnectionStatus {
     BackendConnectionStatus {
@@ -61,8 +94,14 @@ fn check_backend_connection() -> BackendConnectionStatus {
         version: format_display_version(env!("CARGO_PKG_VERSION")),
         target_os: std::env::consts::OS.to_string(),
         target_arch: std::env::consts::ARCH.to_string(),
+        is_store_build: is_running_as_store_package(),
         message: "Tauri backend connected successfully".to_string(),
     }
+}
+
+#[tauri::command]
+fn get_app_icon(path: String, name: String) -> crate::scanner::icon::AppIconInfo {
+    crate::scanner::icon::get_app_icon_and_color(&path, &name)
 }
 
 #[tauri::command]
@@ -108,9 +147,10 @@ fn update_app_settings(
     let _ = app.emit("app-state-changed", updated.enabled);
     let _ = app.emit("app-settings-updated", &updated);
 
-    // Synchronize window chrome with updated theme and appearance
+    // Synchronize window chrome and taskbar visibility
     if let Some(main_window) = app.get_webview_window("main") {
         window_theme::sync_window_chrome(&main_window, updated.appearance, updated.theme);
+        let _ = main_window.set_skip_taskbar(!updated.show_in_taskbar);
     }
 
     Ok(updated)
@@ -944,12 +984,13 @@ pub fn run() {
             // 2. Main window lifecycle
             let is_autostart = std::env::args().any(|arg| arg == "--autostart");
             if let Some(main_window) = app.get_webview_window("main") {
-                // Apply theme before showing window
+                // Apply theme and taskbar preference before showing window
                 window_theme::sync_window_chrome(
                     &main_window,
                     initial_settings.appearance,
                     initial_settings.theme,
                 );
+                let _ = main_window.set_skip_taskbar(!initial_settings.show_in_taskbar);
 
                 if is_autostart {
                     let _ = main_window.hide();
@@ -1012,7 +1053,8 @@ pub fn run() {
             parse_executable_path,
             sync_window_chrome,
             scan_installed_apps,
-            get_scan_status
+            get_scan_status,
+            get_app_icon
         ]);
 
     if let Err(err) = app.run(tauri::generate_context!()) {

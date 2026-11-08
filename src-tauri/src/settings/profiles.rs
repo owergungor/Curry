@@ -27,6 +27,15 @@ pub struct ApplicationProfile {
     )]
     pub executable_path: Option<String>,
 
+    /// Optional application icon (data URL or file path).
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "icon_path",
+        alias = "iconPath"
+    )]
+    pub icon: Option<String>,
+
     /// Whether this application profile is enabled. If false, glow is suppressed.
     #[serde(default = "default_true")]
     pub enabled: bool,
@@ -201,6 +210,7 @@ impl ApplicationProfile {
             application_name: name,
             executable_name: exe,
             executable_path: None,
+            icon: None,
             enabled: true,
             color: None,
             animation: None,
@@ -216,6 +226,18 @@ impl ApplicationProfile {
     /// Sets an optional full executable path on this profile.
     pub fn with_executable_path(mut self, path: impl Into<String>) -> Self {
         self.executable_path = Some(path.into());
+        self
+    }
+
+    /// Sets an optional application icon on this profile.
+    pub fn with_icon(mut self, icon: impl Into<String>) -> Self {
+        self.icon = Some(icon.into());
+        self
+    }
+
+    /// Sets an optional custom glow color for this profile.
+    pub fn with_color(mut self, color: impl Into<String>) -> Self {
+        self.color = Some(color.into());
         self
     }
 

@@ -18,6 +18,12 @@ pub fn scan_installed_applications() -> Vec<DiscoveredApp> {
     // 3. Scan Windows Registry Uninstall keys
     scan_registry_uninstall_keys(&mut discovered, &mut seen_executables);
 
+    // 4. Scan Xbox app & Game Pass installations
+    scan_xbox_games(&mut discovered, &mut seen_executables);
+
+    // 5. Scan Microsoft Store / UWP packages
+    scan_microsoft_store_apps(&mut discovered, &mut seen_executables);
+
     discovered
 }
 
@@ -487,4 +493,402 @@ pub fn is_blacklisted_app_name(name: &str) -> bool {
     ];
 
     blacklisted.iter().any(|b| lower.contains(b))
+}
+
+/// Scans installed Xbox app and Game Pass games across all available drive roots.
+fn scan_xbox_games(discovered: &mut Vec<DiscoveredApp>, seen: &mut HashSet<String>) {
+    let drive_letters = [
+        "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
+        "U", "V", "W", "X", "Y", "Z",
+    ];
+
+    for drive in drive_letters {
+        let mut candidates = Vec::new();
+        let xbox_root = PathBuf::from(format!("{}:\\XboxGames", drive));
+        if xbox_root.is_dir() {
+            candidates.push(xbox_root);
+        }
+
+        let modifiable_root = PathBuf::from(format!("{}:\\Program Files\\ModifiableWindowsApps", drive));
+        if modifiable_root.is_dir() {
+            candidates.push(modifiable_root);
+        }
+
+        for base_dir in candidates {
+            let entries = match std::fs::read_dir(&base_dir) {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+
+            for entry in entries.flatten() {
+                let game_folder = entry.path();
+                if !game_folder.is_dir() {
+                    continue;
+                }
+
+                process_xbox_game_directory(&game_folder, discovered, seen);
+            }
+        }
+    }
+}
+
+fn process_xbox_game_directory(
+    game_dir: &Path,
+    discovered: &mut Vec<DiscoveredApp>,
+    seen: &mut HashSet<String>,
+) {
+    let folder_name = match game_dir.file_name().and_then(|n| n.to_str()) {
+        Some(n) => n.to_string(),
+        None => return,
+    };
+
+    // Ignore metadata/cache directories
+    if folder_name.eq_ignore_ascii_case(".GamingRoot") || folder_name.eq_ignore_ascii_case("GameSave") {
+        return;
+    }
+
+    // Inspect Content directory or game root directory
+    let content_dir = game_dir.join("Content");
+    let target_dir = if content_dir.is_dir() {
+        &content_dir
+    } else {
+        game_dir
+    };
+
+    // 1. Try MicrosoftGame.config
+    let game_config_path = target_dir.join("MicrosoftGame.config");
+    if game_config_path.is_file() {
+        if let Ok(config_str) = std::fs::read_to_string(&game_config_path) {
+            let display_name = extract_xml_attr(&config_str, "ShellVisuals", "DefaultDisplayName")
+                .or_else(|| extract_xml_attr(&config_str, "Identity", "Name"))
+                .unwrap_or_else(|| folder_name.clone());
+
+            let exe_rel = extract_xml_attr(&config_str, "Executable", "Name")
+                .or_else(|| extract_xml_attr(&config_str, "Application", "Executable"));
+
+            let logo_rel = extract_xml_attr(&config_str, "ShellVisuals", "StoreLogo")
+                .or_else(|| extract_xml_attr(&config_str, "ShellVisuals", "Square150x150Logo"));
+
+            if let Some(exe) = exe_rel {
+                let norm_exe = exe.replace('/', "\\");
+                let full_exe_path = target_dir.join(&norm_exe);
+                let exe_name = Path::new(&norm_exe)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or(&norm_exe)
+                    .to_string();
+
+                let norm_key = exe_name.to_lowercase();
+                if !seen.contains(&norm_key) && !is_blacklisted_executable(&exe_name) {
+                    seen.insert(norm_key);
+                    let icon_path = logo_rel.map(|l| target_dir.join(l.replace('/', "\\")).to_string_lossy().to_string());
+
+                    discovered.push(DiscoveredApp {
+                        name: display_name,
+                        executable_name: exe_name,
+                        executable_path: Some(full_exe_path.to_string_lossy().to_string()),
+                        icon_path,
+                        source: "xbox_game".to_string(),
+                        is_new: false,
+                    });
+                    return;
+                }
+            }
+        }
+    }
+
+    // 2. Try AppxManifest.xml
+    let manifest_path = target_dir.join("appxmanifest.xml");
+    if manifest_path.is_file() {
+        if let Ok(manifest_str) = std::fs::read_to_string(&manifest_path) {
+            let display_name = extract_xml_content(&manifest_str, "DisplayName")
+                .filter(|s| !s.starts_with("ms-resource:"))
+                .unwrap_or_else(|| folder_name.clone());
+
+            let exe_rel = extract_xml_attr(&manifest_str, "Application", "Executable");
+            let logo_rel = extract_xml_content(&manifest_str, "Logo");
+
+            if let Some(exe) = exe_rel {
+                let full_exe_path = target_dir.join(&exe);
+                let exe_name = Path::new(&exe)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or(&exe)
+                    .to_string();
+
+                let norm_key = exe_name.to_lowercase();
+                if !seen.contains(&norm_key) && !is_blacklisted_executable(&exe_name) {
+                    seen.insert(norm_key);
+                    let icon_path = logo_rel.map(|l| target_dir.join(l.replace('/', "\\")).to_string_lossy().to_string());
+
+                    discovered.push(DiscoveredApp {
+                        name: display_name,
+                        executable_name: exe_name,
+                        executable_path: Some(full_exe_path.to_string_lossy().to_string()),
+                        icon_path,
+                        source: "xbox_game".to_string(),
+                        is_new: false,
+                    });
+                    return;
+                }
+            }
+        }
+    }
+
+    // 3. Fallback: scan for any primary executable in target_dir
+    if let Ok(entries) = std::fs::read_dir(target_dir) {
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.is_file() && p.extension().map_or(false, |ext| ext.eq_ignore_ascii_case("exe")) {
+                if let Some(exe_name) = p.file_name().and_then(|n| n.to_str()) {
+                    if !is_blacklisted_executable(exe_name) {
+                        let norm_key = exe_name.to_lowercase();
+                        if !seen.contains(&norm_key) {
+                            seen.insert(norm_key);
+                            discovered.push(DiscoveredApp {
+                                name: folder_name.clone(),
+                                executable_name: exe_name.to_string(),
+                                executable_path: Some(p.to_string_lossy().to_string()),
+                                icon_path: None,
+                                source: "xbox_game".to_string(),
+                                is_new: false,
+                            });
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Scans installed Microsoft Store and UWP applications from User AppModel repository.
+fn scan_microsoft_store_apps(discovered: &mut Vec<DiscoveredApp>, seen: &mut HashSet<String>) {
+    use windows::core::{PCWSTR, PWSTR};
+    use windows::Win32::System::Registry::{
+        RegCloseKey, RegEnumKeyExW, RegOpenKeyExW, HKEY, HKEY_CURRENT_USER, KEY_READ,
+    };
+
+    let subkey = "Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages";
+    unsafe {
+        let mut hkey = HKEY::default();
+        let subkey_wide: Vec<u16> = subkey.encode_utf16().chain(std::iter::once(0)).collect();
+
+        if RegOpenKeyExW(
+            HKEY_CURRENT_USER,
+            PCWSTR(subkey_wide.as_ptr()),
+            Some(0),
+            KEY_READ,
+            &mut hkey,
+        )
+        .is_err()
+        {
+            return;
+        }
+
+        let mut index = 0u32;
+        let mut name_buf = [0u16; 512];
+
+        loop {
+            let mut name_len = name_buf.len() as u32;
+            let enum_res = RegEnumKeyExW(
+                hkey,
+                index,
+                Some(PWSTR(name_buf.as_mut_ptr())),
+                &mut name_len,
+                None,
+                None,
+                None,
+                None,
+            );
+
+            if enum_res.is_err() {
+                break;
+            }
+
+            let pkg_key_name = String::from_utf16_lossy(&name_buf[..name_len as usize]);
+            index += 1;
+
+            // Skip internal system and framework packages
+            if is_system_store_package(&pkg_key_name) {
+                continue;
+            }
+
+            // Open child package key
+            let mut child_hkey = HKEY::default();
+            let child_wide: Vec<u16> = pkg_key_name
+                .encode_utf16()
+                .chain(std::iter::once(0))
+                .collect();
+
+            if RegOpenKeyExW(
+                hkey,
+                PCWSTR(child_wide.as_ptr()),
+                Some(0),
+                KEY_READ,
+                &mut child_hkey,
+            )
+            .is_ok()
+            {
+                process_store_package_key(child_hkey, &pkg_key_name, discovered, seen);
+                let _ = RegCloseKey(child_hkey);
+            }
+        }
+
+        let _ = RegCloseKey(hkey);
+    }
+}
+
+unsafe fn process_store_package_key(
+    hkey: windows::Win32::System::Registry::HKEY,
+    pkg_id: &str,
+    discovered: &mut Vec<DiscoveredApp>,
+    seen: &mut HashSet<String>,
+) {
+    let display_name_raw = read_reg_string(hkey, "DisplayName");
+    let root_folder_raw = read_reg_string(hkey, "PackageRootFolder");
+
+    let root_folder = match root_folder_raw {
+        Some(r) if !r.is_empty() => r,
+        _ => return,
+    };
+
+    let root_path = Path::new(&root_folder);
+
+    // Derive display name
+    let display_name = display_name_raw
+        .filter(|s| !s.trim().is_empty() && !s.starts_with("ms-resource:"))
+        .unwrap_or_else(|| clean_package_id_to_name(pkg_id));
+
+    if is_blacklisted_app_name(&display_name) {
+        return;
+    }
+
+    // Try reading AppxManifest.xml to find executable and icon
+    let manifest_path = root_path.join("AppxManifest.xml");
+    if manifest_path.is_file() {
+        if let Ok(manifest_str) = std::fs::read_to_string(&manifest_path) {
+            let exe_rel = extract_xml_attr(&manifest_str, "Application", "Executable");
+            let logo_rel = extract_xml_content(&manifest_str, "Logo")
+                .or_else(|| extract_xml_attr(&manifest_str, "uap:VisualElements", "Square150x150Logo"))
+                .or_else(|| extract_xml_attr(&manifest_str, "uap:VisualElements", "Square44x44Logo"));
+
+            if let Some(exe) = exe_rel {
+                let full_exe_path = root_path.join(&exe);
+                let exe_name = Path::new(&exe)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or(&exe)
+                    .to_string();
+
+                let norm_key = exe_name.to_lowercase();
+                if !seen.contains(&norm_key) && !is_blacklisted_executable(&exe_name) {
+                    seen.insert(norm_key);
+
+                    let icon_path = logo_rel.map(|l| root_path.join(l.replace('/', "\\")).to_string_lossy().to_string());
+
+                    discovered.push(DiscoveredApp {
+                        name: display_name,
+                        executable_name: exe_name,
+                        executable_path: Some(full_exe_path.to_string_lossy().to_string()),
+                        icon_path,
+                        source: "ms_store".to_string(),
+                        is_new: false,
+                    });
+                    return;
+                }
+            }
+        }
+    }
+
+    // Fallback: if manifest isn't accessible due to container permissions, record package entry
+    let base_name = pkg_id.split('_').next().unwrap_or(pkg_id);
+    let candidate_exe = format!("{}.exe", base_name.split('.').last().unwrap_or(base_name));
+    let norm_key = candidate_exe.to_lowercase();
+
+    if !seen.contains(&norm_key) && !is_blacklisted_executable(&candidate_exe) {
+        seen.insert(norm_key);
+        discovered.push(DiscoveredApp {
+            name: display_name,
+            executable_name: candidate_exe,
+            executable_path: Some(root_folder),
+            icon_path: None,
+            source: "ms_store".to_string(),
+            is_new: false,
+        });
+    }
+}
+
+fn is_system_store_package(pkg_id: &str) -> bool {
+    let lower = pkg_id.to_lowercase();
+    let sys_prefixes = [
+        "microsoft.net.",
+        "microsoft.vclibs.",
+        "microsoft.ui.xaml.",
+        "microsoft.directx.",
+        "microsoft.services.store.",
+        "microsoft.advertising.",
+        "microsoft.windowscommunicationsapps",
+        "windows.immersivecontrolpanel",
+        "1527c705-",
+        "c5e2524a-",
+    ];
+
+    sys_prefixes.iter().any(|prefix| lower.contains(prefix))
+}
+
+fn clean_package_id_to_name(pkg_id: &str) -> String {
+    let family = pkg_id.split('_').next().unwrap_or(pkg_id);
+    let app_part = family.split('.').last().unwrap_or(family);
+
+    // Insert spaces before capital letters: "AppleMusic" -> "Apple Music"
+    let mut clean = String::new();
+    for (i, ch) in app_part.chars().enumerate() {
+        if i > 0 && ch.is_uppercase() {
+            clean.push(' ');
+        }
+        clean.push(ch);
+    }
+    clean
+}
+
+/// Simple helper to extract an XML attribute value: <Tag ... Attr="value" ...>
+fn extract_xml_attr(xml: &str, tag: &str, attr: &str) -> Option<String> {
+    let tag_pattern = format!("<{}", tag);
+    let mut cursor = xml;
+
+    while let Some(tag_pos) = cursor.find(&tag_pattern) {
+        let tag_slice = &cursor[tag_pos..];
+        let end_tag = tag_slice.find('>')?;
+        let full_tag = &tag_slice[..end_tag];
+
+        let attr_pattern = format!("{}=\"", attr);
+        if let Some(attr_pos) = full_tag.find(&attr_pattern) {
+            let val_slice = &full_tag[attr_pos + attr_pattern.len()..];
+            let end_val = val_slice.find('"')?;
+            return Some(val_slice[..end_val].to_string());
+        }
+
+        cursor = &cursor[tag_pos + tag_pattern.len()..];
+    }
+
+    None
+}
+
+/// Simple helper to extract content between <Tag>content</Tag>
+fn extract_xml_content(xml: &str, tag: &str) -> Option<String> {
+    let open_tag = format!("<{}>", tag);
+    let close_tag = format!("</{}>", tag);
+
+    let start = xml.find(&open_tag)?;
+    let content_start = start + open_tag.len();
+    let content_slice = &xml[content_start..];
+    let end = content_slice.find(&close_tag)?;
+
+    let val = content_slice[..end].trim().to_string();
+    if val.is_empty() {
+        None
+    } else {
+        Some(val)
+    }
 }

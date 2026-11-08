@@ -148,6 +148,9 @@ pub struct AppSettings {
     /// Executable names of applications explicitly deleted by user (prevents auto re-add).
     #[serde(default, alias = "removedApplications")]
     pub removed_applications: Vec<String>,
+    /// Whether Curry is visible in the Windows taskbar (default: true).
+    #[serde(default = "default_true", alias = "showInTaskbar", alias = "show_in_taskbar")]
+    pub show_in_taskbar: bool,
 }
 
 impl Default for AppSettings {
@@ -155,6 +158,7 @@ impl Default for AppSettings {
         Self {
             enabled: true,
             startup_enabled: false,
+            show_in_taskbar: true,
             show_notifications: true,
             history_limit: 100,
             sound_enabled: false,

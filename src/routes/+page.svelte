@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { safeInvoke, type ScanResult } from "$lib/ipc";
+  import { safeInvoke, type ScanResult, type AppIconInfo } from "$lib/ipc";
   import { listen } from "@tauri-apps/api/event";
   import { THEMES, DEFAULT_THEME, DEFAULT_GLOW_COLOR, type ThemeId } from "$lib/themes";
   import Dropdown, { type DropdownItem } from "$lib/components/Dropdown.svelte";
@@ -25,6 +25,7 @@
     version: string;
     target_os: string;
     target_arch: string;
+    is_store_build?: boolean;
     message: string;
   }
 
@@ -61,6 +62,7 @@
     applicationName: string;
     executableName: string;
     executablePath?: string | null;
+    icon?: string | null;
     enabled: boolean;
     color?: string | null;
     animation?: "pulse" | "sweep" | "ambient" | "comet" | "ripple" | null;
@@ -81,6 +83,7 @@
   interface AppSettings {
     enabled: boolean;
     startup_enabled: boolean;
+    show_in_taskbar?: boolean;
     show_notifications: boolean;
     history_limit: number;
     sound_enabled: boolean;
@@ -603,6 +606,7 @@
   // Connection & System State
   let status = $state<"checking" | "connected" | "disconnected">("checking");
   let connectionInfo = $state<ConnectionInfo | null>(null);
+  let isStoreBuild = $derived(connectionInfo?.is_store_build ?? false);
   let errorMessage = $state<string | null>(null);
   let lastCheckedAt = $state<string | null>(null);
   let pingCount = $state(0);
@@ -614,6 +618,7 @@
   let appSettings = $state<AppSettings>({
     enabled: true,
     startup_enabled: false,
+    show_in_taskbar: true,
     show_notifications: true,
     history_limit: 100,
     sound_enabled: false,
@@ -1188,6 +1193,19 @@
         if (s.language && ["en", "es", "fr", "de", "tr"].includes(s.language)) {
           setLanguage(s.language as SupportedLocale);
         }
+        if (s.applications && s.applications.length > 0) {
+          for (const p of s.applications) {
+            if (!p.icon) {
+              safeInvoke<AppIconInfo>("get_app_icon", {
+                path: p.executablePath || p.executableName,
+                name: p.applicationName,
+              }).then((info) => {
+                if (info?.icon && !p.icon) p.icon = info.icon;
+                if (info?.color && !p.color) p.color = info.color;
+              }).catch(() => {});
+            }
+          }
+        }
       }
     } catch (err) {
       errorStore.report({
@@ -1680,7 +1698,6 @@
       <div class="brand-text">
         <div class="brand-row">
           <h1 class="brand-title">Curry</h1>
-          <span class="brand-version-pill">v{formatUserVersion(connectionInfo?.version ?? APP_VERSION)}</span>
         </div>
       </div>
     </div>
@@ -2409,7 +2426,11 @@
                           style:--app-glow-color={profile.color || appSettings.glow.color}
                           style:border-color={profile.color || appSettings.glow.color}
                         >
-                          <span class="app-avatar-letter">{getAppInitial(profile.applicationName)}</span>
+                          {#if profile.icon}
+                            <img src={profile.icon} alt={profile.applicationName} class="app-avatar-img" onerror={() => { profile.icon = null; }} />
+                          {:else}
+                            <span class="app-avatar-letter">{getAppInitial(profile.applicationName)}</span>
+                          {/if}
                         </div>
                         <div class="app-card-title-col">
                           <div class="app-name-row">
@@ -2523,7 +2544,11 @@
                           style:--app-glow-color={profile.color || appSettings.glow.color}
                           style:border-color={profile.color || appSettings.glow.color}
                         >
-                          <span class="app-avatar-letter">{getAppInitial(profile.applicationName)}</span>
+                          {#if profile.icon}
+                            <img src={profile.icon} alt={profile.applicationName} class="app-avatar-img" onerror={() => { profile.icon = null; }} />
+                          {:else}
+                            <span class="app-avatar-letter">{getAppInitial(profile.applicationName)}</span>
+                          {/if}
                         </div>
                         <div class="app-info">
                           <div class="app-name-row">
@@ -3080,6 +3105,22 @@
 
                   <div class="control-item">
                     <div class="control-label-group">
+                      <span class="control-title">{t('settings.show_in_taskbar')}</span>
+                      <span class="control-sub">{t('settings.show_in_taskbar_desc')}</span>
+                    </div>
+                    <AppleSwitch
+                      id="show-in-taskbar-switch"
+                      checked={appSettings.show_in_taskbar ?? true}
+                      onchange={(val) => {
+                        appSettings.show_in_taskbar = val;
+                        saveAppSettings();
+                      }}
+                      ariaLabel={t('settings.show_in_taskbar')}
+                    />
+                  </div>
+
+                  <div class="control-item">
+                    <div class="control-label-group">
                       <span class="control-title">{t('settings.master_title')}</span>
                       <span class="control-sub">{t('settings.master_desc')}</span>
                     </div>
@@ -3133,6 +3174,7 @@
                     />
                   </div>
 
+                  {#if !isStoreBuild}
                   <div class="control-item">
                     <div class="control-label-group">
                       <span class="control-title">{t('settings.auto_scan_frequency')}</span>
@@ -3152,6 +3194,7 @@
                       />
                     </div>
                   </div>
+                  {/if}
                 </div>
               </section>
 
@@ -3555,7 +3598,11 @@
               style:--app-glow-color={editingProfile.color || appSettings.glow.color}
               style:border-color={editingProfile.color || appSettings.glow.color}
             >
-              <span class="app-avatar-letter">{getAppInitial(editingProfile.applicationName)}</span>
+              {#if editingProfile.icon}
+                <img src={editingProfile.icon} alt={editingProfile.applicationName} class="app-avatar-img" onerror={() => { if (editingProfile) editingProfile.icon = null; }} />
+              {:else}
+                <span class="app-avatar-letter">{getAppInitial(editingProfile.applicationName)}</span>
+              {/if}
             </div>
             <div>
               <h3 id="profile-modal-title" class="modal-title">
@@ -6720,6 +6767,14 @@
     justify-content: center;
     flex-shrink: 0;
     box-shadow: 0 0 12px -2px var(--app-glow-color, var(--primary));
+  }
+
+  .app-avatar-img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border-radius: 6px;
+    image-rendering: auto;
   }
 
   .app-avatar-letter {
