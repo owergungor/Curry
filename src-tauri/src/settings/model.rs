@@ -149,7 +149,11 @@ pub struct AppSettings {
     #[serde(default, alias = "removedApplications")]
     pub removed_applications: Vec<String>,
     /// Whether Curry is visible in the Windows taskbar (default: true).
-    #[serde(default = "default_true", alias = "showInTaskbar", alias = "show_in_taskbar")]
+    #[serde(
+        default = "default_true",
+        alias = "showInTaskbar",
+        alias = "show_in_taskbar"
+    )]
     pub show_in_taskbar: bool,
 }
 
@@ -184,6 +188,14 @@ impl Default for AppSettings {
 impl AppSettings {
     /// Sanitizes and clamps all numeric settings to safe and expected boundaries.
     pub fn sanitized(mut self) -> Self {
+        // Purge invalid system profiles (Windows internal components, resource-based entries, daemons)
+        self.applications.retain(|p| {
+            !crate::scanner::classification::is_invalid_system_profile(
+                &p.application_name,
+                &p.executable_name,
+                p.executable_path.as_deref(),
+            )
+        });
         let mut profile_ids = std::collections::HashSet::new();
         for profile in &mut self.applications {
             if profile.id.trim().is_empty() || !profile_ids.insert(profile.id.clone()) {

@@ -39,7 +39,16 @@ impl SettingsStorage {
             if path.exists() {
                 match fs::read_to_string(path) {
                     Ok(data) => match serde_json::from_str::<AppSettings>(&data) {
-                        Ok(loaded) => loaded.sanitized(),
+                        Ok(loaded) => {
+                            let loaded_app_count = loaded.applications.len();
+                            let sanitized = loaded.sanitized();
+                            if sanitized.applications.len() != loaded_app_count {
+                                if let Ok(json) = serde_json::to_string_pretty(&sanitized) {
+                                    let _ = fs::write(path, json);
+                                }
+                            }
+                            sanitized
+                        }
                         Err(err) => {
                             eprintln!(
                                 "[SettingsStorage] Warning: Failed to parse settings.json ({}); reverting to defaults.",

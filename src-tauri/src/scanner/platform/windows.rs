@@ -1,6 +1,10 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+pub use crate::scanner::classification::{
+    is_blacklisted_app_name, is_blacklisted_executable, is_invalid_system_profile,
+    is_system_app_path,
+};
 use crate::scanner::lnk::parse_lnk_file;
 use crate::scanner::model::DiscoveredApp;
 
@@ -199,7 +203,7 @@ fn process_lnk_file(
             crate::settings::format_display_name(exe_name.strip_suffix(".exe").unwrap_or(&exe_name))
         });
 
-    if is_resource_based_name(&display_name) || is_blacklisted_app_name(&display_name) {
+    if is_invalid_system_profile(&display_name, &exe_name, Some(&resolved_target_str)) {
         return;
     }
 
@@ -441,12 +445,13 @@ unsafe fn process_registry_app_key(
     let exe_path_opt = resolve_executable_from_registry_fields(
         display_icon.as_deref(),
         install_location.as_deref(),
+        &display_name,
     );
 
     if let Some(exe_path) = exe_path_opt {
         let path = Path::new(&exe_path);
         if let Some(exe_name) = path.file_name().and_then(|f| f.to_str()) {
-            if !is_blacklisted_executable(exe_name) {
+            if !is_invalid_system_profile(&display_name, exe_name, Some(&exe_path)) {
                 let norm_key = exe_name.to_lowercase();
                 if !seen.contains(&norm_key) {
                     seen.insert(norm_key);
@@ -467,15 +472,27 @@ unsafe fn process_registry_app_key(
 fn resolve_executable_from_registry_fields(
     display_icon: Option<&str>,
     install_location: Option<&str>,
+    app_name: &str,
 ) -> Option<String> {
     // 1. Try DisplayIcon: often "C:\path\to\app.exe,0" or "C:\path\to\app.exe"
     if let Some(icon) = display_icon {
         let clean = icon.trim().trim_matches('"');
         let raw_path = clean.split(',').next().unwrap_or(clean).trim();
+        // If display_icon explicitly points to a DLL (e.g. NVI2.dll,0 in FrameView SDK),
+        // this is a driver/library/SDK, not a standalone GUI app. Do NOT fall back to InstallLocation.
+        if raw_path.to_lowercase().ends_with(".dll") {
+            return None;
+        }
+
         if raw_path.to_lowercase().ends_with(".exe") {
             let p = Path::new(raw_path);
             if p.is_file() {
-                return Some(raw_path.to_string());
+                let path_str = raw_path.to_string();
+                if let Some(exe_name) = p.file_name().and_then(|f| f.to_str()) {
+                    if !is_invalid_system_profile(app_name, exe_name, Some(&path_str)) {
+                        return Some(path_str);
+                    }
+                }
             }
         }
     }
@@ -484,7 +501,7 @@ fn resolve_executable_from_registry_fields(
     if let Some(loc) = install_location {
         let clean = loc.trim().trim_matches('"');
         let loc_path = Path::new(clean);
-        if loc_path.is_dir() {
+        if loc_path.is_dir() && !is_system_app_path(clean) {
             if let Ok(entries) = std::fs::read_dir(loc_path) {
                 for entry in entries.flatten() {
                     let p = entry.path();
@@ -493,8 +510,9 @@ fn resolve_executable_from_registry_fields(
                             .map_or(false, |ext| ext.eq_ignore_ascii_case("exe"))
                     {
                         if let Some(name) = p.file_name().and_then(|f| f.to_str()) {
-                            if !is_blacklisted_executable(name) {
-                                return Some(p.to_string_lossy().to_string());
+                            let path_str = p.to_string_lossy().to_string();
+                            if !is_invalid_system_profile(app_name, name, Some(&path_str)) {
+                                return Some(path_str);
                             }
                         }
                     }
@@ -516,72 +534,11 @@ pub fn is_resource_based_name(name: &str) -> bool {
         || (trimmed.starts_with('@') && (trimmed.contains('{') || trimmed.contains("ms-resource")))
 }
 
-pub fn is_blacklisted_executable(name: &str) -> bool {
-    let lower = name.to_lowercase();
-    let blacklisted = [
-        "unins",
-        "setup",
-        "installer",
-        "updater",
-        "update",
-        "crashpad",
-        "crash_reporter",
-        "helper",
-        "cmd.exe",
-        "powershell.exe",
-        "conhost.exe",
-        "rundll32.exe",
-        "regsvr32.exe",
-        "backgroundtaskhost.exe",
-        "runtimebroker.exe",
-        "wsl.exe",
-        "wslhost.exe",
-        "systemsettingsadminflows.exe",
-        "appresolver.exe",
-        "accountscontrolhost.exe",
-        "smartscreen.exe",
-        "searchhost.exe",
-        "shellexperiencehost.exe",
-        "startmenuexperiencehost.exe",
-        "lockapp.exe",
-        "gamebarft.exe",
-    ];
-
-    blacklisted.iter().any(|b| lower.contains(b))
-}
-
-pub fn is_blacklisted_app_name(name: &str) -> bool {
-    let lower = name.to_lowercase();
-    let blacklisted = [
-        "redistributable",
-        "security update",
-        "update for windows",
-        "hotfix",
-        "service pack",
-        "kb[0-9]",
-        "microsoft visual c++",
-        "windows sdk",
-        ".net framework",
-        "brokerplugin",
-        "appresolverux",
-        "windowsappruntime",
-        "accountscontrolhost",
-        "shellexperiencehost",
-        "startmenuexperiencehost",
-        "viewmanagementhost",
-        "lockapp",
-        "bioenrollment",
-        "capturepicker",
-        "creddialoghost",
-        "secureassessmentbrowser",
-        "parentalcontrols",
-        "pinningconfirmationdialog",
-        "printdialog",
-        "xboxgamecallableui",
-        "xboxspeechtotextoverlay",
-    ];
-
-    blacklisted.iter().any(|b| lower.contains(b))
+/// Checks if an AppX/UWP package identity represents an internal Windows system,
+/// framework, broker, or runtime package.
+/// Excludes: microsoft.aad.brokerplugin, appresolverux, windowsappruntime, accountscontrolhost, shellexperiencehost
+pub fn is_system_store_package(pkg_id: &str) -> bool {
+    crate::scanner::classification::is_system_store_package(pkg_id)
 }
 
 /// Scans installed Xbox app and Game Pass games across all available drive roots.
@@ -598,7 +555,8 @@ fn scan_xbox_games(discovered: &mut Vec<DiscoveredApp>, seen: &mut HashSet<Strin
             candidates.push(xbox_root);
         }
 
-        let modifiable_root = PathBuf::from(format!("{}:\\Program Files\\ModifiableWindowsApps", drive));
+        let modifiable_root =
+            PathBuf::from(format!("{}:\\Program Files\\ModifiableWindowsApps", drive));
         if modifiable_root.is_dir() {
             candidates.push(modifiable_root);
         }
@@ -632,7 +590,9 @@ fn process_xbox_game_directory(
     };
 
     // Ignore metadata/cache directories
-    if folder_name.eq_ignore_ascii_case(".GamingRoot") || folder_name.eq_ignore_ascii_case("GameSave") {
+    if folder_name.eq_ignore_ascii_case(".GamingRoot")
+        || folder_name.eq_ignore_ascii_case("GameSave")
+    {
         return;
     }
 
@@ -670,7 +630,12 @@ fn process_xbox_game_directory(
                 let norm_key = exe_name.to_lowercase();
                 if !seen.contains(&norm_key) && !is_blacklisted_executable(&exe_name) {
                     seen.insert(norm_key);
-                    let icon_path = logo_rel.map(|l| target_dir.join(l.replace('/', "\\")).to_string_lossy().to_string());
+                    let icon_path = logo_rel.map(|l| {
+                        target_dir
+                            .join(l.replace('/', "\\"))
+                            .to_string_lossy()
+                            .to_string()
+                    });
 
                     discovered.push(DiscoveredApp {
                         name: display_name,
@@ -708,7 +673,12 @@ fn process_xbox_game_directory(
                 let norm_key = exe_name.to_lowercase();
                 if !seen.contains(&norm_key) && !is_blacklisted_executable(&exe_name) {
                     seen.insert(norm_key);
-                    let icon_path = logo_rel.map(|l| target_dir.join(l.replace('/', "\\")).to_string_lossy().to_string());
+                    let icon_path = logo_rel.map(|l| {
+                        target_dir
+                            .join(l.replace('/', "\\"))
+                            .to_string_lossy()
+                            .to_string()
+                    });
 
                     discovered.push(DiscoveredApp {
                         name: display_name,
@@ -728,7 +698,10 @@ fn process_xbox_game_directory(
     if let Ok(entries) = std::fs::read_dir(target_dir) {
         for e in entries.flatten() {
             let p = e.path();
-            if p.is_file() && p.extension().map_or(false, |ext| ext.eq_ignore_ascii_case("exe")) {
+            if p.is_file()
+                && p.extension()
+                    .map_or(false, |ext| ext.eq_ignore_ascii_case("exe"))
+            {
                 if let Some(exe_name) = p.file_name().and_then(|n| n.to_str()) {
                     if !is_blacklisted_executable(exe_name) {
                         let norm_key = exe_name.to_lowercase();
@@ -845,9 +818,14 @@ unsafe fn process_store_package_key(
         _ => return,
     };
 
+    // 2. Reject packages located in Windows internal SystemApps folders
+    if is_system_app_path(&root_folder) {
+        return;
+    }
+
     let root_path = Path::new(&root_folder);
 
-    // 2. Require a valid, readable AppxManifest.xml. User-facing apps always declare a manifest with launchable applications.
+    // 3. Require a valid, readable AppxManifest.xml. User-facing apps always declare a manifest with launchable applications.
     let manifest_path = root_path.join("AppxManifest.xml");
     if !manifest_path.is_file() {
         return;
@@ -858,17 +836,17 @@ unsafe fn process_store_package_key(
         Err(_) => return,
     };
 
-    // 3. Exclude Framework and Resource packages
+    // 4. Exclude Framework and Resource packages
     if is_framework_or_resource_manifest(&manifest_str) {
         return;
     }
 
-    // 4. Exclude packages marked as unlisted or non-launchable in app list
+    // 5. Exclude packages marked as unlisted or non-launchable in app list
     if is_unlisted_app_entry(&manifest_str) {
         return;
     }
 
-    // 5. Look for launchable <Application Executable="...">
+    // 6. Look for launchable <Application Executable="...">
     let exe_rel = extract_xml_attr(&manifest_str, "Application", "Executable");
     let exe = match exe_rel {
         Some(e) if !e.trim().is_empty() => e,
@@ -886,7 +864,7 @@ unsafe fn process_store_package_key(
         return;
     }
 
-    // 6. Resolve DisplayName (rejecting resource-based strings starting with @{ or ms-resource:)
+    // 7. Resolve DisplayName (rejecting resource-based strings starting with @{ or ms-resource:)
     let display_name_raw = read_reg_string(hkey, "DisplayName");
     let resolved_name = display_name_raw
         .filter(|s| !is_resource_based_name(s))
@@ -899,26 +877,19 @@ unsafe fn process_store_package_key(
                 .filter(|s| !is_resource_based_name(s))
         })
         .or_else(|| {
-            extract_xml_content(&manifest_str, "DisplayName")
-                .filter(|s| !is_resource_based_name(s))
+            extract_xml_content(&manifest_str, "DisplayName").filter(|s| !is_resource_based_name(s))
         });
 
     let display_name = match resolved_name {
         Some(n) if !n.trim().is_empty() => n.trim().to_string(),
-        _ => {
-            let cleaned = clean_package_id_to_name(pkg_id);
-            if is_system_store_package(&cleaned) || is_resource_based_name(&cleaned) {
-                return;
-            }
-            cleaned
-        }
+        // Do NOT create synthetic profile names for packages that lack a human-facing display name
+        _ => return,
     };
 
-    // Strict rejection of resource-based strings, blacklisted names, and system packages
-    if is_resource_based_name(&display_name)
-        || is_blacklisted_app_name(&display_name)
-        || is_system_store_package(&display_name)
-    {
+    let full_exe_str = full_exe_path.to_string_lossy().to_string();
+
+    // 8. Strict rejection using comprehensive classification
+    if is_invalid_system_profile(&display_name, &exe_name, Some(&full_exe_str)) {
         return;
     }
 
@@ -931,12 +902,17 @@ unsafe fn process_store_package_key(
             .or_else(|| extract_xml_attr(&manifest_str, "uap:VisualElements", "Square44x44Logo"))
             .or_else(|| extract_xml_attr(&manifest_str, "VisualElements", "Square150x150Logo"));
 
-        let icon_path = logo_rel.map(|l| root_path.join(l.replace('/', "\\")).to_string_lossy().to_string());
+        let icon_path = logo_rel.map(|l| {
+            root_path
+                .join(l.replace('/', "\\"))
+                .to_string_lossy()
+                .to_string()
+        });
 
         discovered.push(DiscoveredApp {
             name: display_name,
             executable_name: exe_name,
-            executable_path: Some(full_exe_path.to_string_lossy().to_string()),
+            executable_path: Some(full_exe_str),
             icon_path,
             source: "ms_store".to_string(),
             is_new: false,
@@ -954,59 +930,10 @@ pub fn is_framework_or_resource_manifest(xml: &str) -> bool {
 
 pub fn is_unlisted_app_entry(xml: &str) -> bool {
     let lower = xml.to_lowercase();
-    lower.contains("applistentry=\"none\"")
-        || lower.contains("applistentry='none'")
+    lower.contains("applistentry=\"none\"") || lower.contains("applistentry='none'")
 }
 
-pub fn is_system_store_package(pkg_id: &str) -> bool {
-    let lower = pkg_id.to_lowercase();
-    const SYSTEM_PREFIXES_AND_TOKENS: &[&str] = &[
-        // Targeted representative cases from screenshots & prompt
-        "microsoft.aad.brokerplugin",
-        "brokerplugin",
-        "appresolverux",
-        "windowsappruntime",
-        "accountscontrolhost",
-        "shellexperiencehost",
-        "startmenuexperiencehost",
-        "viewmanagementhost",
-        "lockapp",
-        "creddialoghost",
-        "bioenrollment",
-        "capturepicker",
-        "asynctextservice",
-        "assignedaccesslockapp",
-        "secureassessmentbrowser",
-        "parentalcontrols",
-        "pinningconfirmationdialog",
-        "printdialog",
-        "xboxgamecallableui",
-        "xboxspeechtotextoverlay",
-        "contentdeliverymanager",
-        "microsoft.windows.",
-        "microsoft.vclibs",
-        "microsoft.net.native",
-        "microsoft.ui.xaml",
-        "microsoft.directx",
-        "microsoft.services.store",
-        "microsoft.advertising",
-        "windows.immersivecontrolpanel",
-        "windows.contactsupport",
-        "windows.printqueue",
-        "windows.cbspreview",
-        "windows.warmwelcome",
-        "microsoft.ecapp",
-        "microsoft.win32webviewhost",
-        "1527c705-",
-        "c5e2524a-",
-        "f46d4000-",
-        "e2a4f912-",
-        "cw5n1h2txyewy",
-    ];
-
-    SYSTEM_PREFIXES_AND_TOKENS.iter().any(|prefix| lower.contains(prefix))
-}
-
+#[allow(dead_code)]
 fn clean_package_id_to_name(pkg_id: &str) -> String {
     let family = pkg_id.split('_').next().unwrap_or(pkg_id);
     let app_part = family.split('.').last().unwrap_or(family);
@@ -1086,17 +1013,23 @@ mod tests {
     #[test]
     fn test_is_system_store_package() {
         assert!(is_system_store_package("Microsoft.AAD.BrokerPlugin"));
-        assert!(is_system_store_package("Microsoft.AAD.BrokerPlugin_1000.22621.1.0_neutral_neutral_cw5n1h2txyewy"));
+        assert!(is_system_store_package(
+            "Microsoft.AAD.BrokerPlugin_1000.22621.1.0_neutral_neutral_cw5n1h2txyewy"
+        ));
         assert!(is_system_store_package("AppResolverUX"));
         assert!(is_system_store_package("Microsoft.WindowsAppRuntime.1.4"));
         assert!(is_system_store_package("AccountsControlHost"));
-        assert!(is_system_store_package("Microsoft.Windows.ShellExperienceHost"));
+        assert!(is_system_store_package(
+            "Microsoft.Windows.ShellExperienceHost"
+        ));
         assert!(is_system_store_package("Microsoft.VCLibs.140.00"));
         assert!(is_system_store_package("Microsoft.UI.Xaml.2.8"));
 
         // Legitimate third-party / store applications must not be classified as system
         assert!(!is_system_store_package("SpotifyAB.SpotifyMusic"));
-        assert!(!is_system_store_package("TelegramMessengerLLP.TelegramDesktop"));
+        assert!(!is_system_store_package(
+            "TelegramMessengerLLP.TelegramDesktop"
+        ));
         assert!(!is_system_store_package("9NBLGGH42CF8")); // Microsoft Flight Simulator / Store ID
         assert!(!is_system_store_package("SlackTechnologies.Slack"));
     }
@@ -1118,7 +1051,8 @@ mod tests {
         let unlisted_xml = r#"<Application Id="App" Executable="app.exe" uap:AppListEntry="none">"#;
         assert!(is_unlisted_app_entry(unlisted_xml));
 
-        let normal_xml = r#"<Application Id="App" Executable="app.exe" uap:AppListEntry="default">"#;
+        let normal_xml =
+            r#"<Application Id="App" Executable="app.exe" uap:AppListEntry="default">"#;
         assert!(!is_unlisted_app_entry(normal_xml));
 
         let plain_xml = r#"<Application Id="App" Executable="app.exe">"#;
@@ -1143,7 +1077,13 @@ mod tests {
 
     #[test]
     fn test_clean_package_id_to_name() {
-        assert_eq!(clean_package_id_to_name("AppleMusic_8wekyb3d8bbwe"), "Apple Music");
-        assert_eq!(clean_package_id_to_name("SpotifyAB.SpotifyMusic_zpdnekdrzrea0"), "Spotify Music");
+        assert_eq!(
+            clean_package_id_to_name("AppleMusic_8wekyb3d8bbwe"),
+            "Apple Music"
+        );
+        assert_eq!(
+            clean_package_id_to_name("SpotifyAB.SpotifyMusic_zpdnekdrzrea0"),
+            "Spotify Music"
+        );
     }
 }

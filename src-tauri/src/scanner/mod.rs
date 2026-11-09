@@ -1,3 +1,4 @@
+pub mod classification;
 pub mod icon;
 pub mod lnk;
 pub mod model;
@@ -7,6 +8,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::SystemTime;
 
+pub use classification::is_invalid_system_profile;
 pub use model::{AutoScanFrequency, DiscoveredApp, ScanLifecycleState, ScanResult, ScanStatus};
 
 use crate::settings::{AppSettings, ApplicationProfile, SettingsStorage};
@@ -68,6 +70,16 @@ pub fn execute_app_scan(storage: &Arc<SettingsStorage>) -> Result<ScanResult, St
     let mut settings = storage.get();
     let initial_app_count = settings.applications.len();
 
+    // Purge any pre-existing invalid or polluted system profiles
+    settings.applications.retain(|p| {
+        !classification::is_invalid_system_profile(
+            &p.application_name,
+            &p.executable_name,
+            p.executable_path.as_deref(),
+        )
+    });
+    let polluted_purged = initial_app_count.saturating_sub(settings.applications.len());
+
     let mut final_discovered = Vec::with_capacity(raw_discovered.len());
     let mut new_added_count = 0usize;
     let mut already_existing_count = 0usize;
@@ -92,7 +104,10 @@ pub fn execute_app_scan(storage: &Arc<SettingsStorage>) -> Result<ScanResult, St
 
         // Extract or retrieve cached icon and vibrant dominant glow color
         let icon_info = icon::get_app_icon_and_color(
-            app.executable_path.as_deref().or(app.icon_path.as_deref()).unwrap_or(""),
+            app.executable_path
+                .as_deref()
+                .or(app.icon_path.as_deref())
+                .unwrap_or(""),
             &app.name,
         );
 
@@ -147,7 +162,10 @@ pub fn execute_app_scan(storage: &Arc<SettingsStorage>) -> Result<ScanResult, St
     settings.last_app_scan = Some(now_secs);
 
     // Save settings if new apps were added or path was enriched or scan timestamp updated
-    if settings.applications.len() != initial_app_count || new_added_count > 0 {
+    if settings.applications.len() != initial_app_count
+        || new_added_count > 0
+        || polluted_purged > 0
+    {
         let _ = storage.update(settings.clone());
     } else {
         let _ = storage.update(settings);
@@ -343,5 +361,84 @@ mod tests {
         assert!(parse_lnk_file(&fake_lnk).is_none());
 
         let _ = std::fs::remove_file(fake_lnk);
+    }
+
+    #[test]
+    fn test_sanitized_purges_invalid_system_profiles_and_preserves_legitimate_apps() {
+        let mut settings = AppSettings::default();
+
+        // Legitimate app with custom color & animation
+        let mut spotify = ApplicationProfile::new("Spotify", "Spotify.exe");
+        spotify.color = Some("#1DB954".to_string());
+        spotify.animation = Some(GlowAnimationStyle::Breathing);
+        spotify.executable_path =
+            Some(r"C:\Users\User\AppData\Roaming\Spotify\Spotify.exe".to_string());
+
+        // Legitimate NVIDIA Control Panel
+        let mut nvcpl = ApplicationProfile::new("NVIDIA Control Panel", "nvcplui.exe");
+        nvcpl.color = Some("#76B900".to_string());
+        nvcpl.executable_path = Some(r"C:\Program Files\WindowsApps\NVIDIACorp.NVIDIAControlPanel_8.1.969.0_x64__56jybvy8sckqj\nvcplui.exe".to_string());
+
+        // Corrupted / invalid system profiles from previous scanner versions
+        let polluted_broker = ApplicationProfile::new(
+            "@{Microsoft.AAD.BrokerPlugin_1000.19580.1000.0_neutral_neutral_cw5n1h2txyewy?ms-resource://...}",
+            "BrokerPlugin.exe",
+        ).with_executable_path(r"C:\Windows\SystemApps\Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy\BrokerPlugin.exe");
+
+        let polluted_resolver = ApplicationProfile::new(
+            "AppResolverUX",
+            "AppResolverUX.exe",
+        ).with_executable_path(r"C:\Windows\SystemApps\Microsoft.Windows.AppResolverUX_cw5n1h2txyewy\AppResolverUX.exe");
+
+        let polluted_nv_container = ApplicationProfile::new("NVIDIA Container", "nvcontainer.exe")
+            .with_executable_path(
+                r"C:\Program Files\NVIDIA Corporation\NvContainer\nvcontainer.exe",
+            );
+
+        let polluted_frameview = ApplicationProfile::new(
+            "NVIDIA FrameView SDK 1.9.12728.38614306",
+            "nvfvsdksvc_x64.exe",
+        )
+        .with_executable_path(
+            r"C:\Program Files\NVIDIA Corporation\FrameViewSDK\nvfvsdksvc_x64.exe",
+        );
+
+        let polluted_accounts = ApplicationProfile::new(
+            "AccountsControlHost",
+            "AccountsControlHost.exe",
+        ).with_executable_path(r"C:\Windows\SystemApps\Microsoft.AccountsControl_cw5n1h2txyewy\AccountsControlHost.exe");
+
+        let polluted_pinning = ApplicationProfile::new(
+            "PinningConfirmationDialog",
+            "PinningConfirmationDialog.exe",
+        ).with_executable_path(r"C:\Windows\SystemApps\Microsoft.Windows.PinningConfirmationDialog_cw5n1h2txyewy\PinningConfirmationDialog.exe");
+
+        settings.applications = vec![
+            spotify,
+            polluted_broker,
+            polluted_resolver,
+            nvcpl,
+            polluted_nv_container,
+            polluted_frameview,
+            polluted_accounts,
+            polluted_pinning,
+        ];
+
+        let sanitized = settings.sanitized();
+
+        // Only the 2 legitimate apps must remain
+        assert_eq!(sanitized.applications.len(), 2);
+        assert_eq!(sanitized.applications[0].application_name, "Spotify");
+        assert_eq!(sanitized.applications[0].color, Some("#1DB954".to_string()));
+        assert_eq!(
+            sanitized.applications[0].animation,
+            Some(GlowAnimationStyle::Breathing)
+        );
+
+        assert_eq!(
+            sanitized.applications[1].application_name,
+            "NVIDIA Control Panel"
+        );
+        assert_eq!(sanitized.applications[1].color, Some("#76B900".to_string()));
     }
 }

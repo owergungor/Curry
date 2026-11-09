@@ -47,11 +47,17 @@ fn extract_icon_and_color_internal(path_or_exe: &str, app_name: &str) -> AppIcon
     let trimmed = path_or_exe.trim();
 
     // 1. If path points to an existing PNG/JPG file directly (e.g. Store / Xbox logos)
-    if !trimmed.is_empty() && (trimmed.ends_with(".png") || trimmed.ends_with(".jpg") || trimmed.ends_with(".jpeg")) {
+    if !trimmed.is_empty()
+        && (trimmed.ends_with(".png") || trimmed.ends_with(".jpg") || trimmed.ends_with(".jpeg"))
+    {
         let p = std::path::Path::new(trimmed);
         if p.is_file() {
             if let Ok(bytes) = std::fs::read(p) {
-                let mime = if trimmed.ends_with(".png") { "image/png" } else { "image/jpeg" };
+                let mime = if trimmed.ends_with(".png") {
+                    "image/png"
+                } else {
+                    "image/jpeg"
+                };
                 let b64 = base64_encode(&bytes);
                 let data_url = format!("data:{};base64,{}", mime, b64);
                 let color = derive_color_from_name_or_fallback(app_name);
@@ -173,8 +179,9 @@ fn extract_windows_icon_and_color(path: &str, app_name: &str) -> Option<AppIconI
         }
 
         // Extract dominant vivid glow color from pixels
-        let dominant_color = extract_dominant_glow_color(&raw_pixels, width as usize, height as usize)
-            .unwrap_or_else(|| derive_color_from_name_or_fallback(app_name));
+        let dominant_color =
+            extract_dominant_glow_color(&raw_pixels, width as usize, height as usize)
+                .unwrap_or_else(|| derive_color_from_name_or_fallback(app_name));
 
         // Generate 32-bit RGBA BMP file in memory
         let bmp_bytes = build_32bit_bmp(width as u32, height as u32, &raw_pixels);
@@ -451,6 +458,8 @@ fn derive_color_from_name_or_fallback(app_name: &str) -> String {
         "#EC4899", // Deep Rose
     ];
 
-    let hash: usize = app_name.bytes().fold(0usize, |acc, b| acc.wrapping_add(b as usize));
+    let hash: usize = app_name
+        .bytes()
+        .fold(0usize, |acc, b| acc.wrapping_add(b as usize));
     PALETTE[hash % PALETTE.len()].to_string()
 }
