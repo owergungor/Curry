@@ -43,18 +43,163 @@ pub fn get_app_icon_and_color(path_or_exe: &str, app_name: &str) -> AppIconInfo 
     result
 }
 
-fn extract_icon_and_color_internal(path_or_exe: &str, app_name: &str) -> AppIconInfo {
-    let trimmed = path_or_exe.trim();
-
-    // 1. If path points to an existing PNG/JPG file directly (e.g. Store / Xbox logos)
-    if !trimmed.is_empty()
-        && (trimmed.ends_with(".png") || trimmed.ends_with(".jpg") || trimmed.ends_with(".jpeg"))
+/// Sanitizes a raw path or registry icon string (strips quotes, comma-indices, and whitespace).
+pub fn sanitize_icon_path(raw: &str) -> String {
+    let mut cleaned = raw.trim();
+    if (cleaned.starts_with('"') && cleaned.ends_with('"'))
+        || (cleaned.starts_with('\'') && cleaned.ends_with('\''))
     {
-        let p = std::path::Path::new(trimmed);
-        if p.is_file() {
-            if let Ok(bytes) = std::fs::read(p) {
-                let mime = if trimmed.ends_with(".png") {
+        cleaned = &cleaned[1..cleaned.len() - 1];
+    }
+    let cleaned = cleaned.trim();
+    if let Some(idx) = cleaned.rfind(',') {
+        let suffix = &cleaned[idx + 1..];
+        if suffix
+            .trim()
+            .chars()
+            .all(|c| c.is_ascii_digit() || c == '-')
+        {
+            return cleaned[..idx]
+                .trim_matches('"')
+                .trim_matches('\'')
+                .trim()
+                .to_string();
+        }
+    }
+    cleaned
+        .trim_matches('"')
+        .trim_matches('\'')
+        .trim()
+        .to_string()
+}
+
+/// Resolves a candidate image file path, supporting exact paths and UWP resource qualifiers (.scale-200, etc.).
+fn resolve_candidate_image_file(path_str: &str) -> Option<std::path::PathBuf> {
+    let p = std::path::Path::new(path_str);
+    let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let is_img_ext = ext.eq_ignore_ascii_case("png")
+        || ext.eq_ignore_ascii_case("jpg")
+        || ext.eq_ignore_ascii_case("jpeg")
+        || ext.eq_ignore_ascii_case("ico")
+        || ext.eq_ignore_ascii_case("bmp")
+        || ext.eq_ignore_ascii_case("webp");
+
+    if p.is_file() && is_img_ext {
+        return Some(p.to_path_buf());
+    }
+
+    if ext.eq_ignore_ascii_case("png")
+        || ext.eq_ignore_ascii_case("jpg")
+        || ext.eq_ignore_ascii_case("jpeg")
+    {
+        if let (Some(parent), Some(stem)) = (p.parent(), p.file_stem().and_then(|s| s.to_str())) {
+            let qualifiers = [
+                ".scale-200",
+                ".scale-150",
+                ".scale-125",
+                ".scale-100",
+                ".targetsize-48",
+                ".targetsize-32",
+                ".targetsize-256",
+                ".targetsize-48_altform-unplated",
+                ".targetsize-32_altform-unplated",
+                "_scale-200",
+                "_scale-100",
+            ];
+            for q in qualifiers {
+                let candidate = parent.join(format!("{}{}.{}", stem, q, ext));
+                if candidate.is_file() {
+                    return Some(candidate);
+                }
+            }
+
+            if let Ok(entries) = std::fs::read_dir(parent) {
+                for entry in entries.flatten() {
+                    let ep = entry.path();
+                    if ep.is_file() {
+                        if let Some(name) = ep.file_name().and_then(|n| n.to_str()) {
+                            if name.starts_with(stem) && name.ends_with(&format!(".{}", ext)) {
+                                return Some(ep);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Attempts to resolve an AppxManifest logo when the path points to a package or executable in WindowsApps.
+fn try_resolve_appx_manifest_logo(path: &str) -> Option<std::path::PathBuf> {
+    let p = std::path::Path::new(path);
+    let dir = if p.is_dir() {
+        p.to_path_buf()
+    } else {
+        p.parent()?.to_path_buf()
+    };
+
+    let manifest_path = if dir.join("AppxManifest.xml").is_file() {
+        dir.join("AppxManifest.xml")
+    } else if dir.join("appxmanifest.xml").is_file() {
+        dir.join("appxmanifest.xml")
+    } else {
+        return None;
+    };
+
+    let manifest_str = std::fs::read_to_string(&manifest_path).ok()?;
+    let logo_rel = extract_manifest_logo(&manifest_str)?;
+    let candidate = dir.join(logo_rel.replace('/', "\\"));
+    resolve_candidate_image_file(&candidate.to_string_lossy())
+}
+
+fn extract_manifest_logo(xml: &str) -> Option<String> {
+    for tag_attr in &[
+        ("uap:VisualElements", "Square44x44Logo"),
+        ("uap:VisualElements", "Square150x150Logo"),
+        ("VisualElements", "Square44x44Logo"),
+        ("VisualElements", "Square150x150Logo"),
+        ("Application", "Square44x44Logo"),
+        ("Application", "Square150x150Logo"),
+    ] {
+        let pattern = format!("{}=\"", tag_attr.1);
+        if let Some(pos) = xml.find(&pattern) {
+            let start = pos + pattern.len();
+            if let Some(end) = xml[start..].find('"') {
+                let val = xml[start..start + end].trim();
+                if !val.is_empty() {
+                    return Some(val.to_string());
+                }
+            }
+        }
+    }
+
+    if let Some(pos) = xml.find("<Logo>") {
+        let start = pos + 6;
+        if let Some(end) = xml[start..].find("</Logo>") {
+            let val = xml[start..start + end].trim();
+            if !val.is_empty() {
+                return Some(val.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+fn extract_icon_and_color_internal(path_or_exe: &str, app_name: &str) -> AppIconInfo {
+    let cleaned = sanitize_icon_path(path_or_exe);
+
+    // 1. Direct or qualified image file check (PNG/JPG/JPEG/ICO)
+    if !cleaned.is_empty() {
+        if let Some(img_path) = resolve_candidate_image_file(&cleaned) {
+            if let Ok(bytes) = std::fs::read(&img_path) {
+                let path_str = img_path.to_string_lossy().to_lowercase();
+                let mime = if path_str.ends_with(".png") {
                     "image/png"
+                } else if path_str.ends_with(".ico") {
+                    "image/x-icon"
                 } else {
                     "image/jpeg"
                 };
@@ -69,10 +214,34 @@ fn extract_icon_and_color_internal(path_or_exe: &str, app_name: &str) -> AppIcon
         }
     }
 
+    // 2. Windows native executable / shortcut / GDI icon extraction
     #[cfg(target_os = "windows")]
     {
-        if let Some(info) = extract_windows_icon_and_color(trimmed, app_name) {
-            return info;
+        if !cleaned.is_empty() {
+            if let Some(info) = extract_windows_icon_and_color(&cleaned, app_name) {
+                return info;
+            }
+        }
+
+        // 3. Fallback: resolve from AppxManifest.xml if located in WindowsApps or package dir
+        if !cleaned.is_empty() {
+            if let Some(logo_path) = try_resolve_appx_manifest_logo(&cleaned) {
+                if let Ok(bytes) = std::fs::read(&logo_path) {
+                    let path_str = logo_path.to_string_lossy().to_lowercase();
+                    let mime = if path_str.ends_with(".png") {
+                        "image/png"
+                    } else {
+                        "image/jpeg"
+                    };
+                    let b64 = base64_encode(&bytes);
+                    let data_url = format!("data:{};base64,{}", mime, b64);
+                    let color = derive_color_from_name_or_fallback(app_name);
+                    return AppIconInfo {
+                        icon: Some(data_url),
+                        color,
+                    };
+                }
+            }
         }
     }
 
@@ -90,8 +259,10 @@ fn extract_windows_icon_and_color(path: &str, app_name: &str) -> Option<AppIconI
         BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HGDIOBJ,
     };
     use windows::Win32::Storage::FileSystem::FILE_FLAGS_AND_ATTRIBUTES;
-    use windows::Win32::UI::Shell::{SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON};
-    use windows::Win32::UI::WindowsAndMessaging::{DestroyIcon, GetIconInfo, ICONINFO};
+    use windows::Win32::UI::Shell::{
+        ExtractIconExW, SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{DestroyIcon, GetIconInfo, HICON, ICONINFO};
 
     if path.is_empty() {
         return None;
@@ -110,11 +281,25 @@ fn extract_windows_icon_and_color(path: &str, app_name: &str) -> Option<AppIconI
             SHGFI_ICON | SHGFI_LARGEICON,
         );
 
-        if res == 0 || shfi.hIcon.is_invalid() {
-            return None;
+        let mut hicon = shfi.hIcon;
+
+        // Fallback to ExtractIconExW if SHGetFileInfoW did not retrieve an icon
+        if res == 0 || hicon.is_invalid() {
+            let mut extracted = [HICON::default()];
+            let count = ExtractIconExW(
+                PCWSTR(wide_path.as_ptr()),
+                0,
+                Some(extracted.as_mut_ptr()),
+                None,
+                1,
+            );
+            if count > 0 && !extracted[0].is_invalid() {
+                hicon = extracted[0];
+            } else {
+                return None;
+            }
         }
 
-        let hicon = shfi.hIcon;
         let mut icon_info = ICONINFO::default();
         if GetIconInfo(hicon, &mut icon_info).is_err() {
             let _ = DestroyIcon(hicon);
@@ -168,6 +353,53 @@ fn extract_windows_icon_and_color(path: &str, app_name: &str) -> Option<AppIconI
             &mut bi,
             DIB_RGB_COLORS,
         );
+
+        if dib_res == 0 {
+            let _ = DeleteDC(hdc);
+            let _ = DeleteObject(HGDIOBJ(icon_info.hbmColor.0));
+            let _ = DeleteObject(HGDIOBJ(icon_info.hbmMask.0));
+            let _ = DestroyIcon(hicon);
+            return None;
+        }
+
+        // Check if alpha channel was provided by the color bitmap
+        let mut has_alpha = false;
+        for chunk in raw_pixels.chunks_exact(4) {
+            if chunk[3] > 0 {
+                has_alpha = true;
+                break;
+            }
+        }
+
+        // If GDI left alpha as 0 (standard legacy/24-bit icons), restore transparency via hbmMask
+        if !has_alpha {
+            if !icon_info.hbmMask.0.is_null() {
+                let mut mask_pixels = vec![0u8; (width * height * 4) as usize];
+                let mask_res = GetDIBits(
+                    hdc,
+                    icon_info.hbmMask,
+                    0,
+                    height as u32,
+                    Some(mask_pixels.as_mut_ptr() as *mut _),
+                    &mut bi,
+                    DIB_RGB_COLORS,
+                );
+                if mask_res != 0 {
+                    for i in 0..(width * height) as usize {
+                        let is_transparent = mask_pixels[i * 4] > 128;
+                        raw_pixels[i * 4 + 3] = if is_transparent { 0 } else { 255 };
+                    }
+                } else {
+                    for chunk in raw_pixels.chunks_exact_mut(4) {
+                        chunk[3] = 255;
+                    }
+                }
+            } else {
+                for chunk in raw_pixels.chunks_exact_mut(4) {
+                    chunk[3] = 255;
+                }
+            }
+        }
 
         let _ = DeleteDC(hdc);
         let _ = DeleteObject(HGDIOBJ(icon_info.hbmColor.0));
@@ -462,4 +694,71 @@ fn derive_color_from_name_or_fallback(app_name: &str) -> String {
         .bytes()
         .fold(0usize, |acc, b| acc.wrapping_add(b as usize));
     PALETTE[hash % PALETTE.len()].to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize_icon_path() {
+        assert_eq!(
+            sanitize_icon_path("\"C:\\App\\app.exe\""),
+            "C:\\App\\app.exe"
+        );
+        assert_eq!(sanitize_icon_path("'C:\\App\\app.exe'"), "C:\\App\\app.exe");
+        assert_eq!(sanitize_icon_path("C:\\App\\app.exe,0"), "C:\\App\\app.exe");
+        assert_eq!(
+            sanitize_icon_path("\"C:\\App\\app.exe\",-1"),
+            "C:\\App\\app.exe"
+        );
+        assert_eq!(
+            sanitize_icon_path("   C:\\App\\app.exe,2   "),
+            "C:\\App\\app.exe"
+        );
+        assert_eq!(sanitize_icon_path("C:\\App\\app.exe"), "C:\\App\\app.exe");
+    }
+
+    #[test]
+    fn test_extract_manifest_logo() {
+        let xml = r#"<uap:VisualElements DisplayName="Test" Square150x150Logo="Assets\Logo150.png" Square44x44Logo="Assets\Logo44.png" />"#;
+        let logo = extract_manifest_logo(xml);
+        assert!(logo.is_some());
+    }
+
+    #[test]
+    fn test_derive_color_consistency() {
+        let c1 = derive_color_from_name_or_fallback("Discord");
+        let c2 = derive_color_from_name_or_fallback("Discord");
+        assert_eq!(c1, c2);
+        assert!(c1.starts_with('#'));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_windows_system_app_icon_extraction() {
+        let res = get_app_icon_and_color("C:\\Windows\\explorer.exe", "Windows Explorer");
+        assert!(res.icon.is_some(), "Explorer.exe icon should be extracted");
+        let icon_str = res.icon.unwrap();
+        assert!(
+            icon_str.starts_with("data:image/bmp;base64,")
+                || icon_str.starts_with("data:image/png;base64,")
+        );
+        assert!(res.color.starts_with('#'));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_uwp_manifest_logo_resolution() {
+        let uwp_path = "C:\\Program Files\\WindowsApps\\Microsoft.XboxGamingOverlay_7.326.10141.0_x64__8wekyb3d8bbwe\\GameBar.exe";
+        if std::path::Path::new(uwp_path).exists() {
+            let res = get_app_icon_and_color(uwp_path, "Game Bar");
+            assert!(res.icon.is_some(), "Game Bar UWP logo should be resolved");
+            let icon_str = res.icon.unwrap();
+            assert!(
+                icon_str.starts_with("data:image/png;base64,")
+                    || icon_str.starts_with("data:image/")
+            );
+        }
+    }
 }

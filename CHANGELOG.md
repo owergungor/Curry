@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.9] - 2026-11-10
+
+### Added
+- **Application Icons Inside Square Frames**:
+  - Real Windows application icons dynamically extracted from Win32 executables and Microsoft Store (UWP) package manifests.
+  - Centered and scaled with `object-fit: contain` inside 44x44 neon-framed containers without distortion or cropping across both Grid and List modes.
+  - Enhanced Content Security Policy (CSP) with `data:` in `img-src` to permit base64 icon data URIs without triggering image load errors.
+  - Resilient fallback to SVG application glyph when no icon is extractable.
+- **Application Profile Editor UI Redesign**:
+  - Re-architected the "Edit Application Profile" modal from the ground up into a modern, compact dark dialog.
+  - Aligned header with square neon application avatar, title, subtitle, and top-right close action.
+  - Organized two-column Application Identity section with Name, Executable Name, Executable Path card with clear action, and native executable file browsing.
+  - Dedicated Profile Enable status card with tactile toggle switch.
+  - Responsive two-column slider grid for Glow Intensity, Duration, Border Thickness, and Corner Rounding.
+  - Fullscreen suppression switch and multi-monitor targeting selectors.
+  - Sticky modal footer with organized Delete, Preview, Cancel, and Save Changes actions.
+  - Interactive application cards in both Grid and List views to directly open the editor modal on click.
+
+### Changed
+- **Grid Edit Button Visual Consistency**:
+  - Refined the Edit button in Grid view (`.icon-action-btn.edit-btn`) to match the Preview button's background, border, text, and hover states.
+  - Lowered visual contrast for a subtle, elegant, and consistent appearance across card action buttons.
+  - Preserved List view action button styling and behavior without modifications.
+- **App Path Hidden from Main Apps View**:
+  - Removed full filesystem paths from Grid and List cards on the main Apps tab, keeping cards compact and uncluttered with only Application Name and Executable Name.
+  - Full executable path details remain cleanly accessible in the Edit Application Profile modal.
+- **Scanner Cleanup Improvements**:
+  - Consolidated strict scanner cleanup filtering from previous versions to ensure only user-facing, launchable applications appear in the Apps tab.
+  - Strictly filters internal Windows components, broker plugins (`Microsoft.AAD.BrokerPlugin`), host processes (`AccountsControlHost`), background utilities, and unresolved resource identifiers (`@{...}`, `ms-resource:`).
+
+---
+
+## [3.8] - 2026-11-10
+
+### Added
+- Application Profile Editor modal complete dark UI redesign with semantic dialog markup, two-column identity grid, and responsive slider controls.
+- Clickable application cards in Grid and List views to open the profile editor directly.
+
+### Changed
+- Removed full executable filesystem paths from main Apps tab cards.
+- Enhanced Content Security Policy to support base64 application icons in WebView2.
+
+---
+
+## [3.7] - 2026-11-10
+
+### Added
+- Real Windows application icon extraction engine (`src-tauri/src/scanner/icon.rs`) supporting Win32 executables, PE resources, UWP AppX manifests, and high-DPI assets.
+- Square neon frame container with contain scaling and centered alignment for application icons.
+- Dynamic startup enrichment for profiles missing icons.
+
+---
+
 ## [2.1] - 2026-10-16
 
 ### Added

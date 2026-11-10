@@ -736,6 +736,21 @@
       const list = await invoke<ApplicationProfile[]>("get_application_profiles");
       if (list && list.length > 0) {
         applications = list;
+        // Dynamically enrich missing icons for existing profiles
+        for (const p of applications) {
+          if (!p.icon) {
+            safeInvoke<AppIconInfo>("get_app_icon", {
+              path: p.executablePath || p.executableName,
+              name: p.applicationName,
+            }).then((info) => {
+              if (info?.icon && !p.icon) {
+                p.icon = info.icon;
+                if (!p.color && info.color) p.color = info.color;
+                applications = [...applications];
+              }
+            }).catch(() => {});
+          }
+        }
       } else if (applications.length === 0) {
         // Initialize starter presets
         applications = [...DEFAULT_STARTER_PROFILES];
@@ -807,6 +822,16 @@
         if (!editingProfile.applicationName || editingProfile.applicationName.trim() === "" || isCreatingNewProfile) {
           editingProfile.applicationName = res.displayName;
         }
+        if (!editingProfile.icon && (editingProfile.executablePath || editingProfile.executableName)) {
+          safeInvoke<AppIconInfo>("get_app_icon", {
+            path: editingProfile.executablePath || editingProfile.executableName,
+            name: editingProfile.applicationName,
+          }).then((info) => {
+            if (info?.icon && editingProfile && !editingProfile.icon) {
+              editingProfile.icon = info.icon;
+            }
+          }).catch(() => {});
+        }
       }
     } catch (err) {
       const appErr = errorStore.report({
@@ -828,6 +853,16 @@
         if (!editingProfile.applicationName || editingProfile.applicationName.trim() === "" || isCreatingNewProfile) {
           editingProfile.applicationName = info.displayName;
         }
+        if (!editingProfile.icon && (editingProfile.executablePath || editingProfile.executableName)) {
+          safeInvoke<AppIconInfo>("get_app_icon", {
+            path: editingProfile.executablePath || editingProfile.executableName,
+            name: editingProfile.applicationName,
+          }).then((iconInfo) => {
+            if (iconInfo?.icon && editingProfile && !editingProfile.icon) {
+              editingProfile.icon = iconInfo.icon;
+            }
+          }).catch(() => {});
+        }
       } catch {
         // preserve as-is
       }
@@ -835,6 +870,16 @@
       const stripped = val.toLowerCase().endsWith(".exe") ? val.slice(0, -4) : val;
       if (stripped.length > 0) {
         editingProfile.applicationName = stripped.charAt(0).toUpperCase() + stripped.slice(1);
+      }
+      if (!editingProfile.icon) {
+        safeInvoke<AppIconInfo>("get_app_icon", {
+          path: val,
+          name: editingProfile.applicationName,
+        }).then((iconInfo) => {
+          if (iconInfo?.icon && editingProfile && !editingProfile.icon) {
+            editingProfile.icon = iconInfo.icon;
+          }
+        }).catch(() => {});
       }
     }
   }
@@ -2427,7 +2472,18 @@
               {:else if appsViewMode === "grid"}
                 <div class="applications-grid">
                   {#each filteredProfiles as profile (profile.id)}
-                    <div class="app-profile-card card {profile.enabled ? '' : 'disabled'}">
+                    <div
+                      class="app-profile-card card {profile.enabled ? '' : 'disabled'}"
+                      role="button"
+                      tabindex="0"
+                      onclick={() => openEditProfileModal(profile)}
+                      onkeydown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          openEditProfileModal(profile);
+                        }
+                      }}
+                    >
                       <div class="app-card-header">
                         <div
                           class="app-avatar-box"
@@ -2435,7 +2491,15 @@
                           style:border-color={profile.color || appSettings.glow.color}
                         >
                           {#if profile.icon}
-                            <img src={profile.icon} alt={profile.applicationName} class="app-avatar-img" onerror={() => { profile.icon = null; }} />
+                            <img
+                              src={profile.icon}
+                              alt={profile.applicationName}
+                              class="app-avatar-img"
+                              loading="lazy"
+                              decoding="async"
+                              draggable="false"
+                              onerror={() => { profile.icon = null; }}
+                            />
                           {:else}
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="app-avatar-fallback-icon" aria-hidden="true">
                               <rect x="3" y="4" width="18" height="16" rx="3"></rect>
@@ -2456,16 +2520,13 @@
                               <span class="suppressed-badge">{t('apps.disabled')}</span>
                             {/if}
                           </div>
-                          <span class="app-executable-text" title={profile.executablePath || profile.executableName}>
+                          <span class="app-executable-text" title={profile.executableName}>
                             {profile.executableName}
                           </span>
                         </div>
                       </div>
 
                       <div class="app-card-body">
-                        {#if profile.executablePath}
-                          <div class="app-path-hint" title={profile.executablePath}>{profile.executablePath}</div>
-                        {/if}
                         <div class="app-tags-row">
                           <span class="app-tag anim">
                             {(profile.animation || appSettings.glow.animation_style).toUpperCase()}
@@ -2493,7 +2554,12 @@
                         </div>
                       </div>
 
-                      <div class="app-profile-actions app-card-actions">
+                      <div
+                        class="app-profile-actions app-card-actions"
+                        onclick={(e) => e.stopPropagation()}
+                        onkeydown={(e) => e.stopPropagation()}
+                        role="presentation"
+                      >
                         <!-- STRICT ORDER: Switch -> Preview -> Edit -> Delete -->
                         <!-- 1. Switch -->
                         <AppleSwitch
@@ -2521,7 +2587,7 @@
                         <!-- 3. Edit -->
                         <button
                           type="button"
-                          class="secondary-btn edit-btn"
+                          class="icon-action-btn edit-btn"
                           onclick={() => openEditProfileModal(profile)}
                           title={t('apps.edit')}
                         >
@@ -2553,7 +2619,18 @@
                 <!-- LIST VIEW: Strict Order: Switch -> Preview -> Edit -> Delete -->
                 <div class="applications-list" role="list">
                   {#each filteredProfiles as profile (profile.id)}
-                    <div class="app-profile-list-item card {profile.enabled ? '' : 'disabled'}" role="listitem">
+                    <div
+                      class="app-profile-list-item card {profile.enabled ? '' : 'disabled'}"
+                      role="button"
+                      tabindex="0"
+                      onclick={() => openEditProfileModal(profile)}
+                      onkeydown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          openEditProfileModal(profile);
+                        }
+                      }}
+                    >
                       <div class="app-profile-left">
                         <div
                           class="app-avatar-box"
@@ -2561,7 +2638,15 @@
                           style:border-color={profile.color || appSettings.glow.color}
                         >
                           {#if profile.icon}
-                            <img src={profile.icon} alt={profile.applicationName} class="app-avatar-img" onerror={() => { profile.icon = null; }} />
+                            <img
+                              src={profile.icon}
+                              alt={profile.applicationName}
+                              class="app-avatar-img"
+                              loading="lazy"
+                              decoding="async"
+                              draggable="false"
+                              onerror={() => { profile.icon = null; }}
+                            />
                           {:else}
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="app-avatar-fallback-icon" aria-hidden="true">
                               <rect x="3" y="4" width="18" height="16" rx="3"></rect>
@@ -2581,11 +2666,8 @@
                               <span class="suppressed-badge">{t('apps.disabled')}</span>
                             {/if}
                           </div>
-                          <span class="app-executable-text" title={profile.executablePath || profile.executableName}>
+                          <span class="app-executable-text" title={profile.executableName}>
                             {profile.executableName}
-                            {#if profile.executablePath}
-                              <span class="app-path-hint" title={profile.executablePath}>• {profile.executablePath}</span>
-                            {/if}
                           </span>
                           <div class="app-tags-row">
                             <span class="app-tag anim">
@@ -2605,7 +2687,12 @@
                       </div>
 
                       <!-- STRICT ORDER: Switch -> Preview (ghost) -> Edit (ghost) -> Delete -->
-                      <div class="app-profile-list-actions">
+                      <div
+                        class="app-profile-list-actions"
+                        onclick={(e) => e.stopPropagation()}
+                        onkeydown={(e) => e.stopPropagation()}
+                        role="presentation"
+                      >
                         <!-- 1. Switch -->
                         <AppleSwitch
                           checked={profile.enabled}
@@ -3607,7 +3694,7 @@
   {#if isProfileModalOpen && editingProfile}
     <div class="modal-backdrop" onclick={closeProfileModal} role="presentation">
       <div
-        class="modal-card card profile-modal-card"
+        class="profile-modal-dialog card"
         onclick={(e) => e.stopPropagation()}
         onkeydown={(e) => e.stopPropagation()}
         role="dialog"
@@ -3615,15 +3702,24 @@
         aria-modal="true"
         aria-labelledby="profile-modal-title"
       >
-        <div class="modal-header">
-          <div class="modal-title-group">
+        <!-- 1. MODAL HEADER -->
+        <header class="profile-modal-header">
+          <div class="profile-modal-header-left">
             <div
-              class="app-avatar-box modal-avatar"
+              class="app-avatar-box profile-modal-avatar"
               style:--app-glow-color={editingProfile.color || appSettings.glow.color}
               style:border-color={editingProfile.color || appSettings.glow.color}
             >
               {#if editingProfile.icon}
-                <img src={editingProfile.icon} alt={editingProfile.applicationName} class="app-avatar-img" onerror={() => { if (editingProfile) editingProfile.icon = null; }} />
+                <img
+                  src={editingProfile.icon}
+                  alt={editingProfile.applicationName}
+                  class="app-avatar-img"
+                  loading="lazy"
+                  decoding="async"
+                  draggable="false"
+                  onerror={() => { if (editingProfile) editingProfile.icon = null; }}
+                />
               {:else}
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="app-avatar-fallback-icon" aria-hidden="true">
                   <rect x="3" y="4" width="18" height="16" rx="3"></rect>
@@ -3636,85 +3732,108 @@
                 </svg>
               {/if}
             </div>
-            <div>
-              <h3 id="profile-modal-title" class="modal-title">
+            <div class="profile-modal-header-text">
+              <h3 id="profile-modal-title" class="profile-modal-title">
                 {isCreatingNewProfile ? t('apps.modal_add_title') : t('apps.modal_edit_title')}
               </h3>
-              <p class="modal-subtitle">{t('apps.modal_subtitle')}</p>
+              <p class="profile-modal-subtitle">
+                {editingProfile.applicationName ? `${editingProfile.applicationName} • ${editingProfile.executableName || ''}` : t('apps.modal_subtitle')}
+              </p>
             </div>
           </div>
-          <button class="modal-close-btn" onclick={closeProfileModal} aria-label="Close dialog">✕</button>
-        </div>
+          <button
+            type="button"
+            class="profile-modal-close-btn"
+            onclick={closeProfileModal}
+            aria-label="Close dialog"
+            title="Close"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="close-icon" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </header>
 
         {#if profileActionError}
-          <div class="alert-banner danger">
+          <div class="alert-banner danger profile-modal-alert">
             <span>{profileActionError}</span>
           </div>
         {/if}
 
-        <div class="modal-body-form">
-          <div class="form-section-header">{t('apps.section_details')}</div>
-
-          <div class="form-row">
-            <label class="form-label" for="prof-app-name">{t('apps.app_name')}</label>
-            <input
-              id="prof-app-name"
-              type="text"
-              bind:value={editingProfile.applicationName}
-              placeholder="e.g. Discord, Spotify, Steam"
-              class="native-input"
-            />
-          </div>
-
-          <div class="form-row">
-            <label class="form-label" for="prof-exe-name">{t('apps.exe_name')}</label>
-            <div class="input-with-action">
-              <input
-                id="prof-exe-name"
-                type="text"
-                bind:value={editingProfile.executableName}
-                onblur={handleExeBlur}
-                placeholder="e.g. Discord.exe, Spotify.exe, steam.exe"
-                class="native-input"
-              />
-              <button
-                type="button"
-                id="prof-browse-btn"
-                class="secondary-btn browse-btn"
-                onclick={browseForExecutable}
-                title="Browse Windows executable (*.exe)"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>
-                <span>{t('apps.browse_exe')}</span>
-              </button>
+        <!-- 2. SCROLLABLE FORM CONTENT -->
+        <div class="profile-modal-body">
+          <!-- SECTION 1: IDENTITY -->
+          <section class="profile-section">
+            <div class="profile-section-heading">
+              <span class="profile-section-title">{t('apps.section_details')}</span>
             </div>
-          </div>
 
-          {#if editingProfile.executablePath}
-            <div class="form-row path-row">
-              <label class="form-label" for="prof-exe-path">{t('apps.path')}</label>
-              <div class="path-display-box">
-                <span id="prof-exe-path" class="path-text" title={editingProfile.executablePath}>
-                  {editingProfile.executablePath}
-                </span>
-                <button
-                  type="button"
-                  class="clear-path-btn"
-                  onclick={() => { if (editingProfile) editingProfile.executablePath = null; }}
-                  title="Clear path"
-                >
-                  ✕
-                </button>
+            <div class="profile-grid">
+              <div class="profile-form-group">
+                <label class="profile-form-label" for="prof-app-name">{t('apps.app_name')}</label>
+                <input
+                  id="prof-app-name"
+                  type="text"
+                  bind:value={editingProfile.applicationName}
+                  placeholder="e.g. Discord, Spotify, Steam"
+                  class="profile-input"
+                />
               </div>
-            </div>
-          {/if}
 
-          <div class="control-item modal-toggle-item">
-            <div class="control-label-group">
-              <span class="control-title">{t('apps.enabled')}</span>
-              <span class="control-sub">{t('apps.enabled_desc')}</span>
+              <div class="profile-form-group">
+                <label class="profile-form-label" for="prof-exe-name">{t('apps.exe_name')}</label>
+                <div class="profile-input-action-row">
+                  <input
+                    id="prof-exe-name"
+                    type="text"
+                    bind:value={editingProfile.executableName}
+                    onblur={handleExeBlur}
+                    placeholder="e.g. Discord.exe, Spotify.exe"
+                    class="profile-input"
+                  />
+                  <button
+                    type="button"
+                    id="prof-browse-btn"
+                    class="profile-action-btn"
+                    onclick={browseForExecutable}
+                    title="Browse Windows executable (*.exe)"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>{t('apps.browse_exe')}</span>
+                  </button>
+                </div>
+              </div>
+
+              {#if editingProfile.executablePath}
+                <div class="profile-form-group full-width">
+                  <label class="profile-form-label" for="prof-exe-path">{t('apps.path')}</label>
+                  <div class="profile-path-card">
+                    <span id="prof-exe-path" class="profile-path-text" title={editingProfile.executablePath}>
+                      {editingProfile.executablePath}
+                    </span>
+                    <button
+                      type="button"
+                      class="profile-path-clear"
+                      onclick={() => { if (editingProfile) editingProfile.executablePath = null; }}
+                      title="Clear path"
+                      aria-label="Clear path"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              {/if}
+            </div>
+          </section>
+
+          <!-- SECTION 2: PROFILE STATUS -->
+          <div class="profile-status-card">
+            <div class="profile-status-info">
+              <span class="profile-status-title">{t('apps.enabled')}</span>
+              <span class="profile-status-desc">{t('apps.enabled_desc')}</span>
             </div>
             <AppleSwitch
               id="modal-profile-enabled-switch"
@@ -3726,154 +3845,173 @@
             />
           </div>
 
-          <div class="form-section-header">{t('apps.section_glow')}</div>
+          <!-- SECTION 3: GLOW CONFIGURATION -->
+          <section class="profile-section">
+            <div class="profile-section-heading">
+              <span class="profile-section-title">{t('apps.section_glow')}</span>
+            </div>
 
-          <!-- Glow Color -->
-          <div class="form-row">
-            <span class="form-label">{t('apps.override_color')}</span>
-            <ColorPicker
-              color={editingProfile.color || appSettings.glow.color}
-              onChange={(newCol: string) => {
-                if (editingProfile) editingProfile.color = newCol;
-              }}
-            />
-          </div>
+            <!-- Color & Animation -->
+            <div class="profile-glow-row">
+              <div class="profile-form-group full-width">
+                <span class="profile-form-label">{t('apps.override_color')}</span>
+                <ColorPicker
+                  color={editingProfile.color || appSettings.glow.color}
+                  onChange={(newCol: string) => {
+                    if (editingProfile) editingProfile.color = newCol;
+                  }}
+                />
+              </div>
 
-          <!-- Animation -->
-          <div class="form-row">
-            <span class="form-label">{t('glow.animation_style')}</span>
-            <div class="dropdown-control-wrapper">
-              <Dropdown
-                items={ANIMATION_OPTIONS}
-                value={editingProfile.animation || "pulse"}
-                onSelect={(val: string) => {
-                  if (editingProfile) editingProfile.animation = val as any;
+              <div class="profile-form-group full-width">
+                <span class="profile-form-label">{t('glow.animation_style')}</span>
+                <div class="dropdown-control-wrapper">
+                  <Dropdown
+                    items={ANIMATION_OPTIONS}
+                    value={editingProfile.animation || "pulse"}
+                    onSelect={(val: string) => {
+                      if (editingProfile) editingProfile.animation = val as any;
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Two-column Sliders -->
+            <div class="profile-sliders-grid">
+              <!-- Intensity -->
+              <div class="profile-slider-card">
+                <div class="profile-slider-head">
+                  <label class="profile-form-label" for="prof-intensity">{t('glow.intensity')}</label>
+                  <span class="profile-badge">{Math.round((editingProfile.intensity ?? appSettings.glow.intensity) * 100)}%</span>
+                </div>
+                <div class="slider-box">
+                  <input
+                    id="prof-intensity"
+                    type="range"
+                    min="0.1"
+                    max="1.0"
+                    step="0.05"
+                    bind:value={editingProfile.intensity}
+                    class="native-slider"
+                  />
+                </div>
+              </div>
+
+              <!-- Duration -->
+              <div class="profile-slider-card">
+                <div class="profile-slider-head">
+                  <label class="profile-form-label" for="prof-duration">{t('glow.duration')}</label>
+                  <span class="profile-badge">{editingProfile.duration ?? 2.0}s</span>
+                </div>
+                <div class="slider-box">
+                  <input
+                    id="prof-duration"
+                    type="range"
+                    min="0.5"
+                    max="10.0"
+                    step="0.5"
+                    bind:value={editingProfile.duration}
+                    class="native-slider"
+                  />
+                </div>
+              </div>
+
+              <!-- Border Thickness -->
+              <div class="profile-slider-card">
+                <div class="profile-slider-head">
+                  <label class="profile-form-label" for="prof-thickness">{t('glow.thickness')}</label>
+                  <span class="profile-badge">{editingProfile.borderThickness ?? appSettings.glow.thickness}px</span>
+                </div>
+                <div class="slider-box">
+                  <input
+                    id="prof-thickness"
+                    type="range"
+                    min="2"
+                    max="32"
+                    step="1"
+                    bind:value={editingProfile.borderThickness}
+                    class="native-slider"
+                  />
+                </div>
+              </div>
+
+              <!-- Corner Rounding -->
+              <div class="profile-slider-card">
+                <div class="profile-slider-head">
+                  <label class="profile-form-label" for="prof-rounding">{t('glow.corner_radius')}</label>
+                  <span class="profile-badge">{editingProfile.cornerRounding ?? appSettings.glow.corner_radius}px</span>
+                </div>
+                <div class="slider-box">
+                  <input
+                    id="prof-rounding"
+                    type="range"
+                    min="0"
+                    max="48"
+                    step="2"
+                    bind:value={editingProfile.cornerRounding}
+                    class="native-slider"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- SECTION 4: DISPLAY & SUPPRESSION -->
+          <section class="profile-section">
+            <div class="profile-section-heading">
+              <span class="profile-section-title">{t('glow.optimization_title')}</span>
+            </div>
+
+            <div class="profile-form-group full-width">
+              <span class="profile-form-label">{t('glow.monitor_target')}</span>
+              <div class="dropdown-control-wrapper">
+                <Dropdown
+                  items={MONITOR_OPTIONS}
+                  value={editingProfile.monitorTarget || "primary"}
+                  onSelect={(val: string) => {
+                    if (editingProfile) editingProfile.monitorTarget = val;
+                  }}
+                />
+              </div>
+            </div>
+
+            <div class="profile-status-card" style="margin-top: 4px;">
+              <div class="profile-status-info">
+                <span class="profile-status-title">{t('glow.fullscreen_title')}</span>
+                <span class="profile-status-desc">{t('glow.fullscreen_sub')}</span>
+              </div>
+              <AppleSwitch
+                id="modal-profile-suppress-switch"
+                checked={editingProfile.suppressInFullscreen}
+                onchange={(val) => {
+                  if (editingProfile) editingProfile.suppressInFullscreen = val;
                 }}
+                ariaLabel="Toggle fullscreen suppression"
               />
             </div>
-          </div>
-
-          <!-- Intensity Slider -->
-          <div class="form-row">
-            <div class="control-label-group">
-              <label class="form-label" for="prof-intensity">{t('glow.intensity')} ({Math.round((editingProfile.intensity ?? appSettings.glow.intensity) * 100)}%)</label>
-            </div>
-            <div class="slider-box">
-              <input
-                id="prof-intensity"
-                type="range"
-                min="0.1"
-                max="1.0"
-                step="0.05"
-                bind:value={editingProfile.intensity}
-                class="native-slider"
-              />
-              <span class="slider-val-badge">{Math.round((editingProfile.intensity ?? appSettings.glow.intensity) * 100)}%</span>
-            </div>
-          </div>
-
-          <!-- Duration Slider -->
-          <div class="form-row">
-            <div class="control-label-group">
-              <label class="form-label" for="prof-duration">{t('glow.duration')} ({editingProfile.duration ?? 2.0}s)</label>
-            </div>
-            <div class="slider-box">
-              <input
-                id="prof-duration"
-                type="range"
-                min="0.5"
-                max="10.0"
-                step="0.5"
-                bind:value={editingProfile.duration}
-                class="native-slider"
-              />
-              <span class="slider-val-badge">{editingProfile.duration ?? 2.0}s</span>
-            </div>
-          </div>
-
-          <!-- Border Thickness Slider -->
-          <div class="form-row">
-            <div class="control-label-group">
-              <label class="form-label" for="prof-thickness">{t('glow.thickness')} ({editingProfile.borderThickness ?? appSettings.glow.thickness}px)</label>
-            </div>
-            <div class="slider-box">
-              <input
-                id="prof-thickness"
-                type="range"
-                min="2"
-                max="32"
-                step="1"
-                bind:value={editingProfile.borderThickness}
-                class="native-slider"
-              />
-              <span class="slider-val-badge">{editingProfile.borderThickness ?? appSettings.glow.thickness}px</span>
-            </div>
-          </div>
-
-          <!-- Corner Rounding Slider -->
-          <div class="form-row">
-            <div class="control-label-group">
-              <label class="form-label" for="prof-rounding">{t('glow.corner_radius')} ({editingProfile.cornerRounding ?? appSettings.glow.corner_radius}px)</label>
-            </div>
-            <div class="slider-box">
-              <input
-                id="prof-rounding"
-                type="range"
-                min="0"
-                max="48"
-                step="2"
-                bind:value={editingProfile.cornerRounding}
-                class="native-slider"
-              />
-              <span class="slider-val-badge">{editingProfile.cornerRounding ?? appSettings.glow.corner_radius}px</span>
-            </div>
-          </div>
-
-          <div class="form-section-header">{t('glow.optimization_title')}</div>
-
-          <!-- Monitor Target -->
-          <div class="form-row">
-            <span class="form-label">{t('glow.monitor_target')}</span>
-            <div class="dropdown-control-wrapper">
-              <Dropdown
-                items={MONITOR_OPTIONS}
-                value={editingProfile.monitorTarget || "primary"}
-                onSelect={(val: string) => {
-                  if (editingProfile) editingProfile.monitorTarget = val;
-                }}
-              />
-            </div>
-          </div>
-
-          <!-- Suppress in Fullscreen -->
-          <div class="control-item modal-toggle-item">
-            <div class="control-label-group">
-              <span class="control-title">{t('glow.fullscreen_title')}</span>
-              <span class="control-sub">{t('glow.fullscreen_sub')}</span>
-            </div>
-            <AppleSwitch
-              id="modal-profile-suppress-switch"
-              checked={editingProfile.suppressInFullscreen}
-              onchange={(val) => {
-                if (editingProfile) editingProfile.suppressInFullscreen = val;
-              }}
-              ariaLabel="Toggle fullscreen suppression"
-            />
-          </div>
+          </section>
         </div>
 
-        <div class="modal-footer profile-modal-footer">
-          <div class="modal-footer-left">
+        <!-- 3. STICKY MODAL FOOTER -->
+        <footer class="profile-modal-footer">
+          <div class="profile-footer-left">
             {#if !isCreatingNewProfile}
               <button
-                class="danger-btn"
+                type="button"
+                class="danger-btn profile-footer-btn"
                 onclick={() => editingProfile && deleteProfile(editingProfile.id)}
               >
-                {t('common.delete')}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tiny-icon">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span>{t('common.delete')}</span>
               </button>
             {/if}
             <button
-              class="secondary-btn preview-action-btn"
+              type="button"
+              class="secondary-btn preview-action-btn profile-footer-btn"
               onclick={() => previewProfileGlow(editingProfile)}
               disabled={isPreviewingProfile}
             >
@@ -3884,11 +4022,11 @@
               <span>{isPreviewingProfile ? t('apps.previewing') : t('apps.preview_btn')}</span>
             </button>
           </div>
-          <div class="modal-footer-right">
-            <button class="secondary-btn" onclick={closeProfileModal}>{t('common.cancel')}</button>
-            <button class="primary-btn" onclick={saveProfile}>{t('common.save')}</button>
+          <div class="profile-footer-right">
+            <button type="button" class="secondary-btn profile-footer-btn" onclick={closeProfileModal}>{t('common.cancel')}</button>
+            <button type="button" class="primary-btn profile-footer-btn save-btn" onclick={saveProfile}>{t('common.save')}</button>
           </div>
-        </div>
+        </footer>
       </div>
     </div>
   {/if}
@@ -6799,14 +6937,30 @@
     justify-content: center;
     flex-shrink: 0;
     box-shadow: 0 0 12px -2px var(--app-glow-color, var(--primary));
+    position: relative;
+    overflow: hidden;
   }
 
   .app-avatar-img {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
+    max-width: 32px;
+    max-height: 32px;
     object-fit: contain;
+    object-position: center;
+    display: block;
+    margin: auto;
     border-radius: 6px;
     image-rendering: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
+    transition: transform var(--transition-fast);
+  }
+
+  .app-avatar-box:hover .app-avatar-img {
+    transform: scale(1.06);
   }
 
   .app-avatar-letter {
@@ -6959,65 +7113,208 @@
     border-color: rgba(239, 68, 68, 0.3);
   }
 
-  /* Profile Modal specific styles */
-  .profile-modal-card {
-    max-width: 520px;
+  /* ========================================================================= */
+  /* REDESIGNED APPLICATION PROFILE MODAL                                     */
+  /* ========================================================================= */
+  .profile-modal-dialog {
+    position: relative;
+    z-index: 1;
     width: 100%;
-    max-height: min(90vh, 640px);
+    max-width: 620px;
+    max-height: min(90vh, 760px);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
     display: flex;
     flex-direction: column;
     text-align: left;
     align-items: stretch;
-    padding: 24px;
-    box-sizing: border-box;
+    padding: 0;
     overflow: hidden;
+    animation: modal-appear 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .modal-avatar {
-    width: 38px;
-    height: 38px;
+  @keyframes modal-appear {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
   }
 
-  .modal-body-form {
+  .profile-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+    flex-shrink: 0;
+    gap: 12px;
+  }
+
+  .profile-modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .profile-modal-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+
+  .profile-modal-avatar .app-avatar-img {
+    width: 28px;
+    height: 28px;
+    max-width: 30px;
+    max-height: 30px;
+  }
+
+  .profile-modal-header-text {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    margin: 16px 0 20px 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    flex: 1;
-    min-height: 0;
-    padding-right: 6px;
+    gap: 2px;
+    min-width: 0;
   }
 
-  .form-section-header {
+  .profile-modal-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  .profile-modal-subtitle {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .profile-modal-close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .profile-modal-close-btn:hover {
+    background: var(--surface-subtle);
+    color: var(--text-primary);
+    border-color: var(--border);
+  }
+
+  .profile-modal-close-btn .close-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .profile-modal-alert {
+    margin: 14px 24px 0 24px;
+    flex-shrink: 0;
+  }
+
+  .profile-modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .profile-modal-body::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .profile-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .profile-modal-body::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .profile-modal-body::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+  }
+
+  .profile-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .profile-section-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .profile-section-title {
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--accent);
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--border);
-    margin: 8px 0 2px 0;
   }
 
-  .form-row {
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .profile-form-group {
     display: flex;
     flex-direction: column;
     gap: 6px;
   }
 
-  .form-label {
-    font-size: 12px;
+  .profile-form-group.full-width {
+    grid-column: 1 / -1;
+  }
+
+  .profile-form-label {
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
 
-  .native-input {
+  .profile-input {
     width: 100%;
-    padding: 8px 12px;
+    height: 36px;
+    padding: 0 12px;
     background: var(--surface-subtle);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -7029,104 +7326,193 @@
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
-  .native-input:focus {
+  .profile-input:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
   }
 
-  .input-with-action {
+  .profile-input-action-row {
     display: flex;
     align-items: center;
     gap: 8px;
     width: 100%;
   }
 
-  .browse-btn {
-    flex-shrink: 0;
-    padding: 8px 14px;
+  .profile-action-btn {
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 8px;
     font-size: 12px;
     font-weight: 600;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, border-color 0.15s ease;
   }
 
-  .path-row {
-    margin-top: -2px;
+  .profile-action-btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--border-strong);
   }
 
-  .path-display-box {
+  .profile-path-card {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 6px 10px;
+    padding: 8px 12px;
     background: var(--surface-subtle);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 11px;
-    color: var(--text-muted);
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    overflow: hidden;
+    color: var(--text-muted);
   }
 
-  .path-text {
+  .profile-path-text {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     direction: rtl;
     text-align: left;
+    flex: 1;
   }
 
-  .clear-path-btn {
+  .profile-path-clear {
     background: transparent;
     border: none;
     color: var(--text-muted);
     cursor: pointer;
     font-size: 12px;
-    padding: 0 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
     flex-shrink: 0;
+    transition: color 0.15s ease, background 0.15s ease;
   }
 
-  .clear-path-btn:hover {
+  .profile-path-clear:hover {
     color: var(--danger-text);
+    background: var(--danger-bg);
   }
 
-  .app-path-hint {
-    font-size: 11px;
-    color: var(--text-muted);
-    opacity: 0.75;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 260px;
-    display: inline-block;
-    vertical-align: middle;
-  }
-
-  .modal-toggle-item {
+  .profile-status-card {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 0;
+    padding: 12px 16px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    gap: 16px;
+  }
+
+  .profile-status-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .profile-status-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .profile-status-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .profile-glow-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .profile-sliders-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .profile-slider-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  .profile-slider-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .profile-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-subtle);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-variant-numeric: tabular-nums;
   }
 
   .profile-modal-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: 100%;
-    margin-top: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+    flex-shrink: 0;
+    gap: 12px;
   }
 
-  .modal-footer-left,
-  .modal-footer-right {
+  .profile-footer-left,
+  .profile-footer-right {
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
-  .preview-action-btn {
+  .profile-footer-btn {
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
     display: flex;
     align-items: center;
     gap: 6px;
+    cursor: pointer;
+  }
+
+  .profile-footer-btn.save-btn {
+    min-width: 90px;
+    justify-content: center;
+  }
+
+  @media (max-width: 600px) {
+    .profile-grid,
+    .profile-sliders-grid {
+      grid-template-columns: 1fr;
+    }
+    .profile-modal-header,
+    .profile-modal-body,
+    .profile-modal-footer {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
   }
 
   /* Desktop Responsive Adaptation */
