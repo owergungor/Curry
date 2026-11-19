@@ -4,6 +4,23 @@ export interface SortableApplicationProfile {
   executableName: string;
 }
 
+export interface ApplicationProfile {
+  id: string;
+  applicationName: string;
+  executableName: string;
+  executablePath?: string | null;
+  icon?: string | null;
+  enabled?: boolean;
+  color?: string | null;
+  animation?: "pulse" | "sweep" | "ambient" | "comet" | "ripple" | null;
+  intensity?: number | null;
+  duration?: number | null;
+  borderThickness?: number | null;
+  cornerRounding?: number | null;
+  monitorTarget?: "primary" | "active" | "all" | string | null;
+  suppressInFullscreen?: boolean | null;
+}
+
 export type ApplicationSortOrder = 'az' | 'za' | 'new' | 'old';
 
 /**

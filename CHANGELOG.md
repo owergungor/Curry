@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.0] - 2026-11-19
+
+### Added
+- **Welcome Screen & First-Run Setup Wizard**:
+  - Added a dedicated OLED-themed Welcome Screen (Step 0) and 5-step onboarding wizard (`WelcomeWizard.svelte`) for first-time installations.
+  - Step 1 (Personalize): Optional display name, System/Dark/Light appearance mode, and live theme palette selector.
+  - Step 2 (Notifications & Glow): Windows notification capture toggle, audio chime toggle with Web Audio API test chime, and notification history retention slider (10–500).
+  - Step 3 (Application Discovery): Non-blocking system app scanner with discovered app count and preview chips without overwriting existing profiles.
+  - Step 4 (Quick Preferences): Windows startup toggle, taskbar/tray visibility toggle, OLED panel protection toggle, and default startup landing page selector.
+  - Step 5 (Ready to Go): Configuration summary card and one-click Launch Curry action.
+  - Added `onboarding_completed`, `display_name`, and `default_page` settings fields with automatic migration (`onboarding_completed: true`) for existing users.
+  - Added "Welcome Setup Wizard" restart section in Settings (`Restart Welcome Setup`) that pre-loads current preferences without wiping profiles.
+  - Added full i18n coverage across all 5 supported languages (`en`, `tr`, `de`, `fr`, `es`).
+- **Notifications App Icons & Dynamic Glow Enhancement**:
+  - Notification cards and Dashboard recent notifications now display the real application icon inside a square neon-framed container with `object-fit: contain` and a color-matched SVG fallback.
+  - Card borders, avatar frames, and unread indicators dynamically adapt to each application's configured glow/accent color.
+
+### Fixed
+- **Welcome Screen Keyboard Interaction & Focus Management**:
+  - Prevented arbitrary keystrokes (A–Z, 0–9, Arrow keys) on the Welcome screen from advancing to Step 1 or triggering background controls.
+  - Implemented WAI-ARIA modal focus trapping (`Tab` / `Shift+Tab`), programmatic dialog container focus on open, strict interactive-target checks for `Enter`/`Space`, explicit `Escape` handling, and automatic window `keydown` listener cleanup on close/unmount.
+  - Guarded wizard initialization `$effect` with `untrack` on closed-to-open transitions so theme/appearance selections in Step 1 never reset the active step.
+
+---
+
 ## [3.9] - 2026-11-10
 
 ### Added

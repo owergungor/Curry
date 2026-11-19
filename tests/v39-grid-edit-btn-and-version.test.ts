@@ -36,23 +36,23 @@ describe('Curry v3.9 — Grid Edit Button Styling & Release Version Alignment Co
     );
   });
 
-  test('3. Technical manifest versions are strictly aligned to 3.9.0', () => {
-    assert.equal(packageJson.version, '3.9.0', 'package.json version must be 3.9.0');
-    assert.equal(tauriConf.version, '3.9.0', 'tauri.conf.json version must be 3.9.0');
+  test('3. Technical manifest versions are strictly aligned to 4.0.0', () => {
+    assert.equal(packageJson.version, '4.0.0', 'package.json version must be 4.0.0');
+    assert.equal(tauriConf.version, '4.0.0', 'tauri.conf.json version must be 4.0.0');
     assert.ok(
-      cargoTomlSource.includes('version = "3.9.0"'),
-      'src-tauri/Cargo.toml version must be 3.9.0'
+      cargoTomlSource.includes('version = "4.0.0"'),
+      'src-tauri/Cargo.toml version must be 4.0.0'
     );
     assert.ok(
-      versionTsSource.includes('export const APP_TECH_VERSION = "3.9.0";'),
-      'src/lib/version.ts APP_TECH_VERSION must be 3.9.0'
+      versionTsSource.includes('export const APP_TECH_VERSION = "4.0.0";'),
+      'src/lib/version.ts APP_TECH_VERSION must be 4.0.0'
     );
   });
 
-  test('4. User-facing version is strictly aligned to 3.9', () => {
+  test('4. User-facing version is strictly aligned to 4.0', () => {
     assert.ok(
-      versionTsSource.includes('export const APP_VERSION = "3.9";'),
-      'src/lib/version.ts APP_VERSION must be 3.9'
+      versionTsSource.includes('export const APP_VERSION = "4.0";'),
+      'src/lib/version.ts APP_VERSION must be 4.0'
     );
   });
 });

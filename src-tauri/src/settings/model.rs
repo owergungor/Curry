@@ -155,6 +155,15 @@ pub struct AppSettings {
         alias = "show_in_taskbar"
     )]
     pub show_in_taskbar: bool,
+    /// Whether user has completed or dismissed the first-run welcome onboarding wizard.
+    #[serde(default, alias = "onboardingCompleted", alias = "onboarding_completed")]
+    pub onboarding_completed: bool,
+    /// Optional user display name or greeting preference.
+    #[serde(default, alias = "displayName", alias = "display_name")]
+    pub display_name: Option<String>,
+    /// Default startup tab/page (dashboard, notifications, applications, glow).
+    #[serde(default, alias = "defaultPage", alias = "default_page")]
+    pub default_page: Option<String>,
 }
 
 impl Default for AppSettings {
@@ -181,6 +190,9 @@ impl Default for AppSettings {
             auto_app_scan_frequency: AutoScanFrequency::default(),
             last_app_scan: None,
             removed_applications: Vec::new(),
+            onboarding_completed: false,
+            display_name: None,
+            default_page: None,
         }
     }
 }
@@ -245,6 +257,29 @@ impl AppSettings {
                         *dur = dur.min(2000.0);
                     }
                 }
+            }
+        }
+
+        if let Some(ref mut page) = self.default_page {
+            let p = page.trim().to_lowercase();
+            if !matches!(
+                p.as_str(),
+                "dashboard" | "notifications" | "applications" | "glow"
+            ) {
+                *page = "dashboard".to_string();
+            } else {
+                *page = p;
+            }
+        }
+
+        if let Some(ref mut name) = self.display_name {
+            let trimmed = name.trim();
+            if trimmed.is_empty() {
+                self.display_name = None;
+            } else if trimmed.len() > 40 {
+                *name = trimmed.chars().take(40).collect();
+            } else {
+                *name = trimmed.to_string();
             }
         }
 

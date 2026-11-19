@@ -11,3 +11,4 @@ export { default as AppearanceTabs, type Appearance } from "../AppearanceTabs.sv
 export { default as ErrorIsland } from "./ErrorIsland.svelte";
 export { default as ErrorModal } from "./ErrorModal.svelte";
 export { default as UpdateToast } from "./UpdateToast.svelte";
+export { default as WelcomeWizard } from "./WelcomeWizard.svelte";

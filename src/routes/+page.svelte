@@ -16,6 +16,7 @@
   import ErrorModal from "$lib/components/ErrorModal.svelte";
   import ThemeSelector from "$lib/components/ThemeSelector.svelte";
   import UpdateToast from "$lib/components/UpdateToast.svelte";
+  import WelcomeWizard from "$lib/components/WelcomeWizard.svelte";
   import { APP_VERSION } from "$lib/version";
   import { filterAndSortProfiles, type ApplicationSortOrder } from "$lib/apps";
 
@@ -102,6 +103,9 @@
     auto_app_scan_frequency?: "startup" | "daily" | "weekly";
     last_app_scan?: number | null;
     removed_applications?: string[];
+    onboarding_completed?: boolean;
+    display_name?: string | null;
+    default_page?: "dashboard" | "notifications" | "applications" | "glow" | null;
   }
 
   type ProviderStatus =
@@ -553,6 +557,7 @@
   let feedFilter = $state<"all" | "unread" | "critical">("all");
 
   function navigateToTab(target: TabKey) {
+    hasUserNavigated = true;
     if (target === activeTab) return;
     const oldIdx = TAB_ORDER[activeTab];
     const newIdx = TAB_ORDER[target];
@@ -637,10 +642,144 @@
     oled_mode: false,
     fullscreen_behavior: "suppress_in_fullscreen",
     reduced_motion: false,
+    onboarding_completed: true,
+    display_name: null,
+    default_page: "dashboard",
   });
+
+  // Welcome Screen & First-Run Onboarding State
+  let showWelcomeWizard = $state(false);
+  let wizardStartStep = $state(0);
+  let hasUserNavigated = $state(false);
 
   // Application Profiles State
   let applications = $state<ApplicationProfile[]>([]);
+
+  interface NotificationVisuals {
+    icon: string | null;
+    color: string;
+    subduedColor: string;
+    glowColor: string;
+  }
+
+  let resolvedAppVisuals = $state<Record<string, { icon: string | null; color: string }>>({});
+  const pendingIconFetches = new Set<string>();
+
+  function hexToRgba(hex: string | undefined | null, alpha: number): string {
+    if (!hex || !hex.startsWith("#")) return `rgba(255, 92, 0, ${alpha})`;
+    let c = hex.slice(1);
+    if (c.length === 3) c = c.split("").map((x) => x + x).join("");
+    const num = parseInt(c, 16);
+    if (isNaN(num)) return `rgba(255, 92, 0, ${alpha})`;
+    const r = (num >> 16) & 255;
+    const g = (num >> 8) & 255;
+    const b = num & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function findMatchingProfile(query: string | undefined | null): ApplicationProfile | null {
+    if (!query || !applications || applications.length === 0) return null;
+    const q = query.trim().toLowerCase();
+    if (!q) return null;
+    const qNoExe = q.endsWith(".exe") ? q.slice(0, -4) : q;
+
+    // 1. Exact match on applicationName, executableName, or executablePath
+    let found = applications.find((p) => {
+      const pApp = (p.applicationName || "").trim().toLowerCase();
+      const pAppNoExe = pApp.endsWith(".exe") ? pApp.slice(0, -4) : pApp;
+      const pExe = (p.executableName || "").trim().toLowerCase();
+      const pExeNoExe = pExe.endsWith(".exe") ? pExe.slice(0, -4) : pExe;
+      return q === pApp || qNoExe === pAppNoExe || q === pExe || qNoExe === pExeNoExe;
+    });
+    if (found) return found;
+
+    // 2. Starts with / prefix match (e.g. "Curry" vs "Curry: Notification Companion")
+    found = applications.find((p) => {
+      const pApp = (p.applicationName || "").trim().toLowerCase();
+      const pExe = (p.executableName || "").trim().toLowerCase();
+      return pApp.startsWith(q) || q.startsWith(pApp) || pExe.startsWith(qNoExe + ".");
+    });
+    return found || null;
+  }
+
+  function getNotificationVisuals(item: Notification): NotificationVisuals {
+    const defaultColor = appSettings?.glow?.color || "#FF5C00";
+    const appKey = (item.app_name || item.source_app || item.source || "").trim();
+    const normalizedKey = appKey.toLowerCase();
+
+    let icon: string | null = item.icon || null;
+    let color: string | null = null;
+
+    // 1. Check matching ApplicationProfile
+    const profile =
+      findMatchingProfile(item.app_name) ||
+      findMatchingProfile(item.source_app) ||
+      findMatchingProfile(item.source);
+
+    if (profile) {
+      if (!icon && profile.icon) {
+        icon = profile.icon;
+      }
+      if (profile.color && profile.color.trim()) {
+        color = profile.color.trim();
+      }
+    }
+
+    // 2. Check reactive dynamically resolved visuals cache
+    if (normalizedKey && resolvedAppVisuals[normalizedKey]) {
+      const cached = resolvedAppVisuals[normalizedKey];
+      if (!icon && cached.icon) {
+        icon = cached.icon;
+      }
+      if (!color && cached.color) {
+        color = cached.color;
+      }
+    }
+
+    // 3. Trigger asynchronous backend resolution if icon or color is still missing
+    if (normalizedKey && (!icon || !color) && !pendingIconFetches.has(normalizedKey)) {
+      pendingIconFetches.add(normalizedKey);
+      const lookupPath = profile?.executablePath || profile?.executableName || appKey;
+      safeInvoke<AppIconInfo>("get_app_icon", {
+        path: lookupPath,
+        name: profile?.applicationName || appKey,
+      })
+        .then((info) => {
+          if (info) {
+            resolvedAppVisuals[normalizedKey] = {
+              icon: info.icon || null,
+              color: info.color || defaultColor,
+            };
+            if (profile) {
+              let changed = false;
+              if (!profile.icon && info.icon) {
+                profile.icon = info.icon;
+                changed = true;
+              }
+              if (!profile.color && info.color) {
+                profile.color = info.color;
+                changed = true;
+              }
+              if (changed) {
+                applications = [...applications];
+              }
+            }
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          pendingIconFetches.delete(normalizedKey);
+        });
+    }
+
+    const finalColor = color || defaultColor;
+    return {
+      icon,
+      color: finalColor,
+      subduedColor: hexToRgba(finalColor, 0.4),
+      glowColor: hexToRgba(finalColor, 0.22),
+    };
+  }
   let appSearchQuery = $state("");
   let editingProfile = $state<ApplicationProfile | null>(null);
   let isProfileModalOpen = $state(false);
@@ -1251,6 +1390,23 @@
             }
           }
         }
+
+        // First-run onboarding check: show only if onboarding is not completed
+        const localOnboarded =
+          typeof localStorage !== "undefined"
+            ? localStorage.getItem("curry_onboarding_completed") === "true"
+            : false;
+        if (s.onboarding_completed === false && !localOnboarded) {
+          showWelcomeWizard = true;
+          wizardStartStep = 0;
+        }
+
+        // Apply default landing page if configured and user hasn't explicitly navigated
+        if (!hasUserNavigated && s.default_page && ["dashboard", "notifications", "applications", "glow"].includes(s.default_page)) {
+          if (s.default_page !== "dashboard") {
+            activeTab = s.default_page as TabKey;
+          }
+        }
       }
     } catch (err) {
       errorStore.report({
@@ -1293,6 +1449,57 @@
       }, 5000);
       await fetchAppSettings();
     }
+  }
+
+  function handleOnboardingComplete(prefs: {
+    displayName: string | null;
+    theme: ThemeId;
+    appearance: Appearance;
+    showNotifications: boolean;
+    soundEnabled: boolean;
+    historyLimit: number;
+    startupEnabled: boolean;
+    showInTaskbar: boolean;
+    oledMode: boolean;
+    defaultPage: "dashboard" | "notifications" | "applications" | "glow";
+  }) {
+    appSettings.onboarding_completed = true;
+    appSettings.display_name = prefs.displayName;
+    appSettings.theme = prefs.theme;
+    appSettings.appearance = prefs.appearance;
+    appSettings.show_notifications = prefs.showNotifications;
+    appSettings.sound_enabled = prefs.soundEnabled;
+    appSettings.history_limit = prefs.historyLimit;
+    appSettings.startup_enabled = prefs.startupEnabled;
+    appSettings.show_in_taskbar = prefs.showInTaskbar;
+    appSettings.oled_mode = prefs.oledMode;
+    appSettings.default_page = prefs.defaultPage;
+
+    selectedTheme = prefs.theme;
+    appearance = prefs.appearance;
+
+    try {
+      localStorage.setItem("curry_onboarding_completed", "true");
+      localStorage.setItem("curry_selected_theme", prefs.theme);
+    } catch {}
+
+    saveAppSettings();
+    showWelcomeWizard = false;
+    navigateToTab(prefs.defaultPage || "dashboard");
+  }
+
+  function handleOnboardingSkip() {
+    appSettings.onboarding_completed = true;
+    try {
+      localStorage.setItem("curry_onboarding_completed", "true");
+    } catch {}
+    saveAppSettings();
+    showWelcomeWizard = false;
+  }
+
+  function restartWelcomeSetup() {
+    wizardStartStep = 0;
+    showWelcomeWizard = true;
   }
 
   async function toggleAppState() {
@@ -1711,6 +1918,7 @@
 
 <svelte:window
   onkeydown={(e) => {
+    if (showWelcomeWizard) return;
     if (e.key === "Escape") {
       if (profileToDelete) {
         profileToDelete = null;
@@ -2072,12 +2280,37 @@
                 {:else}
                   <div class="recent-list">
                     {#each recentNotifications as item (item.id)}
-                      <div class="recent-item-row {item.read ? 'is-read' : 'is-unread'} urgency-{item.urgency ?? 'normal'}">
-                        <div class="recent-avatar">
-                          {#if item.icon}
-                            <img src={item.icon} alt={item.app_name} class="recent-avatar-img" />
+                      {@const visuals = getNotificationVisuals(item)}
+                      <div
+                        class="recent-item-row {item.read ? 'is-read' : 'is-unread'} urgency-{item.urgency ?? 'normal'}"
+                        style:--notif-accent-color={visuals.color}
+                        style:--notif-accent-subdued={visuals.subduedColor}
+                        style:--notif-accent-glow={visuals.glowColor}
+                      >
+                        <div
+                          class="recent-avatar"
+                          style:border-color={item.read ? visuals.subduedColor : visuals.color}
+                          style:box-shadow={item.read ? 'none' : `0 0 8px -2px ${visuals.glowColor}`}
+                        >
+                          {#if visuals.icon}
+                            <img
+                              src={visuals.icon}
+                              alt={item.app_name}
+                              class="recent-avatar-img"
+                              loading="lazy"
+                              decoding="async"
+                              draggable="false"
+                            />
                           {:else}
-                            <span>{getAppInitial(item.app_name || item.source_app)}</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="avatar-fallback-glyph recent-fallback-glyph" style:color={visuals.color} aria-hidden="true">
+                              <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+                              <line x1="3" y1="9" x2="21" y2="9"></line>
+                              <circle cx="6.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                              <circle cx="9.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                              <circle cx="12.5" cy="6.5" r="0.75" fill="currentColor"></circle>
+                              <rect x="7" y="12" width="4" height="4" rx="1"></rect>
+                              <rect x="13" y="12" width="4" height="4" rx="1"></rect>
+                            </svg>
                           {/if}
                         </div>
 
@@ -2251,13 +2484,32 @@
               {:else}
                 <div class="cards-stack">
                   {#each filteredNotifications as item (item.id)}
-                    <article class="notification-card {item.read ? 'is-read' : 'is-unread'} urgency-{item.urgency ?? 'normal'}">
+                    {@const visuals = getNotificationVisuals(item)}
+                    <article
+                      class="notification-card {item.read ? 'is-read' : 'is-unread'} urgency-{item.urgency ?? 'normal'}"
+                      style:--notif-accent-color={visuals.color}
+                      style:--notif-accent-subdued={visuals.subduedColor}
+                      style:--notif-accent-glow={visuals.glowColor}
+                    >
                       <div class="card-avatar-col">
-                        <div class="card-avatar" title={item.app_name || item.source_app || "App"}>
-                          {#if item.icon}
-                            <img src={item.icon} alt={item.app_name} class="avatar-img" />
+                        <div
+                          class="card-avatar"
+                          title={item.app_name || item.source_app || "App"}
+                          style:border-color={item.read ? visuals.subduedColor : visuals.color}
+                          style:box-shadow={item.read ? 'none' : `0 0 10px -2px ${visuals.glowColor}`}
+                        >
+                          {#if visuals.icon}
+                            <img
+                              src={visuals.icon}
+                              alt={item.app_name || item.source_app || "App"}
+                              class="avatar-img"
+                              loading="lazy"
+                              decoding="async"
+                              draggable="false"
+                              onerror={() => { visuals.icon = null; }}
+                            />
                           {:else}
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="avatar-fallback-glyph" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="avatar-fallback-glyph" style:color={visuals.color} aria-hidden="true">
                               <rect x="3" y="4" width="18" height="16" rx="3"></rect>
                               <line x1="3" y1="9" x2="21" y2="9"></line>
                               <circle cx="6.5" cy="6.5" r="0.75" fill="currentColor"></circle>
@@ -3569,6 +3821,44 @@
                   </div>
                 </div>
               </section>
+
+              <!-- Welcome Setup Wizard Restart -->
+              <section class="card panel-card welcome-setup-card">
+                <div class="panel-header">
+                  <div class="panel-title-wrap">
+                    <div class="panel-icon-circle">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 class="panel-title">{t('settings.restart_onboarding_title')}</h3>
+                      <p class="panel-desc">{t('settings.restart_onboarding_desc')}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="controls-list">
+                  <div class="control-item">
+                    <div class="control-label-group">
+                      <span class="control-title">{t('settings.restart_onboarding_btn')}</span>
+                      <span class="control-sub">Launch the 5-step setup wizard with current preferences pre-loaded.</span>
+                    </div>
+                    <button
+                      type="button"
+                      id="restart-welcome-setup-btn"
+                      class="secondary-btn restart-onboarding-btn"
+                      onclick={restartWelcomeSetup}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                      </svg>
+                      <span>{t('settings.restart_onboarding_btn')}</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
             </div>
           </div>
         {/if}
@@ -4046,6 +4336,22 @@
     onUpdate={installUpdate}
     onDismiss={() => { updateToastDismissed = true; }}
     onRestart={restartCurry}
+  />
+
+  <!-- Welcome Screen & First-Run Setup Wizard -->
+  <WelcomeWizard
+    bind:open={showWelcomeWizard}
+    {appSettings}
+    {selectedTheme}
+    {appearance}
+    {applications}
+    {isScanningApps}
+    startStep={wizardStartStep}
+    onThemeSelect={selectTheme}
+    onAppearanceChange={handleAppearanceChange}
+    onScanApps={triggerAppScan}
+    onComplete={handleOnboardingComplete}
+    onSkip={handleOnboardingSkip}
   />
 </div>
 
@@ -5904,14 +6210,20 @@
   }
 
   .recent-item-row.is-unread {
-    border-left: 3px solid var(--accent);
+    border-left: 3px solid var(--notif-accent-color, var(--accent));
+    box-shadow: -2px 0 8px -3px var(--notif-accent-glow, transparent);
+  }
+
+  .recent-item-row.is-read {
+    border-left: 3px solid var(--notif-accent-subdued, var(--border));
   }
 
   .recent-avatar {
-    width: 26px;
-    height: 26px;
-    border-radius: 6px;
-    background: var(--surface);
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--notif-accent-color, var(--border));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -5920,12 +6232,24 @@
     color: var(--text-primary);
     overflow: hidden;
     flex-shrink: 0;
+    box-shadow: 0 0 6px -1px var(--notif-accent-glow, transparent);
   }
 
   .recent-avatar-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    width: 20px;
+    height: 20px;
+    max-width: 22px;
+    max-height: 22px;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+    margin: auto;
+    border-radius: 3px;
+  }
+
+  .recent-fallback-glyph {
+    width: 16px;
+    height: 16px;
   }
 
   .recent-content {
@@ -6076,21 +6400,24 @@
     border: 1px solid var(--border);
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
   }
 
   .notification-card:hover {
     background: var(--surface-hover);
     border-color: var(--border-strong);
     transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15), 0 0 16px -4px var(--notif-accent-glow, transparent);
   }
 
   .notification-card.is-unread {
-    border-left: 3px solid var(--accent);
+    border-left: 3px solid var(--notif-accent-color, var(--accent));
     background: var(--surface);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08), -2px 0 10px -3px var(--notif-accent-glow, transparent);
   }
 
   .notification-card.is-read {
+    border-left: 3px solid var(--notif-accent-subdued, var(--border));
     opacity: 0.88;
   }
 
@@ -6101,11 +6428,11 @@
   }
 
   .card-avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    background: var(--surface-elevated);
-    border: 1px solid var(--border);
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1.5px solid var(--notif-accent-color, var(--border));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6113,23 +6440,49 @@
     font-weight: 700;
     color: var(--text-primary);
     overflow: hidden;
+    flex-shrink: 0;
+    position: relative;
+    box-shadow: 0 0 10px -2px var(--notif-accent-glow, transparent);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  }
+
+  .notification-card.is-read .card-avatar {
+    border-color: var(--notif-accent-subdued, var(--border));
+    box-shadow: none;
   }
 
   .avatar-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    width: 26px;
+    height: 26px;
+    max-width: 28px;
+    max-height: 28px;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+    margin: auto;
+    border-radius: 4px;
+    image-rendering: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
+    transition: transform var(--transition-fast);
+  }
+
+  .notification-card:hover .avatar-img {
+    transform: scale(1.06);
   }
 
   .card-unread-dot {
     position: absolute;
     top: -2px;
     right: -2px;
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    background-color: var(--accent);
-    box-shadow: 0 0 6px var(--accent);
+    background-color: var(--notif-accent-color, var(--accent));
+    box-shadow: 0 0 8px var(--notif-accent-color, var(--accent));
+    border: 1.5px solid var(--surface);
   }
 
   .card-body-col {

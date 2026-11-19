@@ -39,7 +39,14 @@ impl SettingsStorage {
             if path.exists() {
                 match fs::read_to_string(path) {
                     Ok(data) => match serde_json::from_str::<AppSettings>(&data) {
-                        Ok(loaded) => {
+                        Ok(mut loaded) => {
+                            // If this was an existing configuration file without onboarding_completed,
+                            // mark it completed so existing users are not interrupted.
+                            if !data.contains("\"onboarding_completed\"")
+                                && !data.contains("\"onboardingCompleted\"")
+                            {
+                                loaded.onboarding_completed = true;
+                            }
                             let loaded_app_count = loaded.applications.len();
                             let sanitized = loaded.sanitized();
                             if sanitized.applications.len() != loaded_app_count {
